@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  wedding_db:
+    image: postgres:15
+    container_name: wedding_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: wedding
+      POSTGRES_USER: wedding
+      POSTGRES_PASSWORD: wedding
+    volumes:
+      - wedding_postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5434:5432"
+    networks:
+      - wedding_network
+
+  wedding_api:
+    image: node:20-alpine
+    container_name: wedding_api
+    working_dir: /app
+    volumes:
+      - ./apps/api:/app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - wedding_db
+    networks:
+      - wedding_network
+
+  wedding_bot:
+    image: node:20-alpine
+    container_name: wedding_bot
+    working_dir: /app
+    volumes:
+      - ./apps/bot:/app
+    command: sh -c "npm install && npm run dev"
+    depends_on:
+      - wedding_db
+    networks:
+      - wedding_network
+
+  wedding_web:
+    image: node:20-alpine
+    container_name: wedding_web
+    working_dir: /app
+    volumes:
+      - ./apps/web:/app
+    command: sh -c "npm install && npm run dev"
+    ports:
+      - "5173:5173"
+    networks:
+      - wedding_network
+
+volumes:
+  wedding_postgres_data:
+
+networks:
+  wedding_network:
+    name: wedding_network

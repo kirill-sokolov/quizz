@@ -1,0 +1,35 @@
+# env
+.env
+.env.*
+
+# node
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+
+# build
+dist
+build
+.next
+out
+
+# logs
+logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode
+.idea
+wedding-quiz.iml
+
+# docker volumes
+postgres/data
+
+# prisma
+apps/**/prisma/dev.db
+apps/**/prisma/*.db
