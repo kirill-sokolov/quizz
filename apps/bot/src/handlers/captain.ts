@@ -48,6 +48,35 @@ export function registerCaptainHandlers(bot: Bot) {
     await ctx.reply("Введи название команды:");
   });
 
+  // Нажатие кнопки ответа A/B/C/D
+  bot.callbackQuery(/^answer:(A|B|C|D|E|F|G|H)$/, async (ctx) => {
+    const letter = ctx.callbackQuery.data.split(":")[1];
+    const chatId = ctx.chat!.id;
+    const state = getState(chatId);
+
+    if (state.step !== "awaiting_answer") {
+      await ctx.answerCallbackQuery({ text: "Вопрос уже закрыт или ожидай следующий." });
+      return;
+    }
+
+    try {
+      await api.submitAnswer(state.questionId, state.teamId, letter);
+      setState(chatId, {
+        step: "registered",
+        quizId: state.quizId,
+        teamId: state.teamId,
+      });
+      await ctx.answerCallbackQuery({ text: "Ответ принят ✅" });
+      await ctx.reply("Ответ принят ✅");
+    } catch (err: any) {
+      await ctx.answerCallbackQuery({ show_alert: true, text: "Не удалось отправить ответ." }).catch(() => {});
+      if (err.status === 409) {
+        setState(chatId, { step: "registered", quizId: state.quizId, teamId: state.teamId });
+        await ctx.reply("Ты уже ответил на этот вопрос ✅").catch(() => {});
+      }
+    }
+  });
+
   // Text messages: handle team name input and answer submission
   bot.on("message:text", async (ctx) => {
     try {

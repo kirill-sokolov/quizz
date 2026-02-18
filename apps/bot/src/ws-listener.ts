@@ -1,5 +1,5 @@
 import WebSocket from "ws";
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { config } from "./config.js";
 import { getAllRegistered, getRegisteredByTeamId, setState, deleteState, getState } from "./state.js";
 import { api } from "./api-client.js";
@@ -70,7 +70,8 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
     }
     if (!question) return;
 
-    const optionLines = (question.options || [])
+    const options = question.options || [];
+    const optionLines = options
       .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
       .join("\n");
 
@@ -81,8 +82,25 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
       "",
       optionLines,
       "",
-      "Отправь букву ответа: " + LABELS.slice(0, (question.options || []).length).join(", "),
+      options.length >= 2 && options.length <= 8
+        ? "Выбери ответ кнопкой или отправь букву:"
+        : "Отправь букву ответа: " + LABELS.slice(0, options.length || 4).join(", "),
     ].join("\n");
+
+    // Кнопки A/B/C/D только для некастомного вопроса (2–8 вариантов)
+    const replyMarkup =
+      options.length >= 2 && options.length <= 8
+        ? (() => {
+            const kb = new InlineKeyboard();
+            const letters = LABELS.slice(0, options.length);
+            for (let i = 0; i < letters.length; i += 2) {
+              kb.text(letters[i], `answer:${letters[i]}`);
+              if (letters[i + 1]) kb.text(letters[i + 1], `answer:${letters[i + 1]}`);
+              if (i + 2 < letters.length) kb.row();
+            }
+            return kb;
+          })()
+        : undefined;
 
     for (const user of registered) {
       setState(user.chatId, {
@@ -92,7 +110,9 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
         questionId: data.questionId,
       });
       try {
-        await bot.api.sendMessage(user.chatId, text);
+        await bot.api.sendMessage(user.chatId, text, {
+          ...(replyMarkup && { reply_markup: replyMarkup }),
+        });
       } catch (err) {
         console.error(`Failed to send question to ${user.chatId}:`, err);
       }

@@ -222,13 +222,14 @@ export async function finishGame(quizId: number) {
     }
   }
 
+  // Сортировка: сначала по убыванию правильных, при равенстве — по убыванию числа ответов
   const results = allTeams
     .map((t) => ({
       teamId: t.id,
       name: t.name,
       ...answersByTeam.get(t.id)!,
     }))
-    .sort((a, b) => b.correct - a.correct);
+    .sort((a, b) => b.correct - a.correct || b.total - a.total);
 
   broadcast("quiz_finished", { quizId, results });
 
