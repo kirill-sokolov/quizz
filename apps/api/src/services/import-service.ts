@@ -175,6 +175,13 @@ export async function importZip(
       idx != null && idx >= 0 && idx < savedUrls.length ? savedUrls[idx] : null;
 
     const opts = q.options ?? { A: "", B: "", C: "", D: "" };
+
+    // If one of question/timer slides is missing, fall back to the other
+    let questionUrl = getUrl(q.slides?.question ?? null);
+    let timerUrl = getUrl(q.slides?.timer ?? null);
+    if (!timerUrl) timerUrl = questionUrl;
+    if (!questionUrl) questionUrl = timerUrl;
+
     return {
       orderNum: i + 1,
       text: q.question ?? "",
@@ -182,8 +189,8 @@ export async function importZip(
       correctAnswer: q.correct ?? "A",
       timeLimitSec: q.time_limit_sec ?? 30,
       slides: {
-        question: getUrl(q.slides?.question ?? null),
-        timer: getUrl(q.slides?.timer ?? null),
+        question: questionUrl,
+        timer: timerUrl,
         answer: getUrl(q.slides?.answer ?? null),
       },
     };
