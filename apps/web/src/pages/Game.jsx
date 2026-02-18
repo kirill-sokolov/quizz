@@ -195,7 +195,6 @@ export default function Game() {
     }
     if (result) setState(result);
     setAnswers([]);
-    await refreshAnswers();
   };
 
   const handleRemind = async (teamId) => {
