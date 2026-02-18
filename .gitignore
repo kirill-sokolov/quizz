@@ -30,6 +30,9 @@ wedding-quiz.iml
 # docker volumes
 postgres/data
 
+# uploaded media (slide images)
+uploads/
+
 # prisma
 apps/**/prisma/dev.db
 apps/**/prisma/*.db
