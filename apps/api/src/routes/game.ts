@@ -4,6 +4,7 @@ import { gameState, questions } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   startGame,
+  beginGame,
   nextQuestion,
   setSlide,
   getRemind,
@@ -38,6 +39,14 @@ export async function gameRoutes(app: FastifyInstance) {
     "/api/game/start",
     async (req, reply) => {
       const state = await startGame(req.body.quizId);
+      return reply.code(200).send(state);
+    }
+  );
+
+  app.post<{ Body: { quizId: number } }>(
+    "/api/game/begin",
+    async (req, reply) => {
+      const state = await beginGame(req.body.quizId);
       return reply.code(200).send(state);
     }
   );

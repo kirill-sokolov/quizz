@@ -32,6 +32,7 @@ export default function TV() {
   const { quizId: urlQuizId } = useParams();
   const scale = useTVScale();
   const [quizId, setQuizId] = useState(null);
+  const [quiz, setQuiz] = useState(null);
   const [state, setState] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [results, setResults] = useState(null);
@@ -41,10 +42,12 @@ export default function TV() {
 
   const loadQuiz = useCallback(async (id) => {
     try {
-      const [stateData, questionsData] = await Promise.all([
+      const [quizData, stateData, questionsData] = await Promise.all([
+        quizzesApi.get(id),
         gameApi.getState(id).catch(() => null),
         questionsApi.list(id),
       ]);
+      setQuiz(quizData);
       setState(stateData);
       setQuestions(questionsData);
       setResults(null);
@@ -96,6 +99,9 @@ export default function TV() {
 
         if (data?.quizId !== quizId) return;
         switch (event) {
+          case "game_lobby":
+            loadQuiz(quizId);
+            break;
           case "slide_changed":
             gameApi.getState(quizId).then((s) => setState(s));
             break;
@@ -188,8 +194,16 @@ export default function TV() {
           )}
         </>
       ) : (
-        <div className="flex items-center justify-center w-full h-full bg-stone-900 text-white text-4xl">
-          Ожидание начала квиза…
+        <div className="flex flex-col items-center justify-center w-full h-full bg-stone-900 text-white gap-8">
+          <p className="text-4xl">Ожидание начала квиза…</p>
+          {quiz?.joinCode && (
+            <>
+              <p className="text-2xl text-stone-400">Код для входа:</p>
+              <p className="text-8xl font-mono font-bold tracking-widest text-amber-400">
+                {quiz.joinCode}
+              </p>
+            </>
+          )}
         </div>
       )}
       </div>

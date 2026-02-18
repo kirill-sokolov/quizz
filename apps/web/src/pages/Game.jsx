@@ -146,6 +146,9 @@ export default function Game() {
         const { event, data } = JSON.parse(ev.data);
         if (data?.quizId !== quizId) return;
         switch (event) {
+          case "game_lobby":
+            load();
+            break;
           case "slide_changed":
             gameApi.getState(quizId).then((s) => setState(s));
             if (data.slide === "timer") refreshAnswers();
@@ -228,8 +231,14 @@ export default function Game() {
       </p>
     );
 
-  const gameNotStarted = !state || state.status === "lobby";
+  const gameNotStarted = !state;
+  const gameLobby = state?.status === "lobby";
   const gameFinished = state?.status === "finished";
+
+  const handleBegin = async () => {
+    await gameApi.begin(quizId);
+    await load();
+  };
 
   if (gameNotStarted) {
     return (
@@ -250,6 +259,78 @@ export default function Game() {
             className="px-6 py-3 bg-amber-600 text-white rounded-xl hover:bg-amber-700 transition font-medium"
           >
             Запустить квиз
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (gameLobby) {
+    return (
+      <div className="space-y-6">
+        <div className="mb-4 flex items-center gap-4">
+          <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+            ← Квизы
+          </Link>
+          <h1 className="text-xl font-semibold text-stone-800">
+            Регистрация: {quiz.title}
+          </h1>
+        </div>
+
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
+          <p className="text-stone-500 mb-2">Код для входа:</p>
+          <p className="text-5xl font-mono font-bold text-amber-700 tracking-widest mb-6">
+            {quiz.joinCode}
+          </p>
+          <p className="text-stone-500 text-sm">
+            Капитаны вводят этот код в Telegram-боте для регистрации
+          </p>
+        </div>
+
+        <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
+          <h2 className="font-semibold text-stone-800 mb-3">
+            Зарегистрированные команды ({activeTeams.length})
+          </h2>
+          {teams.length === 0 ? (
+            <p className="text-stone-400 text-sm">Пока никто не зарегистрировался…</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {teams.map((team) => (
+                <span
+                  key={team.id}
+                  className={`inline-flex items-center gap-1 px-3 py-1.5 rounded-lg border text-sm ${
+                    team.isKicked
+                      ? "bg-red-50 border-red-200 text-stone-500"
+                      : "bg-white border-stone-200"
+                  }`}
+                >
+                  {team.name}
+                  {team.isKicked ? (
+                    <span className="text-red-500">исключён</span>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleKick(team.id)}
+                      className="text-red-500 hover:text-red-700"
+                      title="Исключить"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="text-center">
+          <button
+            type="button"
+            onClick={handleBegin}
+            disabled={activeTeams.length === 0}
+            className="px-8 py-3 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-medium text-lg disabled:opacity-50"
+          >
+            Начать квиз
           </button>
         </div>
       </div>

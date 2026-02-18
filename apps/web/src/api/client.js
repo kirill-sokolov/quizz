@@ -13,9 +13,10 @@ export function getWsUrl() {
 async function request(path, options = {}) {
   const body = options.body;
   const isFormData = body instanceof FormData;
+  const needsJson = body && !isFormData;
   const res = await fetch(`${API}${path}`, {
     headers: {
-      ...(!isFormData ? { "Content-Type": "application/json" } : {}),
+      ...(needsJson ? { "Content-Type": "application/json" } : {}),
       ...options.headers,
     },
     ...options,
@@ -73,6 +74,11 @@ export const gameApi = {
   getState: (quizId) => request(`/game/state/${quizId}`),
   start: (quizId) =>
     request("/game/start", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
+  begin: (quizId) =>
+    request("/game/begin", {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),

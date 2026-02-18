@@ -31,15 +31,6 @@ export async function startGame(quizId: number) {
     .set({ status: "active", joinCode })
     .where(eq(quizzes.id, quizId));
 
-  const firstQuestion = await db
-    .select()
-    .from(questions)
-    .where(eq(questions.quizId, quizId))
-    .orderBy(asc(questions.orderNum))
-    .limit(1);
-
-  const currentQuestionId = firstQuestion[0]?.id ?? null;
-
   const [existing] = await db
     .select()
     .from(gameState)
@@ -50,8 +41,8 @@ export async function startGame(quizId: number) {
     [state] = await db
       .update(gameState)
       .set({
-        status: "playing",
-        currentQuestionId,
+        status: "lobby",
+        currentQuestionId: null,
         currentSlide: "question",
         timerStartedAt: null,
       })
@@ -62,12 +53,46 @@ export async function startGame(quizId: number) {
       .insert(gameState)
       .values({
         quizId,
-        status: "playing",
-        currentQuestionId,
+        status: "lobby",
+        currentQuestionId: null,
         currentSlide: "question",
       })
       .returning();
   }
+
+  broadcast("game_lobby", { quizId, joinCode });
+
+  return { ...state, joinCode };
+}
+
+export async function beginGame(quizId: number) {
+  const [state] = await db
+    .select()
+    .from(gameState)
+    .where(eq(gameState.quizId, quizId));
+  if (!state || state.status !== "lobby") {
+    throw new Error("Game is not in lobby state");
+  }
+
+  const firstQuestion = await db
+    .select()
+    .from(questions)
+    .where(eq(questions.quizId, quizId))
+    .orderBy(asc(questions.orderNum))
+    .limit(1);
+
+  const currentQuestionId = firstQuestion[0]?.id ?? null;
+
+  const [updated] = await db
+    .update(gameState)
+    .set({
+      status: "playing",
+      currentQuestionId,
+      currentSlide: "question",
+      timerStartedAt: null,
+    })
+    .where(eq(gameState.quizId, quizId))
+    .returning();
 
   broadcast("slide_changed", {
     quizId,
@@ -75,7 +100,7 @@ export async function startGame(quizId: number) {
     slide: "question",
   });
 
-  return state;
+  return updated;
 }
 
 export async function nextQuestion(quizId: number) {
