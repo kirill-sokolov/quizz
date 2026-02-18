@@ -115,9 +115,10 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
                   </label>
                   <label className="flex items-center gap-2 text-sm">
                     <span className="text-stone-600">Время (сек):</span>
+                    {/*todo:*/}
                     <input
                       type="number"
-                      min={10}
+                      min={3}
                       max={120}
                       value={item.timeLimitSec}
                       onChange={(e) => update(qi, "timeLimitSec", Number(e.target.value))}

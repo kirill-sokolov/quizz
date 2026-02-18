@@ -148,9 +148,10 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-stone-600 mb-1">Время (сек)</label>
+          {/*todo:*/}
           <input
             type="number"
-            min={10}
+            min={3}
             max={120}
             value={timeLimitSec}
             onChange={(e) => setTimeLimitSec(Number(e.target.value) || 30)}
