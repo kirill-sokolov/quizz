@@ -13,6 +13,7 @@ import { teamsRoutes } from "./routes/teams.js";
 import { answersRoutes } from "./routes/answers.js";
 import { gameRoutes } from "./routes/game.js";
 import { mediaRoutes } from "./routes/media.js";
+import { importRoutes } from "./routes/import.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +27,7 @@ async function main() {
   fs.mkdirSync(mediaRoot, { recursive: true });
 
   await app.register(cors, { origin: true });
-  await app.register(multipart);
+  await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
   await app.register(fastifyStatic, {
     root: mediaRoot,
     prefix: "/api/media/",
@@ -40,6 +41,7 @@ async function main() {
   await app.register(answersRoutes);
   await app.register(gameRoutes);
   await app.register(mediaRoutes);
+  await app.register(importRoutes);
 
   app.get("/health", async () => ({ status: "ok" }));
 

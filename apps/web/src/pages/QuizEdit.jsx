@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { quizzesApi, questionsApi, mediaUpload } from "../api/client";
+import { quizzesApi, questionsApi, mediaUpload, importApi } from "../api/client";
 import QuestionForm from "../components/QuestionForm";
+import ImportPreview from "../components/ImportPreview";
 
 export default function QuizEdit() {
   const { id } = useParams();
@@ -11,6 +12,9 @@ export default function QuizEdit() {
   const [error, setError] = useState(null);
   const [editingId, setEditingId] = useState(null);
   const [adding, setAdding] = useState(false);
+  const [importPreview, setImportPreview] = useState(null);
+  const [importing, setImporting] = useState(false);
+  const zipInputRef = useRef(null);
 
   const loadQuiz = async () => {
     try {
@@ -89,6 +93,22 @@ export default function QuizEdit() {
     await loadQuestions();
   };
 
+  const handleZipUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const result = await importApi.uploadZip(id, file);
+      setImportPreview(result.questions);
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка импорта ZIP");
+    } finally {
+      setImporting(false);
+      if (zipInputRef.current) zipInputRef.current.value = "";
+    }
+  };
+
   if (loading) return <p className="text-stone-500">Загрузка…</p>;
   if (error)
     return (
@@ -117,14 +137,45 @@ export default function QuizEdit() {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-medium text-stone-700">Вопросы</h2>
-        <button
-          type="button"
-          onClick={() => setAdding(true)}
-          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
-        >
-          Добавить вопрос
-        </button>
+        <div className="flex gap-2">
+          <input
+            ref={zipInputRef}
+            type="file"
+            accept=".zip"
+            onChange={handleZipUpload}
+            className="hidden"
+          />
+          <button
+            type="button"
+            onClick={() => zipInputRef.current?.click()}
+            disabled={importing}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
+          >
+            {importing ? "Обработка…" : "Импорт из ZIP"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+          >
+            Добавить вопрос
+          </button>
+        </div>
       </div>
+
+      {importPreview && (
+        <div className="mb-6">
+          <ImportPreview
+            quizId={id}
+            questions={importPreview}
+            onDone={() => {
+              setImportPreview(null);
+              loadQuestions();
+            }}
+            onCancel={() => setImportPreview(null)}
+          />
+        </div>
+      )}
 
       {adding && (
         <div className="mb-6 p-4 bg-white rounded-xl border border-stone-200 shadow-sm">

@@ -12,22 +12,22 @@ const QUESTIONS = [
     text: "Какая историческая эпоха считается временем рыцарей и прекрасных дам?",
     options: ["Античность", "Средневековье", "Эпоха Возрождения", "Новое время"],
     correctAnswer: "B",
-    questionImage: "test.jpg",
-    answerImage: "test.png",
+    questionImage: "1a.png",
+    answerImage: "1b.png",
   },
   {
     text: "В какой стране появились первые Олимпийские игры в древности?",
     options: ["Рим", "Египет", "Греция", "Турция"],
     correctAnswer: "C",
-    questionImage: "test.jpg",
-    answerImage: "test.png",
+    questionImage: "1a.png",
+    answerImage: "1b.png",
   },
   {
     text: "Какой исторический правитель прославился множеством жён, что сегодня явно усложнило бы свадьбу?",
     options: ["Наполеон Бонапарт", "Генрих VIII", "Юлий Цезарь", "Александр Македонский"],
     correctAnswer: "B",
-    questionImage: "test.jpg",
-    answerImage: "test.png",
+    questionImage: "1a.png",
+    answerImage: "1b.png",
   },
 ];
 

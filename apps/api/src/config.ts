@@ -5,4 +5,5 @@ export const config = {
   PORT: parseInt(process.env.PORT || "3000", 10),
   HOST: process.env.HOST || "0.0.0.0",
   MEDIA_DIR: process.env.MEDIA_DIR || "./uploads",
+  GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
 };

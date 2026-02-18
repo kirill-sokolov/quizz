@@ -120,6 +120,29 @@ export const answersApi = {
   list: (questionId) => request(`/questions/${questionId}/answers`),
 };
 
+export const importApi = {
+  uploadZip: async (quizId, file) => {
+    const form = new FormData();
+    form.append("file", file);
+    const res = await fetch(`${API}/quizzes/${quizId}/import-zip`, {
+      method: "POST",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = new Error(res.statusText || "Import failed");
+      err.status = res.status;
+      err.body = await res.json().catch(() => ({}));
+      throw err;
+    }
+    return res.json();
+  },
+  save: (quizId, questions) =>
+    request(`/quizzes/${quizId}/import-save`, {
+      method: "POST",
+      body: JSON.stringify({ questions }),
+    }),
+};
+
 export async function mediaUpload(file) {
   const form = new FormData();
   form.append("file", file);
