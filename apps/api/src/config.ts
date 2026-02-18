@@ -6,4 +6,6 @@ export const config = {
   HOST: process.env.HOST || "0.0.0.0",
   MEDIA_DIR: process.env.MEDIA_DIR || "./uploads",
   GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
+  GROQ_API_KEY: process.env.GROQ_API_KEY || "",
+  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY || "",
 };

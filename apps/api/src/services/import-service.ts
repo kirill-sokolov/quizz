@@ -1,5 +1,4 @@
 import AdmZip from "adm-zip";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import sharp from "sharp";
 import { randomUUID } from "crypto";
 import { execSync } from "child_process";
@@ -10,6 +9,7 @@ import { config } from "../config.js";
 import { db } from "../db/index.js";
 import { questions, slides } from "../db/schema.js";
 import { eq, asc } from "drizzle-orm";
+import { analyzeImages, type ShrunkImage } from "./llm/index.js";
 
 interface ExtractedImage {
   name: string;
@@ -28,22 +28,6 @@ export interface ImportPreviewItem {
     timer: string | null;
     answer: string | null;
   };
-}
-
-interface GeminiQuestion {
-  question: string;
-  options: { A: string; B: string; C: string; D: string };
-  correct: string;
-  time_limit_sec: number;
-  slides: {
-    question: number | null;
-    timer: number | null;
-    answer: number | null;
-  };
-}
-
-interface GeminiResult {
-  questions: GeminiQuestion[];
 }
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
@@ -128,9 +112,9 @@ function getMimeType(ext: string): string {
   return map[ext] || "image/png";
 }
 
-// ─── Image resize (reduce tokens sent to Gemini) ─────────────────────────────
+// ─── Image resize (reduce tokens sent to LLM) ────────────────────────────────
 
-async function shrinkForGemini(img: ExtractedImage): Promise<{ data: string; mimeType: string }> {
+async function shrinkImage(img: ExtractedImage): Promise<{ data: string; mimeType: string }> {
   try {
     const jpeg = await sharp(img.buffer)
       .resize({ width: 1024, withoutEnlargement: true })
@@ -138,116 +122,7 @@ async function shrinkForGemini(img: ExtractedImage): Promise<{ data: string; mim
       .toBuffer();
     return { data: jpeg.toString("base64"), mimeType: "image/jpeg" };
   } catch {
-    // If sharp fails, fall back to raw base64
     return { data: img.buffer.toString("base64"), mimeType: getMimeType(img.ext) };
-  }
-}
-
-// ─── Gemini – send ALL images at once ────────────────────────────────────────
-
-const SYSTEM_PROMPT = (n: number, names: string[]) => `
-Ты анализируешь ${n} изображений — слайды из квиза-презентации.
-Имена файлов (в порядке, с 0): ${names.map((n, i) => `[${i}] ${n}`).join(", ")}.
-
-КЛЮЧЕВОЕ ПРАВИЛО: несколько слайдов могут относиться к ОДНОМУ вопросу.
-Слайды одного вопроса похожи визуально — одинаковый фон, одинаковый текст вопроса — но различаются деталями:
-
-• «question» — слайд с текстом вопроса и 4 вариантами ответов (A, B, C, D). Все варианты оформлены одинаково.
-• «timer»   — тот же вопрос + заметный таймер/часы/обратный отсчёт.
-• «answer»  — тот же вопрос, но ОДИН вариант выделен как правильный (другой цвет, обводка, галочка, стрелка и т.п.).
-
-Алгоритм:
-1. Сначала определи, сколько УНИКАЛЬНЫХ вопросов (не слайдов) присутствует.
-2. Сгруппируй слайды — похожие по содержанию и дизайну относятся к одному вопросу.
-3. Для каждой группы: назначь тип каждому слайду и извлеки текст вопроса, варианты, правильный ответ.
-
-Верни строго JSON (без markdown, без пояснений):
-{
-  "questions": [
-    {
-      "question": "Текст вопроса",
-      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
-      "correct": "B",
-      "time_limit_sec": 30,
-      "slides": {
-        "question": 0,
-        "timer": null,
-        "answer": 1
-      }
-    }
-  ]
-}
-
-Правила:
-- Если слайда какого-то типа нет в группе — ставь null.
-- "correct" — одна буква: A, B, C или D.
-- "time_limit_sec" — число секунд из слайда (30 если не указано).
-- Каждый индекс используй не более одного раза.
-`.trim();
-
-export async function parseAllImagesWithGemini(
-  images: ExtractedImage[]
-): Promise<GeminiResult> {
-  if (!config.GEMINI_API_KEY) {
-    throw Object.assign(new Error("GEMINI_API_KEY is not configured"), {
-      statusCode: 500,
-    });
-  }
-
-  const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
-
-  // Shrink images first to reduce token count
-  const shrunk = await Promise.all(images.map(shrinkForGemini));
-
-  const promptParts = [
-    { text: SYSTEM_PROMPT(images.length, images.map((i) => i.name)) },
-    ...shrunk.map((s) => ({ inlineData: { data: s.data, mimeType: s.mimeType } })),
-    { text: "Верни только JSON, без markdown и пояснений." },
-  ];
-
-  // Try models in order — handles per-model quota limits
-  const MODELS = [
-    "gemini-2.0-flash-lite",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash-latest",
-    "gemini-1.5-flash-8b",
-  ];
-
-  let raw = "";
-  let lastError: unknown;
-  for (const modelName of MODELS) {
-    try {
-      const m = genAI.getGenerativeModel({ model: modelName });
-      const result = await m.generateContent(promptParts);
-      raw = result.response.text();
-      console.log(`[Gemini] used model: ${modelName}`);
-      break;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[Gemini] ${modelName} failed: ${msg.slice(0, 150)}`);
-      lastError = err;
-    }
-  }
-
-  if (!raw) {
-    throw Object.assign(
-      new Error(
-        `All Gemini models failed. Last error: ${lastError instanceof Error ? lastError.message.slice(0, 200) : String(lastError)}`
-      ),
-      { statusCode: 502 }
-    );
-  }
-
-  console.log("[Gemini raw response]", raw.slice(0, 500));
-
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  try {
-    return JSON.parse(cleaned) as GeminiResult;
-  } catch {
-    throw Object.assign(
-      new Error(`Gemini вернул неверный JSON: ${raw.slice(0, 300)}`),
-      { statusCode: 502 }
-    );
   }
 }
 
@@ -267,27 +142,23 @@ export async function importZip(
   // 1. Save all images to disk first so we have URLs to return
   const savedUrls = images.map((img) => saveImageToDisk(img));
 
-  // 2. Ask Gemini to group and classify everything
-  let geminiResult: GeminiResult;
-  if (config.GEMINI_API_KEY) {
-    try {
-      geminiResult = await parseAllImagesWithGemini(images);
-    } catch (err) {
-      console.error("Gemini error:", err instanceof Error ? err.message : err);
-      // Fallback: treat each image as a separate question slide
-      geminiResult = {
-        questions: images.map((_, i) => ({
-          question: "",
-          options: { A: "", B: "", C: "", D: "" },
-          correct: "A",
-          time_limit_sec: 30,
-          slides: { question: i, timer: null, answer: null },
-        })),
-      };
-    }
-  } else {
-    // No API key — return images as empty question stubs
-    geminiResult = {
+  // 2. Build shrunk image list for LLM
+  const shrunk: ShrunkImage[] = await Promise.all(
+    images.map(async (img) => {
+      const s = await shrinkImage(img);
+      return { ...s, name: img.name };
+    })
+  );
+
+  // 3. Ask LLM orchestrator to group and classify everything
+  type LLMResult = Awaited<ReturnType<typeof analyzeImages>>;
+  let llmResult: LLMResult;
+  try {
+    llmResult = await analyzeImages(shrunk);
+  } catch (err) {
+    console.error("LLM error:", err instanceof Error ? err.message : err);
+    // Fallback: treat each image as a separate question slide
+    llmResult = {
       questions: images.map((_, i) => ({
         question: "",
         options: { A: "", B: "", C: "", D: "" },
@@ -298,8 +169,8 @@ export async function importZip(
     };
   }
 
-  // 3. Map Gemini indices → saved URLs
-  return geminiResult.questions.map((q, i) => {
+  // 4. Map LLM indices → saved URLs
+  return llmResult.questions.map((q, i) => {
     const getUrl = (idx: number | null) =>
       idx != null && idx >= 0 && idx < savedUrls.length ? savedUrls[idx] : null;
 
