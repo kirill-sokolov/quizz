@@ -31,9 +31,27 @@ function useTVScale() {
   return transform;
 }
 
+function useFullscreen() {
+  const [isFullscreen, setIsFullscreen] = useState(!!document.fullscreenElement);
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, []);
+  const toggle = useCallback(() => {
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, []);
+  return { isFullscreen, toggle };
+}
+
 export default function TV() {
   const { quizId: urlQuizId } = useParams();
   const tvTransform = useTVScale();
+  const { isFullscreen, toggle } = useFullscreen();
   const [quizId, setQuizId] = useState(null);
   const [quiz, setQuiz] = useState(null);
   const [state, setState] = useState(null);
@@ -163,7 +181,7 @@ export default function TV() {
   const slide = state?.currentSlide || "question";
 
   return (
-    <div className="tv-viewport">
+    <div className="tv-viewport" onClick={toggle}>
       <div
         className="tv-screen bg-black overflow-hidden"
         style={{ ...screenStyle, cursor: "none" }}
@@ -210,6 +228,11 @@ export default function TV() {
         </div>
       )}
       </div>
+      {!isFullscreen && (
+        <div className="tv-fullscreen-hint">
+          Нажмите для полного экрана
+        </div>
+      )}
     </div>
   );
 }
