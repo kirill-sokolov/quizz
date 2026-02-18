@@ -1,19 +1,15 @@
-import "dotenv/config";
+import { config } from "./config.js";
 import { Bot } from "grammy";
 import { registerStartHandlers } from "./handlers/start.js";
-import { registerAdminHandlers } from "./handlers/admin.js";
 import { registerCaptainHandlers } from "./handlers/captain.js";
+import { startWsListener } from "./ws-listener.js";
 
-const token = process.env.BOT_TOKEN;
-if (!token) {
-  throw new Error("BOT_TOKEN is missing. Put it in root .env");
-}
-
-const bot = new Bot(token);
+const bot = new Bot(config.BOT_TOKEN);
 
 registerStartHandlers(bot);
-registerAdminHandlers(bot);
 registerCaptainHandlers(bot);
+
+startWsListener(bot);
 
 bot.catch((err) => {
   console.error("Bot error:", err.error);

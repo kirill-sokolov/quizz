@@ -1,12 +1,11 @@
 import { Bot, InlineKeyboard } from "grammy";
-import { userStates } from "../state.js";
+import { deleteState } from "../state.js";
 
 export function registerStartHandlers(bot: Bot) {
   bot.command("start", async (ctx) => {
-    userStates.delete(ctx.chat.id);
+    deleteState(ctx.chat.id);
 
     const kb = new InlineKeyboard()
-      .text("🎤 Я ведущий", "role:admin")
       .text("🧑‍✈️ Я капитан", "role:captain");
 
     await ctx.reply(

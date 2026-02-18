@@ -1,12 +1,32 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import { quizzes } from "../db/schema.js";
-import { eq } from "drizzle-orm";
+import { eq, ne, and } from "drizzle-orm";
 
 export async function quizzesRoutes(app: FastifyInstance) {
   app.get("/api/quizzes", async () => {
     return db.select().from(quizzes);
   });
+
+  app.get("/api/quizzes/active", async () => {
+    const active = await db
+      .select()
+      .from(quizzes)
+      .where(eq(quizzes.status, "active"));
+    return active;
+  });
+
+  app.get<{ Params: { code: string } }>(
+    "/api/quizzes/by-code/:code",
+    async (req, reply) => {
+      const [quiz] = await db
+        .select()
+        .from(quizzes)
+        .where(eq(quizzes.joinCode, req.params.code.toUpperCase()));
+      if (!quiz) return reply.code(404).send({ error: "Quiz not found" });
+      return quiz;
+    }
+  );
 
   app.post<{ Body: { title: string } }>("/api/quizzes", async (req, reply) => {
     const { title } = req.body;

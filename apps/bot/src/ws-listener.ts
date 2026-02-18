@@ -1,0 +1,169 @@
+import WebSocket from "ws";
+import { Bot } from "grammy";
+import { config } from "./config.js";
+import { getAllRegistered, getRegisteredByTeamId, setState, deleteState, getState } from "./state.js";
+import { api } from "./api-client.js";
+
+const LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
+
+export function startWsListener(bot: Bot) {
+  const wsUrl = config.API_URL.replace(/^http/, "ws") + "/ws";
+  console.log("WS connecting to:", wsUrl);
+
+  function connect() {
+    const ws = new WebSocket(wsUrl);
+
+    ws.on("open", () => {
+      console.log("WS connected to API");
+    });
+
+    ws.on("message", async (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        await handleEvent(bot, msg.event, msg.data);
+      } catch (err) {
+        console.error("WS message error:", err);
+      }
+    });
+
+    ws.on("close", () => {
+      console.log("WS disconnected, reconnecting in 3s...");
+      setTimeout(connect, 3000);
+    });
+
+    ws.on("error", (err) => {
+      console.error("WS error:", err);
+    });
+  }
+
+  connect();
+}
+
+async function handleEvent(bot: Bot, event: string, data: any) {
+  switch (event) {
+    case "slide_changed":
+      await onSlideChanged(bot, data);
+      break;
+    case "team_kicked":
+      await onTeamKicked(bot, data);
+      break;
+    case "quiz_finished":
+      await onQuizFinished(bot, data);
+      break;
+    case "remind":
+      await onRemind(bot, data);
+      break;
+  }
+}
+
+async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: number; slide: string }) {
+  const registered = getAllRegistered().filter((u) => u.quizId === data.quizId);
+  if (registered.length === 0) return;
+
+  if (data.slide === "question" && data.questionId) {
+    let question;
+    try {
+      const state = await api.getGameState(data.quizId);
+      question = state.question;
+    } catch {
+      return;
+    }
+    if (!question) return;
+
+    const optionLines = (question.options || [])
+      .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
+      .join("\n");
+
+    const text = [
+      `❓ Вопрос`,
+      "",
+      question.text,
+      "",
+      optionLines,
+      "",
+      "Отправь букву ответа: " + LABELS.slice(0, (question.options || []).length).join(", "),
+    ].join("\n");
+
+    for (const user of registered) {
+      setState(user.chatId, {
+        step: "awaiting_answer",
+        quizId: user.quizId,
+        teamId: user.teamId,
+        questionId: data.questionId,
+      });
+      try {
+        await bot.api.sendMessage(user.chatId, text);
+      } catch (err) {
+        console.error(`Failed to send question to ${user.chatId}:`, err);
+      }
+    }
+  } else if (data.slide === "timer") {
+    for (const user of registered) {
+      try {
+        await bot.api.sendMessage(user.chatId, "⏱ Время пошло! Отправь ответ.");
+      } catch (err) {
+        console.error(`Failed to send timer to ${user.chatId}:`, err);
+      }
+    }
+  } else if (data.slide === "answer") {
+    // When answer slide is shown, move back to registered (no longer awaiting)
+    for (const user of registered) {
+      const st = getState(user.chatId);
+      if (st.step === "awaiting_answer") {
+        setState(user.chatId, {
+          step: "registered",
+          quizId: user.quizId,
+          teamId: user.teamId,
+        });
+      }
+    }
+  }
+}
+
+async function onTeamKicked(bot: Bot, data: { teamId: number; name: string }) {
+  const chatId = getRegisteredByTeamId(data.teamId);
+  if (!chatId) return;
+
+  deleteState(chatId);
+  try {
+    await bot.api.sendMessage(chatId, "❌ Ты был исключён из игры.");
+  } catch (err) {
+    console.error(`Failed to notify kicked team ${data.teamId}:`, err);
+  }
+}
+
+async function onQuizFinished(
+  bot: Bot,
+  data: { quizId: number; results: Array<{ teamId: number; name: string; correct: number; total: number }> }
+) {
+  const registered = getAllRegistered().filter((u) => u.quizId === data.quizId);
+  if (registered.length === 0) return;
+
+  const lines = data.results.map(
+    (r, i) => `${i + 1}. ${r.name} — ${r.correct}/${r.total} правильных`
+  );
+  const text = ["🏆 Квиз окончен! Результаты:", "", ...lines].join("\n");
+
+  for (const user of registered) {
+    try {
+      await bot.api.sendMessage(user.chatId, text);
+    } catch (err) {
+      console.error(`Failed to send results to ${user.chatId}:`, err);
+    }
+    deleteState(user.chatId);
+  }
+}
+
+async function onRemind(
+  bot: Bot,
+  data: { quizId: number; teams: Array<{ teamId: number; telegramChatId: number | null }> }
+) {
+  for (const team of data.teams) {
+    if (!team.telegramChatId) continue;
+    try {
+      await bot.api.sendMessage(team.telegramChatId, "⏰ Ведущий напоминает: сдай ответ!");
+    } catch (err) {
+      console.error(`Failed to send remind to ${team.telegramChatId}:`, err);
+    }
+  }
+}

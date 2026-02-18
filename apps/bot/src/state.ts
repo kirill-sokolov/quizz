@@ -1,9 +1,38 @@
-export type UserState =
+export type BotUser =
   | { step: "idle" }
-  | { step: "awaiting_join_code" };
+  | { step: "awaiting_name"; quizId: number }
+  | { step: "registered"; quizId: number; teamId: number }
+  | { step: "awaiting_answer"; quizId: number; teamId: number; questionId: number };
 
-export const userStates = new Map<number, UserState>();
+const users = new Map<number, BotUser>();
 
-export function getState(chatId: number): UserState {
-  return userStates.get(chatId) ?? { step: "idle" };
+export function getState(chatId: number): BotUser {
+  return users.get(chatId) ?? { step: "idle" };
+}
+
+export function setState(chatId: number, state: BotUser) {
+  users.set(chatId, state);
+}
+
+export function deleteState(chatId: number) {
+  users.delete(chatId);
+}
+
+export function getAllRegistered(): Array<{ chatId: number; teamId: number; quizId: number }> {
+  const result: Array<{ chatId: number; teamId: number; quizId: number }> = [];
+  for (const [chatId, state] of users) {
+    if (state.step === "registered" || state.step === "awaiting_answer") {
+      result.push({ chatId, teamId: state.teamId, quizId: state.quizId });
+    }
+  }
+  return result;
+}
+
+export function getRegisteredByTeamId(teamId: number): number | undefined {
+  for (const [chatId, state] of users) {
+    if ((state.step === "registered" || state.step === "awaiting_answer") && state.teamId === teamId) {
+      return chatId;
+    }
+  }
+  return undefined;
 }

@@ -16,6 +16,7 @@ export const quizzes = pgTable("quizzes", {
   status: text("status", { enum: ["draft", "active", "finished"] })
     .notNull()
     .default("draft"),
+  joinCode: text("join_code").unique(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

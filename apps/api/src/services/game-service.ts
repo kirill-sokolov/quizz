@@ -9,10 +9,26 @@ import {
 import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 
+function generateJoinCode(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let code = "";
+  for (let i = 0; i < 6; i++) {
+    code += chars[Math.floor(Math.random() * chars.length)];
+  }
+  return code;
+}
+
 export async function startGame(quizId: number) {
+  const [quiz] = await db
+    .select()
+    .from(quizzes)
+    .where(eq(quizzes.id, quizId));
+
+  const joinCode = quiz?.joinCode || generateJoinCode();
+
   await db
     .update(quizzes)
-    .set({ status: "active" })
+    .set({ status: "active", joinCode })
     .where(eq(quizzes.id, quizId));
 
   const firstQuestion = await db
@@ -155,7 +171,7 @@ export async function getRemind(quizId: number, teamId?: number) {
 export async function finishGame(quizId: number) {
   await db
     .update(quizzes)
-    .set({ status: "finished" })
+    .set({ status: "finished", joinCode: null })
     .where(eq(quizzes.id, quizId));
 
   await db

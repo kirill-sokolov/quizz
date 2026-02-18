@@ -40,9 +40,11 @@ services:
       - ./apps/bot:/app
     env_file:
       - .env
+    environment:
+      API_URL: http://wedding_api:3000
     command: sh -c "npm install && npm run dev"
     depends_on:
-      - wedding_db
+      - wedding_api
     networks:
       - wedding_network
 
