@@ -6,7 +6,8 @@
     "dev": "nodemon",
     "build": "tsc",
     "start": "node dist/index.js",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "seed": "tsc && node dist/seed.js"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",

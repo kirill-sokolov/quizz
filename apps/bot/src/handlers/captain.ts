@@ -54,25 +54,45 @@ export function registerCaptainHandlers(bot: Bot) {
     const chatId = ctx.chat!.id;
     const state = getState(chatId);
 
-    if (state.step !== "awaiting_answer") {
+    // If registered but not awaiting_answer, try to get current question from API
+    if (state.step === "registered" && "quizId" in state && "teamId" in state) {
+      try {
+        const gameState = await api.getGameState(state.quizId);
+        if (gameState.status === "playing" && gameState.currentQuestionId) {
+          setState(chatId, {
+            step: "awaiting_answer",
+            quizId: state.quizId,
+            teamId: state.teamId,
+            questionId: gameState.currentQuestionId,
+          });
+        }
+      } catch {
+        await ctx.answerCallbackQuery({ text: "Вопрос уже закрыт или ожидай следующий." });
+        return;
+      }
+    }
+
+    const updated = getState(chatId);
+    if (updated.step !== "awaiting_answer") {
       await ctx.answerCallbackQuery({ text: "Вопрос уже закрыт или ожидай следующий." });
       return;
     }
 
     try {
-      await api.submitAnswer(state.questionId, state.teamId, letter);
+      await api.submitAnswer(updated.questionId, updated.teamId, letter);
       setState(chatId, {
         step: "registered",
-        quizId: state.quizId,
-        teamId: state.teamId,
+        quizId: updated.quizId,
+        teamId: updated.teamId,
       });
       await ctx.answerCallbackQuery({ text: "Ответ принят ✅" });
       await ctx.reply("Ответ принят ✅");
     } catch (err: any) {
-      await ctx.answerCallbackQuery({ show_alert: true, text: "Не удалось отправить ответ." }).catch(() => {});
       if (err.status === 409) {
-        setState(chatId, { step: "registered", quizId: state.quizId, teamId: state.teamId });
-        await ctx.reply("Ты уже ответил на этот вопрос ✅").catch(() => {});
+        setState(chatId, { step: "registered", quizId: updated.quizId, teamId: updated.teamId });
+        await ctx.answerCallbackQuery({ text: "Ты уже ответил ✅" });
+      } else {
+        await ctx.answerCallbackQuery({ show_alert: true, text: "Не удалось отправить ответ." }).catch(() => {});
       }
     }
   });

@@ -70,6 +70,7 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
     }
     if (!question) return;
 
+    console.log("Question data:", JSON.stringify(question));
     const options = question.options || [];
     const optionLines = options
       .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
@@ -118,9 +119,39 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
       }
     }
   } else if (data.slide === "timer") {
+    // Fetch question to build answer buttons
+    let timerKb: InlineKeyboard | undefined;
+    try {
+      const state = await api.getGameState(data.quizId);
+      const opts = state.question?.options || [];
+      if (opts.length >= 2 && opts.length <= 8) {
+        timerKb = new InlineKeyboard();
+        const letters = LABELS.slice(0, opts.length);
+        for (let i = 0; i < letters.length; i += 2) {
+          timerKb.text(letters[i], `answer:${letters[i]}`);
+          if (letters[i + 1]) timerKb.text(letters[i + 1], `answer:${letters[i + 1]}`);
+          if (i + 2 < letters.length) timerKb.row();
+        }
+      }
+    } catch {
+      // no buttons if API fails
+    }
+
     for (const user of registered) {
+      // Set awaiting_answer if not already (in case they missed the question slide)
+      const st = getState(user.chatId);
+      if (st.step === "registered" && data.questionId) {
+        setState(user.chatId, {
+          step: "awaiting_answer",
+          quizId: user.quizId,
+          teamId: user.teamId,
+          questionId: data.questionId,
+        });
+      }
       try {
-        await bot.api.sendMessage(user.chatId, "⏱ Время пошло! Отправь ответ.");
+        await bot.api.sendMessage(user.chatId, "⏱ Время пошло! Отправь ответ.", {
+          ...(timerKb && { reply_markup: timerKb }),
+        });
       } catch (err) {
         console.error(`Failed to send timer to ${user.chatId}:`, err);
       }
@@ -178,10 +209,43 @@ async function onRemind(
   bot: Bot,
   data: { quizId: number; teams: Array<{ teamId: number; telegramChatId: number | null }> }
 ) {
+  let kb: InlineKeyboard | undefined;
+  let currentQuestionId: number | null = null;
+  try {
+    const gameState = await api.getGameState(data.quizId);
+    currentQuestionId = gameState.currentQuestionId;
+    const opts = gameState.question?.options || [];
+    if (opts.length >= 2 && opts.length <= 8) {
+      kb = new InlineKeyboard();
+      const letters = LABELS.slice(0, opts.length);
+      for (let i = 0; i < letters.length; i += 2) {
+        kb.text(letters[i], `answer:${letters[i]}`);
+        if (letters[i + 1]) kb.text(letters[i + 1], `answer:${letters[i + 1]}`);
+        if (i + 2 < letters.length) kb.row();
+      }
+    }
+  } catch {
+    // no buttons if API fails
+  }
+
   for (const team of data.teams) {
     if (!team.telegramChatId) continue;
+    // Set awaiting_answer so button clicks work
+    if (currentQuestionId) {
+      const st = getState(team.telegramChatId);
+      if ((st.step === "registered" || st.step === "awaiting_answer") && "teamId" in st) {
+        setState(team.telegramChatId, {
+          step: "awaiting_answer",
+          quizId: data.quizId,
+          teamId: st.teamId,
+          questionId: currentQuestionId,
+        });
+      }
+    }
     try {
-      await bot.api.sendMessage(team.telegramChatId, "⏰ Ведущий напоминает: сдай ответ!");
+      await bot.api.sendMessage(team.telegramChatId, "⏰ Ведущий напоминает: сдай ответ!", {
+        ...(kb && { reply_markup: kb }),
+      });
     } catch (err) {
       console.error(`Failed to send remind to ${team.telegramChatId}:`, err);
     }

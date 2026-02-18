@@ -79,12 +79,21 @@ export default function TV() {
   }, [urlQuizId, loadQuiz]);
 
   useEffect(() => {
-    if (!quizId) return;
     const ws = new WebSocket(getWsUrl());
     wsRef.current = ws;
     ws.onmessage = (ev) => {
       try {
         const { event, data } = JSON.parse(ev.data);
+
+        // If we don't have a quizId yet, pick it up from the first event
+        if (!quizId && data?.quizId) {
+          const newId = data.quizId;
+          setQuizId(newId);
+          setLoading(true);
+          loadQuiz(newId).then(() => setLoading(false));
+          return;
+        }
+
         if (data?.quizId !== quizId) return;
         switch (event) {
           case "slide_changed":
@@ -103,7 +112,7 @@ export default function TV() {
       ws.close();
       wsRef.current = null;
     };
-  }, [quizId]);
+  }, [quizId, loadQuiz]);
 
   const screenStyle = {
     width: W,

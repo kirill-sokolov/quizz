@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getMediaUrl } from "../api/client";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"];
 const SLIDE_LABELS = { question: "Слайд: вопрос", timer: "Слайд: таймер", answer: "Слайд: ответ" };
@@ -169,7 +170,11 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
                   <div className="text-xs text-stone-500 mb-1">Картинка</div>
                   {slide.imageUrl ? (
                     <div className="flex items-center gap-2">
-                      <img src={slide.imageUrl} alt="" className="h-20 w-auto object-contain rounded border border-stone-200" />
+                      <img
+                        src={getMediaUrl(slide.imageUrl)}
+                        alt=""
+                        className="max-h-48 max-w-xs w-auto object-contain rounded border border-stone-200 bg-stone-100"
+                      />
                       <label className="text-sm text-amber-600 cursor-pointer hover:underline">
                         Заменить
                         <input
