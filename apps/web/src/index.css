@@ -10,14 +10,12 @@ body {
 .tv-viewport {
   position: fixed;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background: #000;
   overflow: hidden;
 }
 .tv-viewport .tv-screen {
-  transform-origin: center center;
+  position: absolute;
+  transform-origin: top left;
 }
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }

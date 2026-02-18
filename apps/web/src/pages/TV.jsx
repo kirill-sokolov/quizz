@@ -14,23 +14,26 @@ import TVResults from "../components/TV/TVResults";
 const W = 1920;
 const H = 1080;
 
+function calcTransform() {
+  const s = Math.min(window.innerWidth / W, window.innerHeight / H);
+  const x = Math.round((window.innerWidth - W * s) / 2);
+  const y = Math.round((window.innerHeight - H * s) / 2);
+  return `translate(${x}px, ${y}px) scale(${s})`;
+}
+
 function useTVScale() {
-  const [scale, setScale] = useState(1);
+  const [transform, setTransform] = useState(calcTransform);
   useEffect(() => {
-    const update = () => {
-      const s = Math.min(window.innerWidth / W, window.innerHeight / H);
-      setScale(s);
-    };
-    update();
+    const update = () => setTransform(calcTransform());
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
-  return scale;
+  return transform;
 }
 
 export default function TV() {
   const { quizId: urlQuizId } = useParams();
-  const scale = useTVScale();
+  const tvTransform = useTVScale();
   const [quizId, setQuizId] = useState(null);
   const [quiz, setQuiz] = useState(null);
   const [state, setState] = useState(null);
@@ -123,7 +126,7 @@ export default function TV() {
   const screenStyle = {
     width: W,
     height: H,
-    transform: `scale(${scale})`,
+    transform: tvTransform,
   };
 
   if (loading) {
