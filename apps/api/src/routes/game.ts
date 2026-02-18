@@ -75,7 +75,10 @@ export async function gameRoutes(app: FastifyInstance) {
           telegramChatId: t.telegramChatId ? Number(t.telegramChatId) : null,
         })),
       });
-      return notSubmitted;
+      return notSubmitted.map((t) => ({
+        ...t,
+        telegramChatId: t.telegramChatId ? Number(t.telegramChatId) : null,
+      }));
     }
   );
 

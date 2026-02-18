@@ -4,6 +4,14 @@ import { teams } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 
+function serializeTeam(team: typeof teams.$inferSelect) {
+  return {
+    ...team,
+    telegramChatId:
+      team.telegramChatId !== null ? Number(team.telegramChatId) : null,
+  };
+}
+
 export async function teamsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string }; Querystring: { all?: string } }>(
     "/api/quizzes/:id/teams",
@@ -11,13 +19,14 @@ export async function teamsRoutes(app: FastifyInstance) {
       const quizId = Number(req.params.id);
       const showAll = req.query.all === "true";
 
-      if (showAll) {
-        return db.select().from(teams).where(eq(teams.quizId, quizId));
-      }
-      return db
-        .select()
-        .from(teams)
-        .where(and(eq(teams.quizId, quizId), eq(teams.isKicked, false)));
+      const rows = showAll
+        ? await db.select().from(teams).where(eq(teams.quizId, quizId))
+        : await db
+            .select()
+            .from(teams)
+            .where(and(eq(teams.quizId, quizId), eq(teams.isKicked, false)));
+
+      return rows.map(serializeTeam);
     }
   );
 
@@ -39,7 +48,7 @@ export async function teamsRoutes(app: FastifyInstance) {
       quizId,
     });
 
-    return reply.code(201).send(team);
+    return reply.code(201).send(serializeTeam(team));
   });
 
   app.delete<{ Params: { id: string } }>(

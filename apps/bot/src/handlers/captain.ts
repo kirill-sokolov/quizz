@@ -1,4 +1,4 @@
-import { Bot, InlineKeyboard } from "grammy";
+import { Bot, Context, InlineKeyboard } from "grammy";
 import { api, Quiz } from "../api-client.js";
 import { getState, setState } from "../state.js";
 
@@ -50,12 +50,22 @@ export function registerCaptainHandlers(bot: Bot) {
 
   // Text messages: handle team name input and answer submission
   bot.on("message:text", async (ctx) => {
-    const chatId = ctx.chat.id;
-    const state = getState(chatId);
-    const text = ctx.message.text.trim();
+    try {
+      await handleTextMessage(ctx);
+    } catch (err) {
+      console.error("Text handler error:", err);
+      await ctx.reply("Ошибка. Попробуй /start.").catch(() => {});
+    }
+  });
+}
 
-    // --- Team name registration ---
-    if (state.step === "awaiting_name") {
+async function handleTextMessage(ctx: Context) {
+  const chatId = ctx.chat!.id;
+  const text = (ctx.message?.text || "").trim();
+  const state = getState(chatId);
+
+  // --- Team name registration ---
+  if (state.step === "awaiting_name") {
       if (!text || text.length > 50) {
         await ctx.reply("Название должно быть от 1 до 50 символов. Попробуй ещё:");
         return;
@@ -73,11 +83,11 @@ export function registerCaptainHandlers(bot: Bot) {
         await ctx.reply("Ошибка регистрации. Попробуй ещё раз:");
         console.error("Team registration error:", err);
       }
-      return;
-    }
+    return;
+  }
 
-    // --- Answer submission ---
-    if (state.step === "awaiting_answer") {
+  // --- Answer submission ---
+  if (state.step === "awaiting_answer") {
       const letter = text.toUpperCase();
       if (!ANSWER_LABELS.includes(letter)) {
         await ctx.reply("Отправь букву: A, B, C или D");
@@ -105,13 +115,46 @@ export function registerCaptainHandlers(bot: Bot) {
           console.error("Answer submit error:", err);
         }
       }
-      return;
-    }
+    return;
+  }
 
-    // If registered but not awaiting answer, ignore or inform
-    if (state.step === "registered") {
+  // Зарегистрирован: если прислал букву ответа — пробуем сдать по текущему состоянию игры
+    // (на случай если бот не получил slide_changed или капитан зарегался после показа вопроса)
+  if (state.step === "registered" && "teamId" in state && "quizId" in state) {
+      const letter = text.toUpperCase();
+      if (text.length === 1 && ANSWER_LABELS.includes(letter)) {
+        let gameState;
+        try {
+          gameState = await api.getGameState(state.quizId);
+        } catch {
+          await ctx.reply("Квиз ещё не начался или ожидай следующий вопрос.");
+          return;
+        }
+        const canAnswer =
+          gameState.status === "playing" &&
+          gameState.currentQuestionId != null &&
+          (gameState.currentSlide === "question" || gameState.currentSlide === "timer");
+        if (!canAnswer) {
+          await ctx.reply("Сейчас приём ответов закрыт. Ожидай следующий вопрос.");
+          return;
+        }
+        try {
+          await api.submitAnswer(gameState.currentQuestionId!, state.teamId, letter);
+          await ctx.reply("Ответ принят ✅");
+        } catch (err: any) {
+          if (err.status === 409) {
+            await ctx.reply("Ты уже ответил на этот вопрос ✅");
+          } else {
+            await ctx.reply("Не удалось принять ответ. Попробуй ещё раз.");
+            console.error("Answer submit error:", err);
+          }
+        }
+        return;
+      }
       await ctx.reply("Квиз ещё не начался или ожидай следующий вопрос.");
-      return;
-    }
-  });
+    return;
+  }
+
+  // idle — подсказать /start
+  await ctx.reply("Отправь /start, чтобы начать.");
 }

@@ -18,6 +18,11 @@ export function deleteState(chatId: number) {
   users.delete(chatId);
 }
 
+/** Очистить состояние всех пользователей (капитанов). */
+export function clearAllState() {
+  users.clear();
+}
+
 export function getAllRegistered(): Array<{ chatId: number; teamId: number; quizId: number }> {
   const result: Array<{ chatId: number; teamId: number; quizId: number }> = [];
   for (const [chatId, state] of users) {

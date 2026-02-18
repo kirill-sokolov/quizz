@@ -1,6 +1,14 @@
-// В dev можно задать VITE_API_URL (например http://localhost:3000), чтобы браузер ходил в API напрямую и обходить прокси
-const API =
-  (import.meta.env.VITE_API_URL || "").replace(/\/$/, "") + "/api";
+// В dev можно задать VITE_API_URL (например http://localhost:3000), чтобы браузер ходил в API напрямую
+const API_BASE = (import.meta.env.VITE_API_URL || "").replace(/\/$/, "") || "";
+const API = API_BASE ? API_BASE + "/api" : "/api";
+
+export function getWsUrl() {
+  if (API_BASE) {
+    return API_BASE.replace(/^http/, "ws") + "/ws";
+  }
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}/ws`;
+}
 
 async function request(path, options = {}) {
   const body = options.body;
@@ -50,6 +58,51 @@ export const questionsApi = {
     }),
   delete: (questionId) =>
     request(`/questions/${questionId}`, { method: "DELETE" }),
+};
+
+export const gameApi = {
+  getState: (quizId) => request(`/game/state/${quizId}`),
+  start: (quizId) =>
+    request("/game/start", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
+  nextQuestion: (quizId) =>
+    request("/game/next-question", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
+  setSlide: (quizId, slide) =>
+    request("/game/set-slide", {
+      method: "POST",
+      body: JSON.stringify({
+        quizId: Number(quizId),
+        slide,
+      }),
+    }),
+  remind: (quizId, teamId) =>
+    request("/game/remind", {
+      method: "POST",
+      body: JSON.stringify({
+        quizId: Number(quizId),
+        ...(teamId != null ? { teamId: Number(teamId) } : {}),
+      }),
+    }),
+  finish: (quizId) =>
+    request("/game/finish", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
+};
+
+export const teamsApi = {
+  list: (quizId, all = false) =>
+    request(`/quizzes/${quizId}/teams${all ? "?all=true" : ""}`),
+  kick: (teamId) => request(`/teams/${teamId}`, { method: "DELETE" }),
+};
+
+export const answersApi = {
+  list: (questionId) => request(`/questions/${questionId}/answers`),
 };
 
 export async function mediaUpload(file) {

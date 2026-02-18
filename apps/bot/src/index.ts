@@ -16,4 +16,9 @@ bot.catch((err) => {
 });
 
 console.log("Wedding bot is starting (long polling)...");
-await bot.start();
+try {
+  await bot.start();
+} catch (err) {
+  console.error("Bot failed to start:", err);
+  process.exit(1);
+}
