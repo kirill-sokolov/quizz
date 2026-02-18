@@ -53,7 +53,8 @@ export default function Home() {
       setCreateOpen(false);
       await loadQuizzes();
     } catch (e) {
-      setError(e.message || "Не удалось создать квиз");
+      const msg = e.body?.error || e.message || "Не удалось создать квиз";
+      setError(msg);
     } finally {
       setCreating(false);
     }
@@ -129,12 +130,20 @@ export default function Home() {
                     {formatDate(q.createdAt)}
                   </td>
                   <td className="py-3 px-4 text-right">
-                    <Link
-                      to={`/game/${q.id}`}
-                      className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium"
-                    >
-                      Начать
-                    </Link>
+                    <div className="flex gap-2 justify-end">
+                      <Link
+                        to={`/quiz/${q.id}/edit`}
+                        className="inline-flex px-3 py-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition text-sm font-medium"
+                      >
+                        Редактировать
+                      </Link>
+                      <Link
+                        to={`/game/${q.id}`}
+                        className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium"
+                      >
+                        Начать
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))}

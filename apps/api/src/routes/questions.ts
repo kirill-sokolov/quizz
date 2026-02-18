@@ -76,6 +76,7 @@ export async function questionsRoutes(app: FastifyInstance) {
       options?: string[];
       correctAnswer?: string;
       timeLimitSec?: number;
+      orderNum?: number;
       slides?: Array<{
         id: number;
         imageUrl?: string | null;

@@ -4,8 +4,17 @@ import { quizzes } from "../db/schema.js";
 import { eq, ne, and } from "drizzle-orm";
 
 export async function quizzesRoutes(app: FastifyInstance) {
-  app.get("/api/quizzes", async () => {
-    return db.select().from(quizzes);
+  app.get("/api/quizzes", async (req, reply) => {
+    req.log.info({ url: req.url }, "GET /api/quizzes");
+    try {
+      const list = await db.select().from(quizzes);
+      return reply.send(list);
+    } catch (err) {
+      req.log.error(err);
+      return reply
+        .code(500)
+        .send({ error: err instanceof Error ? err.message : "Failed to fetch quizzes" });
+    }
   });
 
   app.get("/api/quizzes/active", async () => {
@@ -28,10 +37,20 @@ export async function quizzesRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: { title: string } }>("/api/quizzes", async (req, reply) => {
-    const { title } = req.body;
-    const [quiz] = await db.insert(quizzes).values({ title }).returning();
-    return reply.code(201).send(quiz);
+  app.post<{ Body: { title?: string } }>("/api/quizzes", async (req, reply) => {
+    try {
+      const title = req.body?.title?.trim() ?? "";
+      if (!title) {
+        return reply.code(400).send({ error: "title is required" });
+      }
+      const [quiz] = await db.insert(quizzes).values({ title }).returning();
+      return reply.code(201).send(quiz);
+    } catch (err) {
+      req.log.error(err);
+      return reply
+        .code(500)
+        .send({ error: err instanceof Error ? err.message : "Failed to create quiz" });
+    }
   });
 
   app.get<{ Params: { id: string } }>("/api/quizzes/:id", async (req, reply) => {
