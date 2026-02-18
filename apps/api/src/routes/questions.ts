@@ -106,12 +106,16 @@ export async function questionsRoutes(app: FastifyInstance) {
       question = existing;
     }
 
-    if (slideUpdates) {
+    if (slideUpdates && Array.isArray(slideUpdates)) {
       for (const s of slideUpdates) {
-        await db
-          .update(slides)
-          .set({ imageUrl: s.imageUrl, videoUrl: s.videoUrl })
-          .where(eq(slides.id, s.id));
+        const slideId = typeof s.id === "number" && s.id > 0 ? s.id : null;
+        if (slideId == null) continue;
+        const setPayload: { imageUrl?: string | null; videoUrl?: string | null } = {};
+        if (s.imageUrl !== undefined) setPayload.imageUrl = s.imageUrl;
+        if (s.videoUrl !== undefined) setPayload.videoUrl = s.videoUrl;
+        if (Object.keys(setPayload).length > 0) {
+          await db.update(slides).set(setPayload).where(eq(slides.id, slideId));
+        }
       }
     }
 

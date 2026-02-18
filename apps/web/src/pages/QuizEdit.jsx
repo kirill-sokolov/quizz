@@ -44,17 +44,20 @@ export default function QuizEdit() {
 
   const handleSaveQuestion = async (payload) => {
     if (payload.id) {
+      const slideUpdates = (payload.slides ?? [])
+        .filter((s) => s.id != null && Number(s.id) > 0)
+        .map((s) => ({
+          id: Number(s.id),
+          imageUrl: s.imageUrl != null ? String(s.imageUrl) : null,
+          videoUrl: s.videoUrl != null ? String(s.videoUrl) : null,
+        }));
       await questionsApi.update(payload.id, {
         text: payload.text,
         options: payload.options,
         correctAnswer: payload.correctAnswer,
         timeLimitSec: payload.timeLimitSec,
         orderNum: payload.orderNum,
-        slides: payload.slides?.map((s) => ({
-          id: s.id,
-          imageUrl: s.imageUrl || null,
-          videoUrl: s.videoUrl || null,
-        })),
+        ...(slideUpdates.length > 0 && { slides: slideUpdates }),
       });
       setEditingId(null);
     } else {

@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
-import { answers, teams } from "../db/schema.js";
+import { answers, teams, questions } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 
@@ -36,7 +36,14 @@ export async function answersRoutes(app: FastifyInstance) {
         .values({ questionId, teamId, answerText })
         .returning();
 
+      const [q] = await db
+        .select({ quizId: questions.quizId })
+        .from(questions)
+        .where(eq(questions.id, questionId));
+      const quizId = q?.quizId ?? null;
+
       broadcast("answer_submitted", {
+        quizId,
         questionId,
         teamId,
         answerId: answer.id,

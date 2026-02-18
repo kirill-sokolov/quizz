@@ -19,12 +19,15 @@ function getSlides(question) {
   }
   const byType = {};
   for (const s of question.slides) byType[s.type] = s;
-  return ["question", "timer", "answer"].map((type) => ({
-    id: byType[type]?.id ?? null,
-    type,
-    imageUrl: byType[type]?.imageUrl ?? null,
-    videoUrl: byType[type]?.videoUrl ?? null,
-  }));
+  return ["question", "timer", "answer"].map((type) => {
+    const slide = byType[type];
+    return {
+      id: slide?.id ?? null,
+      type,
+      imageUrl: slide?.imageUrl ?? slide?.image_url ?? null,
+      videoUrl: slide?.videoUrl ?? slide?.video_url ?? null,
+    };
+  });
 }
 
 export default function QuestionForm({ question, onSave, onCancel, onUpload }) {

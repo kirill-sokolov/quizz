@@ -29,9 +29,18 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+/** URL для медиа (картинки): если API на другом хосте — нужен полный путь */
+export function getMediaUrl(path) {
+  if (!path || typeof path !== "string") return "";
+  if (path.startsWith("http")) return path;
+  const p = path.startsWith("/") ? path : `/${path}`;
+  return (API_BASE || "") + p;
+}
+
 export const quizzesApi = {
   list: () => request("/quizzes"),
   get: (id) => request(`/quizzes/${id}`),
+  getActive: () => request("/quizzes/active"),
   create: (title) =>
     request("/quizzes", { method: "POST", body: JSON.stringify({ title }) }),
   update: (id, data) =>
