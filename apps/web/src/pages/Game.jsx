@@ -216,7 +216,7 @@ export default function Game() {
     return (
       <div>
         <p className="text-red-600 mb-2">{error}</p>
-        <Link to="/" className="text-amber-600 hover:underline">
+        <Link to="/admin" className="text-amber-600 hover:underline">
           ← К списку квизов
         </Link>
       </div>
@@ -224,7 +224,7 @@ export default function Game() {
   if (!quiz)
     return (
       <p className="text-stone-500">
-        <Link to="/" className="text-amber-600 hover:underline">
+        <Link to="/admin" className="text-amber-600 hover:underline">
           Вернуться к списку
         </Link>
       </p>
@@ -243,7 +243,7 @@ export default function Game() {
     return (
       <div>
         <div className="mb-4 flex items-center gap-4">
-          <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+          <Link to="/admin" className="text-amber-600 hover:text-amber-700 font-medium">
             ← Квизы
           </Link>
           <h1 className="text-xl font-semibold text-stone-800">
@@ -268,7 +268,7 @@ export default function Game() {
     return (
       <div className="space-y-6">
         <div className="mb-4 flex items-center gap-4">
-          <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+          <Link to="/admin" className="text-amber-600 hover:text-amber-700 font-medium">
             ← Квизы
           </Link>
           <h1 className="text-xl font-semibold text-stone-800">
@@ -340,7 +340,7 @@ export default function Game() {
     return (
       <div>
         <div className="mb-4 flex items-center gap-4">
-          <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+          <Link to="/admin" className="text-amber-600 hover:text-amber-700 font-medium">
             ← Квизы
           </Link>
           <h1 className="text-xl font-semibold text-stone-800">

@@ -7,16 +7,18 @@ import Game from "./pages/Game";
 import QuizEdit from "./pages/QuizEdit";
 import TV from "./pages/TV";
 import Login from "./pages/Login";
+import Landing from "./pages/Landing";
 
 export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        <Route path="/" element={<Landing />} />
+        <Route path="/admin/login" element={<Login />} />
         <Route path="/tv" element={<TV />} />
         <Route path="/tv/:quizId" element={<TV />} />
         <Route
-          path="/"
+          path="/admin"
           element={
             <ProtectedRoute>
               <Layout />

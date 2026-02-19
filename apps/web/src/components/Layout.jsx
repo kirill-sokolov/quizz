@@ -7,19 +7,19 @@ export default function Layout() {
 
   const handleLogout = () => {
     logout();
-    navigate("/login");
+    navigate("/admin/login");
   };
 
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-amber-800 text-amber-50 shadow">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
-          <Link to="/" className="text-xl font-semibold tracking-tight">
+          <Link to="/admin" className="text-xl font-semibold tracking-tight">
             QuizBot — Админка
           </Link>
           <nav className="flex gap-4 items-center">
             <Link
-              to="/"
+              to="/admin"
               className="text-amber-100 hover:text-white transition"
             >
               Квизы

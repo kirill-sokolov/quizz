@@ -4,6 +4,7 @@ import {
   quizzesApi,
   gameApi,
   questionsApi,
+  teamsApi,
   getWsUrl,
 } from "../api/client";
 import TVQuestion from "../components/TV/TVQuestion";
@@ -56,6 +57,7 @@ export default function TV() {
   const [quiz, setQuiz] = useState(null);
   const [state, setState] = useState(null);
   const [questions, setQuestions] = useState([]);
+  const [teams, setTeams] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -63,14 +65,16 @@ export default function TV() {
 
   const loadQuiz = useCallback(async (id) => {
     try {
-      const [quizData, stateData, questionsData] = await Promise.all([
+      const [quizData, stateData, questionsData, teamsData] = await Promise.all([
         quizzesApi.get(id),
         gameApi.getState(id).catch(() => null),
         questionsApi.list(id),
+        teamsApi.list(id, true).catch(() => []),
       ]);
       setQuiz(quizData);
       setState(stateData);
       setQuestions(questionsData);
+      setTeams(teamsData.filter((t) => !t.isKicked));
       setResults(null);
     } catch (e) {
       setError(e.message);
@@ -122,6 +126,12 @@ export default function TV() {
         switch (event) {
           case "game_lobby":
             loadQuiz(quizId);
+            break;
+          case "team_registered":
+            teamsApi.list(quizId, true).then((t) => setTeams(t.filter((team) => !team.isKicked)));
+            break;
+          case "team_kicked":
+            setTeams((prev) => prev.filter((t) => t.id !== data.teamId));
             break;
           case "slide_changed":
             gameApi.getState(quizId).then((s) => setState(s));
@@ -215,15 +225,32 @@ export default function TV() {
           )}
         </>
       ) : (
-        <div className="flex flex-col items-center justify-center w-full h-full bg-stone-900 text-white gap-8">
-          <p className="text-4xl">Ожидание начала квиза…</p>
-          {quiz?.joinCode && (
-            <>
-              <p className="text-2xl text-stone-400">Код для входа:</p>
-              <p className="text-8xl font-mono font-bold tracking-widest text-amber-400">
-                {quiz.joinCode}
-              </p>
-            </>
+        <div className="flex w-full h-full bg-stone-900 text-white">
+          <div className="flex flex-col items-center justify-center flex-1 gap-8">
+            <p className="text-4xl">Ожидание начала квиза…</p>
+            {quiz?.joinCode && (
+              <>
+                <p className="text-2xl text-stone-400">Код для входа:</p>
+                <p className="text-8xl font-mono font-bold tracking-widest text-amber-400">
+                  {quiz.joinCode}
+                </p>
+              </>
+            )}
+          </div>
+          {teams.length > 0 && (
+            <div className="w-[400px] border-l border-stone-700 p-8 flex flex-col">
+              <h3 className="text-2xl font-bold mb-6">Команды ({teams.length})</h3>
+              <div className="flex-1 overflow-y-auto space-y-3">
+                {teams.map((team, idx) => (
+                  <div key={team.id} className="bg-stone-800 rounded-lg p-4">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl font-bold text-amber-400">#{idx + 1}</span>
+                      <span className="text-xl">{team.name}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           )}
         </div>
       )}

@@ -56,8 +56,6 @@ services:
       - ./apps/web:/app
     environment:
       API_URL: http://wedding_api:3000
-      # Браузер ходит в API напрямую на хост:3000, чтобы обойти проблему прокси
-      VITE_API_URL: http://localhost:3000
     command: sh -c "npm install && npm run dev"
     ports:
       - "5173:5173"

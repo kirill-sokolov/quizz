@@ -42,8 +42,8 @@ export async function authRoutes(app: FastifyInstance) {
 
     reply.setCookie("auth_token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      secure: false, // для development с HTTP
+      sameSite: "lax", // разрешает cross-site запросы при навигации
       maxAge: 7 * 24 * 60 * 60, // 7 days in seconds
       path: "/",
     });

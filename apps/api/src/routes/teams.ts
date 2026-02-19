@@ -63,7 +63,7 @@ export async function teamsRoutes(app: FastifyInstance) {
         .returning();
       if (!team) return reply.code(404).send({ error: "Team not found" });
 
-      broadcast("team_kicked", { teamId: team.id, name: team.name });
+      broadcast("team_kicked", { quizId: team.quizId, teamId: team.id, name: team.name });
       return { ok: true };
     }
   );

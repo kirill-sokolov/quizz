@@ -1,13 +1,15 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-const apiTarget = process.env.API_URL || "http://localhost:3000";
+const apiTarget = process.env.API_URL || "http://wedding_api:3000";
 
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: true,
+    host: '0.0.0.0',
     port: 5173,
+    strictPort: false,
+    allowedHosts: ['.ngrok-free.app', '.ngrok.io', 'localhost'],
     proxy: {
       "/api": {
         target: apiTarget,
@@ -24,6 +26,11 @@ export default defineConfig({
             }
           });
         },
+      },
+      "/ws": {
+        target: apiTarget.replace(/^http/, "ws"),
+        ws: true,
+        changeOrigin: true,
       },
     },
   },

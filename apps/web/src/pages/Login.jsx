@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { authApi } from "../api/client";
 import { useAuth } from "../components/AuthProvider";
@@ -9,7 +9,13 @@ export default function Login() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setIsAuthenticated } = useAuth();
+  const { isAuthenticated, setIsAuthenticated } = useAuth();
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate("/admin", { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -19,7 +25,7 @@ export default function Login() {
     try {
       await authApi.login(username, password);
       setIsAuthenticated(true);
-      navigate("/");
+      navigate("/admin");
     } catch (err) {
       setError(err.body?.error || err.message || "Ошибка авторизации");
     } finally {

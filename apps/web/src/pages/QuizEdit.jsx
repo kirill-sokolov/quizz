@@ -114,29 +114,29 @@ export default function QuizEdit() {
     return (
       <div>
         <p className="text-red-600 mb-2">{error}</p>
-        <Link to="/" className="text-amber-600 hover:underline">← К списку квизов</Link>
+        <Link to="/admin" className="text-amber-600 hover:underline">← К списку квизов</Link>
       </div>
     );
   if (!quiz)
     return (
-      <Link to="/" className="text-amber-600 hover:underline">Вернуться к списку</Link>
+      <Link to="/admin" className="text-amber-600 hover:underline">Вернуться к списку</Link>
     );
 
   if (quiz.status === "finished")
     return (
       <div>
         <p className="text-stone-600 mb-2">Квиз «{quiz.title}» уже завершён и недоступен для редактирования.</p>
-        <Link to="/" className="text-amber-600 hover:underline">← К списку квизов</Link>
+        <Link to="/admin" className="text-amber-600 hover:underline">← К списку квизов</Link>
       </div>
     );
 
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center gap-4">
-        <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">← Квизы</Link>
+        <Link to="/admin" className="text-amber-600 hover:text-amber-700 font-medium">← Квизы</Link>
         <h1 className="text-2xl font-semibold text-stone-800">Редактор: {quiz.title}</h1>
         <Link
-          to={`/game/${id}`}
+          to={`/admin/game/${id}`}
           className="ml-auto px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium"
         >
           Перейти к игре
