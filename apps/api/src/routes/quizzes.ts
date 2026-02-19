@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import { quizzes } from "../db/schema.js";
 import { eq, ne, and } from "drizzle-orm";
+import { authenticateToken } from "../middleware/auth.js";
 
 export async function quizzesRoutes(app: FastifyInstance) {
   app.get("/api/quizzes", async (req, reply) => {
@@ -37,7 +38,10 @@ export async function quizzesRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: { title?: string } }>("/api/quizzes", async (req, reply) => {
+  app.post<{ Body: { title?: string } }>(
+    "/api/quizzes",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
     try {
       const title = req.body?.title?.trim() ?? "";
       if (!title) {
@@ -67,6 +71,7 @@ export async function quizzesRoutes(app: FastifyInstance) {
     Body: { title?: string; status?: "draft" | "active" | "finished" };
   }>(
     "/api/quizzes/:id",
+    { preHandler: authenticateToken },
     async (req, reply) => {
       const [quiz] = await db
         .update(quizzes)
@@ -78,7 +83,10 @@ export async function quizzesRoutes(app: FastifyInstance) {
     }
   );
 
-  app.delete<{ Params: { id: string } }>("/api/quizzes/:id", async (req, reply) => {
+  app.delete<{ Params: { id: string } }>(
+    "/api/quizzes/:id",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
     const [quiz] = await db
       .delete(quizzes)
       .where(eq(quizzes.id, Number(req.params.id)))

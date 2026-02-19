@@ -14,7 +14,9 @@ async function request(path, options = {}) {
   const body = options.body;
   const isFormData = body instanceof FormData;
   const needsJson = body && !isFormData;
+
   const res = await fetch(`${API}${path}`, {
+    credentials: "include",
     headers: {
       ...(needsJson ? { "Content-Type": "application/json" } : {}),
       ...options.headers,
@@ -126,6 +128,7 @@ export const importApi = {
     form.append("file", file);
     const res = await fetch(`${API}/quizzes/${quizId}/import-zip`, {
       method: "POST",
+      credentials: "include",
       body: form,
     });
     if (!res.ok) {
@@ -148,6 +151,7 @@ export async function mediaUpload(file) {
   form.append("file", file);
   const res = await fetch(`${API}/media/upload`, {
     method: "POST",
+    credentials: "include",
     body: form,
   });
   if (!res.ok) {
@@ -158,3 +162,19 @@ export async function mediaUpload(file) {
   }
   return res.json();
 }
+
+export const authApi = {
+  login: (username, password) =>
+    request("/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }),
+  verify: () =>
+    request("/auth/verify", {
+      method: "POST",
+    }).catch(() => ({ valid: false })),
+  logout: () =>
+    request("/auth/logout", {
+      method: "POST",
+    }),
+};

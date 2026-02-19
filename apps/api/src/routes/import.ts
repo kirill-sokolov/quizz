@@ -4,11 +4,13 @@ import {
   saveImportedQuiz,
   type ImportPreviewItem,
 } from "../services/import-service.js";
+import { authenticateToken } from "../middleware/auth.js";
 
 export async function importRoutes(app: FastifyInstance) {
   // Upload ZIP, parse with Gemini, return preview
   app.post<{ Params: { id: string } }>(
     "/api/quizzes/:id/import-zip",
+    { preHandler: authenticateToken },
     async (req, reply) => {
       const quizId = Number(req.params.id);
       const file = await req.file();
@@ -27,7 +29,10 @@ export async function importRoutes(app: FastifyInstance) {
   app.post<{
     Params: { id: string };
     Body: { questions: ImportPreviewItem[] };
-  }>("/api/quizzes/:id/import-save", async (req, reply) => {
+  }>(
+    "/api/quizzes/:id/import-save",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
     const quizId = Number(req.params.id);
     const { questions } = req.body;
 

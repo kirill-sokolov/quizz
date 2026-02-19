@@ -1,5 +1,6 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
+import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
 import path from "path";
@@ -7,6 +8,7 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { config } from "./config.js";
 import { wsPlugin } from "./ws/index.js";
+import { authRoutes } from "./routes/auth.js";
 import { quizzesRoutes } from "./routes/quizzes.js";
 import { questionsRoutes } from "./routes/questions.js";
 import { teamsRoutes } from "./routes/teams.js";
@@ -26,7 +28,11 @@ async function main() {
   const mediaRoot = path.resolve(__dirname, "..", config.MEDIA_DIR);
   fs.mkdirSync(mediaRoot, { recursive: true });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: true,
+    credentials: true
+  });
+  await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
   await app.register(fastifyStatic, {
     root: mediaRoot,
@@ -35,6 +41,7 @@ async function main() {
   });
 
   await app.register(wsPlugin);
+  await app.register(authRoutes);
   await app.register(quizzesRoutes);
   await app.register(questionsRoutes);
   await app.register(teamsRoutes);

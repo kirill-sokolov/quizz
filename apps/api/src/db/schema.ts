@@ -91,3 +91,10 @@ export const gameState = pgTable(
   },
   (t) => [unique().on(t.quizId)]
 );
+
+export const admins = pgTable("admins", {
+  id: serial("id").primaryKey(),
+  username: text("username").notNull().unique(),
+  password: text("password").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});

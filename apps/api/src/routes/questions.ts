@@ -2,6 +2,7 @@ import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
 import { questions, slides } from "../db/schema.js";
 import { eq, asc } from "drizzle-orm";
+import { authenticateToken } from "../middleware/auth.js";
 
 export async function questionsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>(
@@ -34,7 +35,10 @@ export async function questionsRoutes(app: FastifyInstance) {
       correctAnswer?: string;
       timeLimitSec?: number;
     };
-  }>("/api/quizzes/:id/questions", async (req, reply) => {
+  }>(
+    "/api/quizzes/:id/questions",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
     const quizId = Number(req.params.id);
 
     const existing = await db
@@ -83,7 +87,10 @@ export async function questionsRoutes(app: FastifyInstance) {
         videoUrl?: string | null;
       }>;
     };
-  }>("/api/questions/:id", async (req, reply) => {
+  }>(
+    "/api/questions/:id",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
     const questionId = Number(req.params.id);
     const { slides: slideUpdates, ...questionFields } = req.body;
 
@@ -129,6 +136,7 @@ export async function questionsRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     "/api/questions/:id",
+    { preHandler: authenticateToken },
     async (req, reply) => {
       const [deleted] = await db
         .delete(questions)

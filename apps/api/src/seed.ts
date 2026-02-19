@@ -1,6 +1,7 @@
 import "dotenv/config";
+import bcrypt from "bcrypt";
 import { db } from "./db/index.js";
-import { quizzes, questions, slides, answers, teams, gameState } from "./db/schema.js";
+import { quizzes, questions, slides, answers, teams, gameState, admins } from "./db/schema.js";
 
 const QUIZ_TITLE = "Свадебный квиз";
 
@@ -39,7 +40,16 @@ async function seed() {
   await db.delete(questions);
   await db.delete(teams);
   await db.delete(quizzes);
+  await db.delete(admins);
   console.log("Database cleaned.");
+
+  console.log("Creating default admin...");
+  const hashedPassword = await bcrypt.hash("admin", 10);
+  await db.insert(admins).values({
+    username: "admin",
+    password: hashedPassword,
+  });
+  console.log("Admin created: username=admin, password=admin");
 
   console.log("Seeding quiz...");
   const [quiz] = await db.insert(quizzes).values({ title: QUIZ_TITLE }).returning();

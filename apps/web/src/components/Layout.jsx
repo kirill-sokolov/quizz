@@ -1,6 +1,15 @@
-import { Link, Outlet } from "react-router-dom";
+import { Link, Outlet, useNavigate } from "react-router-dom";
+import { useAuth } from "./AuthProvider";
 
 export default function Layout() {
+  const { logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    logout();
+    navigate("/login");
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <header className="bg-amber-800 text-amber-50 shadow">
@@ -8,7 +17,7 @@ export default function Layout() {
           <Link to="/" className="text-xl font-semibold tracking-tight">
             QuizBot — Админка
           </Link>
-          <nav className="flex gap-4">
+          <nav className="flex gap-4 items-center">
             <Link
               to="/"
               className="text-amber-100 hover:text-white transition"
@@ -23,6 +32,12 @@ export default function Layout() {
             >
               TV
             </a>
+            <button
+              onClick={handleLogout}
+              className="text-amber-100 hover:text-white transition text-sm"
+            >
+              Выйти
+            </button>
           </nav>
         </div>
       </header>

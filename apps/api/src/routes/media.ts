@@ -4,9 +4,10 @@ import path from "path";
 import fs from "fs";
 import { pipeline } from "stream/promises";
 import { randomUUID } from "crypto";
+import { authenticateToken } from "../middleware/auth.js";
 
 export async function mediaRoutes(app: FastifyInstance) {
-  app.post("/api/media/upload", async (req, reply) => {
+  app.post("/api/media/upload", { preHandler: authenticateToken }, async (req, reply) => {
     const file = await req.file();
     if (!file) return reply.code(400).send({ error: "No file uploaded" });
 

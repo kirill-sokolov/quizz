@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import { teams } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
+import { authenticateToken } from "../middleware/auth.js";
 
 function serializeTeam(team: typeof teams.$inferSelect) {
   return {
@@ -53,6 +54,7 @@ export async function teamsRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     "/api/teams/:id",
+    { preHandler: authenticateToken },
     async (req, reply) => {
       const [team] = await db
         .update(teams)
