@@ -131,18 +131,26 @@ export default function Home() {
                   </td>
                   <td className="py-3 px-4 text-right">
                     <div className="flex gap-2 justify-end">
-                      <Link
-                        to={`/quiz/${q.id}/edit`}
-                        className="inline-flex px-3 py-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition text-sm font-medium"
-                      >
-                        Редактировать
-                      </Link>
-                      <Link
-                        to={`/game/${q.id}`}
-                        className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium"
-                      >
-                        Начать
-                      </Link>
+                      {q.status === "finished" ? (
+                        <span className="inline-flex px-3 py-1.5 text-stone-400 text-sm">
+                          Квиз завершён
+                        </span>
+                      ) : (
+                        <>
+                          <Link
+                            to={`/quiz/${q.id}/edit`}
+                            className="inline-flex px-3 py-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition text-sm font-medium"
+                          >
+                            Редактировать
+                          </Link>
+                          <Link
+                            to={`/game/${q.id}`}
+                            className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium"
+                          >
+                            Начать
+                          </Link>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

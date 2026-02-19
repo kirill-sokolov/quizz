@@ -122,6 +122,14 @@ export default function QuizEdit() {
       <Link to="/" className="text-amber-600 hover:underline">Вернуться к списку</Link>
     );
 
+  if (quiz.status === "finished")
+    return (
+      <div>
+        <p className="text-stone-600 mb-2">Квиз «{quiz.title}» уже завершён и недоступен для редактирования.</p>
+        <Link to="/" className="text-amber-600 hover:underline">← К списку квизов</Link>
+      </div>
+    );
+
   return (
     <div>
       <div className="mb-6 flex flex-wrap items-center gap-4">
