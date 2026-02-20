@@ -37,7 +37,7 @@ export const slides = pgTable("slides", {
   questionId: integer("question_id")
     .notNull()
     .references(() => questions.id, { onDelete: "cascade" }),
-  type: text("type", { enum: ["question", "timer", "answer"] }).notNull(),
+  type: text("type", { enum: ["video_warning", "video_intro", "question", "timer", "answer"] }).notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"),
 });
@@ -80,7 +80,7 @@ export const gameState = pgTable(
       () => questions.id
     ),
     currentSlide: text("current_slide", {
-      enum: ["question", "timer", "answer"],
+      enum: ["video_warning", "video_intro", "question", "timer", "answer"],
     })
       .notNull()
       .default("question"),

@@ -82,7 +82,8 @@ export async function questionsRoutes(app: FastifyInstance) {
       timeLimitSec?: number;
       orderNum?: number;
       slides?: Array<{
-        id: number;
+        id: number | null;
+        type: "video_warning" | "video_intro" | "question" | "timer" | "answer";
         imageUrl?: string | null;
         videoUrl?: string | null;
       }>;
@@ -114,15 +115,45 @@ export async function questionsRoutes(app: FastifyInstance) {
     }
 
     if (slideUpdates && Array.isArray(slideUpdates)) {
+      // Get existing slides
+      const existingSlides = await db
+        .select()
+        .from(slides)
+        .where(eq(slides.questionId, questionId));
+
+      const existingByType = new Map(existingSlides.map(s => [s.type, s]));
+
       for (const s of slideUpdates) {
         const slideId = typeof s.id === "number" && s.id > 0 ? s.id : null;
-        if (slideId == null) continue;
-        const setPayload: { imageUrl?: string | null; videoUrl?: string | null } = {};
-        if (s.imageUrl !== undefined) setPayload.imageUrl = s.imageUrl;
-        if (s.videoUrl !== undefined) setPayload.videoUrl = s.videoUrl;
-        if (Object.keys(setPayload).length > 0) {
-          await db.update(slides).set(setPayload).where(eq(slides.id, slideId));
+        const existing = existingByType.get(s.type);
+
+        if (slideId && existing) {
+          // Update existing slide
+          const setPayload: { imageUrl?: string | null; videoUrl?: string | null } = {};
+          if (s.imageUrl !== undefined) setPayload.imageUrl = s.imageUrl;
+          if (s.videoUrl !== undefined) setPayload.videoUrl = s.videoUrl;
+          if (Object.keys(setPayload).length > 0) {
+            await db.update(slides).set(setPayload).where(eq(slides.id, slideId));
+          }
+        } else if (!existing) {
+          // Create new slide if it doesn't exist
+          await db.insert(slides).values({
+            questionId,
+            type: s.type,
+            imageUrl: s.imageUrl || null,
+            videoUrl: s.videoUrl || null,
+          });
         }
+      }
+
+      // Delete slides that are not in the update (e.g., video slides when unchecked)
+      const updatedTypes = new Set(slideUpdates.map(s => s.type));
+      const typesToDelete = existingSlides
+        .filter(s => !updatedTypes.has(s.type))
+        .filter(s => s.type === "video_warning" || s.type === "video_intro"); // Only delete video slides
+
+      for (const toDelete of typesToDelete) {
+        await db.delete(slides).where(eq(slides.id, toDelete.id));
       }
     }
 

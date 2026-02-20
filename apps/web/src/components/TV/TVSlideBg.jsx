@@ -1,22 +1,9 @@
 import { getMediaUrl } from "../../api/client";
 
-/** Фон слайда: картинка строго на весь экран + опционально YouTube поверх */
+/** Фон слайда: картинка строго на весь экран + опционально mp4 видео поверх */
 export default function TVSlideBg({ imageUrl, videoUrl, children }) {
   const imgSrc = imageUrl ? getMediaUrl(imageUrl) : "";
-  const embedUrl = videoUrl
-    ? (() => {
-        try {
-          const u = new URL(videoUrl);
-          if (u.hostname.includes("youtube.com") && u.searchParams.get("v")) {
-            return `https://www.youtube.com/embed/${u.searchParams.get("v")}?autoplay=0`;
-          }
-          if (u.hostname.includes("youtu.be")) {
-            return `https://www.youtube.com/embed/${u.pathname.slice(1)}?autoplay=0`;
-          }
-        } catch (_) {}
-        return null;
-      })()
-    : null;
+  const videoSrc = videoUrl ? getMediaUrl(videoUrl) : null;
 
   return (
     <div className="absolute inset-0 w-full h-full min-w-full min-h-full bg-stone-900">
@@ -33,14 +20,13 @@ export default function TVSlideBg({ imageUrl, videoUrl, children }) {
           <div className="absolute inset-0 w-full h-full bg-stone-800" />
         )}
       </div>
-      {embedUrl && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/30 pointer-events-none">
-          <iframe
-            title="YouTube"
-            src={embedUrl}
-            className="w-full max-w-4xl aspect-video border-0 pointer-events-auto"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
+      {videoSrc && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+          <video
+            src={videoSrc}
+            controls
+            className="w-full max-w-4xl aspect-video"
+            style={{ maxHeight: "80vh" }}
           />
         </div>
       )}

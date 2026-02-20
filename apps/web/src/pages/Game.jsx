@@ -9,8 +9,26 @@ import {
   getWsUrl,
 } from "../api/client";
 
-const SLIDE_ORDER = ["question", "timer", "answer"];
-const SLIDE_LABELS = { question: "Вопрос", timer: "Таймер", answer: "Ответ" };
+const SLIDE_LABELS = {
+  video_warning: "Предупреждение",
+  video_intro: "Видео",
+  question: "Вопрос",
+  timer: "Таймер",
+  answer: "Ответ"
+};
+
+function getSlideOrder(question) {
+  if (!question?.slides) return ["question", "timer", "answer"];
+  const types = question.slides.map(s => s.type);
+  const hasVideoWarning = types.includes("video_warning");
+  const hasVideoIntro = types.includes("video_intro");
+
+  const order = [];
+  if (hasVideoWarning) order.push("video_warning");
+  if (hasVideoIntro) order.push("video_intro");
+  order.push("question", "timer", "answer");
+  return order;
+}
 
 function useGameState(quizId) {
   const [quiz, setQuiz] = useState(null);
@@ -355,9 +373,10 @@ export default function Game() {
   }
 
   const currentSlide = state.currentSlide || "question";
-  const slideIndex = SLIDE_ORDER.indexOf(currentSlide);
+  const slideOrder = getSlideOrder(currentQuestion);
+  const slideIndex = slideOrder.indexOf(currentSlide);
   const canPrevSlide = slideIndex > 0;
-  const canNextSlide = slideIndex < SLIDE_ORDER.length - 1;
+  const canNextSlide = slideIndex < slideOrder.length - 1;
   const hasNextQuestion = currentIndex < totalQuestions;
 
   return (
@@ -402,7 +421,7 @@ export default function Game() {
               <button
                 type="button"
                 disabled={!canPrevSlide}
-                onClick={() => handleSetSlide(SLIDE_ORDER[slideIndex - 1])}
+                onClick={() => handleSetSlide(slideOrder[slideIndex - 1])}
                 className="px-3 py-1.5 rounded-lg border border-stone-300 disabled:opacity-40 hover:bg-stone-50"
               >
                 ◀
@@ -413,7 +432,7 @@ export default function Game() {
               <button
                 type="button"
                 disabled={!canNextSlide}
-                onClick={() => handleSetSlide(SLIDE_ORDER[slideIndex + 1])}
+                onClick={() => handleSetSlide(slideOrder[slideIndex + 1])}
                 className="px-3 py-1.5 rounded-lg border border-stone-300 disabled:opacity-40 hover:bg-stone-50"
               >
                 ▶

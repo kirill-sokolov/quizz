@@ -2,7 +2,13 @@ import { useState, useEffect } from "react";
 import { getMediaUrl } from "../api/client";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"];
-const SLIDE_LABELS = { question: "Слайд: вопрос", timer: "Слайд: таймер", answer: "Слайд: ответ" };
+const SLIDE_LABELS = {
+  video_warning: "Предупреждение: вопрос с видео",
+  video_intro: "Видео перед вопросом",
+  question: "Слайд: вопрос",
+  timer: "Слайд: таймер",
+  answer: "Слайд: ответ"
+};
 
 function ensureFourOptions(options) {
   const arr = Array.isArray(options) ? [...options] : [];
@@ -11,16 +17,24 @@ function ensureFourOptions(options) {
 }
 
 function getSlides(question) {
-  if (!question?.slides?.length) {
-    return [
-      { id: null, type: "question", imageUrl: null, videoUrl: null },
-      { id: null, type: "timer", imageUrl: null, videoUrl: null },
-      { id: null, type: "answer", imageUrl: null, videoUrl: null },
-    ];
-  }
+  const defaultSlides = [
+    { id: null, type: "question", imageUrl: null, videoUrl: null },
+    { id: null, type: "timer", imageUrl: null, videoUrl: null },
+    { id: null, type: "answer", imageUrl: null, videoUrl: null },
+  ];
+
+  if (!question?.slides?.length) return defaultSlides;
+
   const byType = {};
   for (const s of question.slides) byType[s.type] = s;
-  return ["question", "timer", "answer"].map((type) => {
+
+  // Если есть video_intro или video_warning, включаем их
+  const hasVideo = byType.video_intro || byType.video_warning;
+  const types = hasVideo
+    ? ["video_warning", "video_intro", "question", "timer", "answer"]
+    : ["question", "timer", "answer"];
+
+  return types.map((type) => {
     const slide = byType[type];
     return {
       id: slide?.id ?? null,
@@ -38,6 +52,9 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   const [correctAnswer, setCorrectAnswer] = useState(question?.correctAnswer ?? "A");
   const [timeLimitSec, setTimeLimitSec] = useState(question?.timeLimitSec ?? 30);
   const [slides, setSlides] = useState(() => getSlides(question));
+  const [hasVideoIntro, setHasVideoIntro] = useState(() => {
+    return question?.slides?.some(s => s.type === "video_intro" || s.type === "video_warning") ?? false;
+  });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(null);
 
@@ -48,7 +65,31 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     setCorrectAnswer(question.correctAnswer ?? "A");
     setTimeLimitSec(question.timeLimitSec ?? 30);
     setSlides(getSlides(question));
+    setHasVideoIntro(question?.slides?.some(s => s.type === "video_intro" || s.type === "video_warning") ?? false);
   }, [question?.id]);
+
+  const toggleVideoIntro = (enabled) => {
+    setHasVideoIntro(enabled);
+    if (enabled) {
+      // Add video slides if not present
+      setSlides(prev => {
+        const hasWarning = prev.some(s => s.type === "video_warning");
+        const hasIntro = prev.some(s => s.type === "video_intro");
+        const result = [...prev];
+        if (!hasWarning) {
+          result.unshift({ id: null, type: "video_warning", imageUrl: null, videoUrl: null });
+        }
+        if (!hasIntro) {
+          const insertIndex = result.findIndex(s => s.type === "question");
+          result.splice(insertIndex, 0, { id: null, type: "video_intro", imageUrl: null, videoUrl: null });
+        }
+        return result;
+      });
+    } else {
+      // Remove video slides
+      setSlides(prev => prev.filter(s => s.type !== "video_warning" && s.type !== "video_intro"));
+    }
+  };
 
   const handleOptionChange = (index, value) => {
     const next = [...options];
@@ -72,12 +113,20 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     }
   };
 
-  const handleSlideVideo = (slideIndex, value) => {
-    setSlides((prev) => {
-      const next = [...prev];
-      next[slideIndex] = { ...next[slideIndex], videoUrl: value || null };
-      return next;
-    });
+  const handleSlideVideo = async (slideIndex, file) => {
+    if (!file) return;
+    const key = `video-${slideIndex}`;
+    setUploading(key);
+    try {
+      const { url } = await onUpload(file);
+      setSlides((prev) => {
+        const next = [...prev];
+        next[slideIndex] = { ...next[slideIndex], videoUrl: url };
+        return next;
+      });
+    } finally {
+      setUploading(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -93,6 +142,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         orderNum: question?.orderNum,
         slides: slides.map((s) => ({
           id: s.id,
+          type: s.type,
           imageUrl: s.imageUrl || null,
           videoUrl: s.videoUrl || null,
         })),
@@ -161,23 +211,50 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
       </div>
 
       <div>
+        <div className="flex items-center gap-3 mb-3">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={hasVideoIntro}
+              onChange={(e) => toggleVideoIntro(e.target.checked)}
+              className="w-4 h-4 text-amber-600 border-stone-300 rounded focus:ring-amber-500"
+            />
+            <span className="text-sm font-medium text-stone-700">
+              Добавить видео перед вопросом
+            </span>
+          </label>
+        </div>
         <label className="block text-sm font-medium text-stone-600 mb-2">Слайды (картинки и видео)</label>
         <div className="space-y-4">
-          {slides.map((slide, idx) => (
-            <div key={slide.type} className="p-3 bg-stone-50 rounded-lg border border-stone-200">
-              <div className="font-medium text-stone-700 mb-2">{SLIDE_LABELS[slide.type]}</div>
-              <div className="flex flex-wrap gap-4 items-start">
-                <div>
-                  <div className="text-xs text-stone-500 mb-1">Картинка</div>
-                  {slide.imageUrl ? (
-                    <div className="flex items-center gap-2">
-                      <img
-                        src={getMediaUrl(slide.imageUrl)}
-                        alt=""
-                        className="max-h-48 max-w-xs w-auto object-contain rounded border border-stone-200 bg-stone-100"
-                      />
-                      <label className="text-sm text-amber-600 cursor-pointer hover:underline">
-                        Заменить
+          {slides.map((slide, idx) => {
+            const canHaveVideo = slide.type === "video_intro" || slide.type === "answer";
+            return (
+              <div key={slide.type} className="p-3 bg-stone-50 rounded-lg border border-stone-200">
+                <div className="font-medium text-stone-700 mb-2">{SLIDE_LABELS[slide.type]}</div>
+                <div className="flex flex-wrap gap-4 items-start">
+                  <div>
+                    <div className="text-xs text-stone-500 mb-1">Картинка</div>
+                    {slide.imageUrl ? (
+                      <div className="flex items-center gap-2">
+                        <img
+                          src={getMediaUrl(slide.imageUrl)}
+                          alt=""
+                          className="max-h-48 max-w-xs w-auto object-contain rounded border border-stone-200 bg-stone-100"
+                        />
+                        <label className="text-sm text-amber-600 cursor-pointer hover:underline">
+                          Заменить
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={(e) => handleSlideImage(idx, e.target.files?.[0])}
+                            disabled={uploading !== null}
+                          />
+                        </label>
+                      </div>
+                    ) : (
+                      <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
+                        {uploading === `slide-${idx}` ? "Загрузка…" : "Загрузить"}
                         <input
                           type="file"
                           accept="image/*"
@@ -186,33 +263,47 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
                           disabled={uploading !== null}
                         />
                       </label>
+                    )}
+                  </div>
+                  {canHaveVideo && (
+                    <div className="flex-1 min-w-[200px]">
+                      <div className="text-xs text-stone-500 mb-1">Видео (mp4)</div>
+                      {slide.videoUrl ? (
+                        <div className="flex items-center gap-2">
+                          <video
+                            src={getMediaUrl(slide.videoUrl)}
+                            controls
+                            className="max-h-48 max-w-xs w-auto rounded border border-stone-200 bg-stone-100"
+                          />
+                          <label className="text-sm text-amber-600 cursor-pointer hover:underline">
+                            Заменить
+                            <input
+                              type="file"
+                              accept="video/mp4,video/*"
+                              className="hidden"
+                              onChange={(e) => handleSlideVideo(idx, e.target.files?.[0])}
+                              disabled={uploading !== null}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
+                          {uploading === `video-${idx}` ? "Загрузка…" : "Загрузить видео"}
+                          <input
+                            type="file"
+                            accept="video/mp4,video/*"
+                            className="hidden"
+                            onChange={(e) => handleSlideVideo(idx, e.target.files?.[0])}
+                            disabled={uploading !== null}
+                          />
+                        </label>
+                      )}
                     </div>
-                  ) : (
-                    <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
-                      {uploading === `slide-${idx}` ? "Загрузка…" : "Загрузить"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={(e) => handleSlideImage(idx, e.target.files?.[0])}
-                        disabled={uploading !== null}
-                      />
-                    </label>
                   )}
                 </div>
-                <div className="flex-1 min-w-[200px]">
-                  <div className="text-xs text-stone-500 mb-1">YouTube (ссылка)</div>
-                  <input
-                    type="url"
-                    value={slide.videoUrl ?? ""}
-                    onChange={(e) => handleSlideVideo(idx, e.target.value)}
-                    placeholder="https://www.youtube.com/..."
-                    className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none text-sm"
-                  />
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 

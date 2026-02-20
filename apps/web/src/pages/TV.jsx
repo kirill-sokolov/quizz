@@ -11,6 +11,8 @@ import TVQuestion from "../components/TV/TVQuestion";
 import TVTimer from "../components/TV/TVTimer";
 import TVAnswer from "../components/TV/TVAnswer";
 import TVResults from "../components/TV/TVResults";
+import TVVideoWarning from "../components/TV/TVVideoWarning";
+import TVVideoIntro from "../components/TV/TVVideoIntro";
 
 const W = 1920;
 const H = 1080;
@@ -200,6 +202,20 @@ export default function TV() {
         <TVResults results={results} />
       ) : state?.status === "playing" && currentQuestion ? (
         <>
+          {slide === "video_warning" && (
+            <TVVideoWarning
+              currentIndex={currentIndex}
+              totalQuestions={totalQuestions}
+              slides={currentQuestion.slides}
+            />
+          )}
+          {slide === "video_intro" && (
+            <TVVideoIntro
+              currentIndex={currentIndex}
+              totalQuestions={totalQuestions}
+              slides={currentQuestion.slides}
+            />
+          )}
           {slide === "question" && (
             <TVQuestion
               question={currentQuestion}
