@@ -9,6 +9,7 @@ import {
   setSlide,
   getRemind,
   finishGame,
+  resetToFirstQuestion,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
 
@@ -103,6 +104,15 @@ export async function gameRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const results = await finishGame(req.body.quizId);
       return results;
+    }
+  );
+
+  app.post<{ Body: { quizId: number } }>(
+    "/api/game/reset-to-first",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      const state = await resetToFirstQuestion(req.body.quizId);
+      return state;
     }
   );
 }

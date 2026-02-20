@@ -229,6 +229,13 @@ export default function Game() {
     await load();
   };
 
+  const handleResetToFirst = async () => {
+    if (!confirm("Начать с первого вопроса? Все ответы на текущий вопрос будут сброшены.")) return;
+    const newState = await gameApi.resetToFirst(quizId);
+    setState(newState);
+    await refreshAnswers();
+  };
+
   if (loading) return <p className="text-stone-500">Загрузка…</p>;
   if (error)
     return (
@@ -455,6 +462,13 @@ export default function Game() {
               className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 font-medium"
             >
               → Следующий вопрос
+            </button>
+            <button
+              type="button"
+              onClick={handleResetToFirst}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
+            >
+              ↺ К первому вопросу
             </button>
             <button
               type="button"

@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { quizzesApi, questionsApi, mediaUpload, importApi } from "../api/client";
+import { quizzesApi, questionsApi, mediaUpload, importApi, gameApi } from "../api/client";
 import QuestionForm from "../components/QuestionForm";
 import ImportPreview from "../components/ImportPreview";
 
 export default function QuizEdit() {
   const { id } = useParams();
   const [quiz, setQuiz] = useState(null);
+  const [gameState, setGameState] = useState(null);
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -40,6 +41,10 @@ export default function QuizEdit() {
       setLoading(true);
       setError(null);
       await loadQuiz();
+      if (!cancelled) {
+        const state = await gameApi.getState(id).catch(() => null);
+        setGameState(state);
+      }
       if (!cancelled) await loadQuestions();
       if (!cancelled) setLoading(false);
     })();
@@ -127,6 +132,23 @@ export default function QuizEdit() {
       <div>
         <p className="text-stone-600 mb-2">Квиз «{quiz.title}» уже завершён и недоступен для редактирования.</p>
         <Link to="/admin" className="text-amber-600 hover:underline">← К списку квизов</Link>
+      </div>
+    );
+
+  const isGamePlaying = gameState?.status === "playing";
+  if (isGamePlaying)
+    return (
+      <div>
+        <p className="text-stone-600 mb-2">
+          Квиз «{quiz.title}» сейчас идёт. Редактирование недоступно во время игры.
+        </p>
+        <p className="text-stone-500 text-sm mb-4">
+          Завершите квиз или дождитесь окончания игры, чтобы внести изменения.
+        </p>
+        <div className="flex gap-3">
+          <Link to="/admin" className="text-amber-600 hover:underline">← К списку квизов</Link>
+          <Link to={`/admin/game/${id}`} className="text-amber-600 hover:underline">→ Управление игрой</Link>
+        </div>
       </div>
     );
 

@@ -5,6 +5,7 @@ import {
   answers,
   teams,
   gameState,
+  slides,
 } from "../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
@@ -98,6 +99,64 @@ export async function beginGame(quizId: number) {
     quizId,
     questionId: currentQuestionId,
     slide: "question",
+  });
+
+  return updated;
+}
+
+export async function resetToFirstQuestion(quizId: number) {
+  const [state] = await db
+    .select()
+    .from(gameState)
+    .where(eq(gameState.quizId, quizId));
+  if (!state || state.status !== "playing") {
+    throw new Error("Game is not in playing state");
+  }
+
+  const firstQuestion = await db
+    .select()
+    .from(questions)
+    .where(eq(questions.quizId, quizId))
+    .orderBy(asc(questions.orderNum))
+    .limit(1);
+
+  const currentQuestionId = firstQuestion[0]?.id ?? null;
+
+  // Check if the first question has video slides to determine the starting slide
+  let startingSlide: "video_warning" | "question" = "question";
+  if (currentQuestionId) {
+    const questionSlides = await db
+      .select()
+      .from(slides)
+      .where(eq(slides.questionId, currentQuestionId));
+
+    const hasVideoWarning = questionSlides.some(s => s.type === "video_warning");
+    if (hasVideoWarning) {
+      startingSlide = "video_warning";
+    }
+  }
+
+  const [updated] = await db
+    .update(gameState)
+    .set({
+      currentQuestionId,
+      currentSlide: startingSlide,
+      timerStartedAt: null,
+    })
+    .where(eq(gameState.quizId, quizId))
+    .returning();
+
+  // Clear all answers for a fresh start
+  if (currentQuestionId) {
+    await db
+      .delete(answers)
+      .where(eq(answers.questionId, currentQuestionId));
+  }
+
+  broadcast("slide_changed", {
+    quizId,
+    questionId: currentQuestionId,
+    slide: startingSlide,
   });
 
   return updated;
