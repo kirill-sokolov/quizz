@@ -59,7 +59,7 @@ export async function questionsRoutes(app: FastifyInstance) {
         options: req.body.options ?? [],
         correctAnswer: req.body.correctAnswer ?? "",
         timeLimitSec: req.body.timeLimitSec ?? 30,
-        timerPosition: req.body.timerPosition ?? "center",
+        timerPosition: (req.body.timerPosition ?? "center") as "center" | "top" | "bottom" | "left" | "right" | "top-left" | "top-right" | "bottom-left" | "bottom-right",
       })
       .returning();
 
@@ -103,7 +103,7 @@ export async function questionsRoutes(app: FastifyInstance) {
     if (hasQuestionUpdates) {
       const [updated] = await db
         .update(questions)
-        .set(questionFields)
+        .set(questionFields as any)
         .where(eq(questions.id, questionId))
         .returning();
       if (!updated) return reply.code(404).send({ error: "Question not found" });
