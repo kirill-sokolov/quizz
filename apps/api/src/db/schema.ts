@@ -16,7 +16,7 @@ const SLIDE_TYPES = ["video_warning", "video_intro", "question", "timer", "answe
 export const quizzes = pgTable("quizzes", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  status: text("status", { enum: ["draft", "active", "finished"] })
+  status: text("status", { enum: ["draft", "active", "finished", "archived"] })
     .notNull()
     .default("draft"),
   joinCode: text("join_code").unique(),

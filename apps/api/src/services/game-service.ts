@@ -309,17 +309,7 @@ export async function getRemind(quizId: number, teamId?: number) {
   return notSubmitted;
 }
 
-export async function finishGame(quizId: number) {
-  await db
-    .update(quizzes)
-    .set({ status: "finished", joinCode: null })
-    .where(eq(quizzes.id, quizId));
-
-  await db
-    .update(gameState)
-    .set({ status: "finished" })
-    .where(eq(gameState.quizId, quizId));
-
+export async function getResults(quizId: number) {
   const allQuestions = await db
     .select()
     .from(questions)
@@ -330,17 +320,6 @@ export async function finishGame(quizId: number) {
     .from(teams)
     .where(and(eq(teams.quizId, quizId), eq(teams.isKicked, false)));
 
-  const allAnswers = await db
-    .select()
-    .from(answers)
-    .where(
-      eq(
-        answers.questionId,
-        allQuestions.length > 0 ? allQuestions[0].id : -1
-      )
-    );
-
-  // Gather all answers for all questions
   const answersByTeam = new Map<number, { correct: number; total: number; fastest: number | null }>();
 
   for (const team of allTeams) {
@@ -363,7 +342,6 @@ export async function finishGame(quizId: number) {
     }
   }
 
-  // Сортировка: сначала по убыванию правильных, при равенстве — по убыванию числа ответов
   const results = allTeams
     .map((t) => ({
       teamId: t.id,
@@ -371,6 +349,22 @@ export async function finishGame(quizId: number) {
       ...answersByTeam.get(t.id)!,
     }))
     .sort((a, b) => b.correct - a.correct || b.total - a.total);
+
+  return results;
+}
+
+export async function finishGame(quizId: number) {
+  await db
+    .update(quizzes)
+    .set({ status: "finished", joinCode: null })
+    .where(eq(quizzes.id, quizId));
+
+  await db
+    .update(gameState)
+    .set({ status: "finished" })
+    .where(eq(gameState.quizId, quizId));
+
+  const results = await getResults(quizId);
 
   broadcast("quiz_finished", { quizId, results });
 

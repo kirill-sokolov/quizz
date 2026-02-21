@@ -120,6 +120,7 @@ export const gameApi = {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
+  getResults: (quizId) => request(`/game/results/${quizId}`),
 };
 
 export const teamsApi = {

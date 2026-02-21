@@ -234,6 +234,12 @@ export default function Game() {
     await load();
   };
 
+  const handleArchive = async () => {
+    if (!confirm("Архивировать квиз? Он больше не будет показываться на TV.")) return;
+    await quizzesApi.update(quizId, { status: "archived" });
+    await load();
+  };
+
   const handleResetToFirst = async () => {
     if (!confirm("Начать с первого вопроса? Все ответы на текущий вопрос будут сброшены.")) return;
     const newState = await gameApi.resetToFirst(quizId);
@@ -377,8 +383,19 @@ export default function Game() {
             {quiz.title} — завершён
           </h1>
         </div>
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 text-center text-stone-600">
-          Квиз завершён. Результаты можно посмотреть в TV-режиме.
+        <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 space-y-4">
+          <p className="text-center text-stone-600">
+            Квиз завершён. Результаты можно посмотреть в TV-режиме.
+          </p>
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={handleArchive}
+              className="px-6 py-2 border border-stone-300 rounded-lg hover:bg-stone-100 transition text-stone-700 font-medium"
+            >
+              📦 Архивировать квиз
+            </button>
+          </div>
         </div>
       </div>
     );

@@ -10,6 +10,7 @@ import {
   setSlide,
   getRemind,
   finishGame,
+  getResults,
   resetToFirstQuestion,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
@@ -124,6 +125,15 @@ export async function gameRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const state = await resetToFirstQuestion(req.body.quizId);
       return state;
+    }
+  );
+
+  app.get<{ Params: { quizId: string } }>(
+    "/api/game/results/:quizId",
+    async (req, reply) => {
+      const quizId = Number(req.params.quizId);
+      const results = await getResults(quizId);
+      return results;
     }
   );
 }

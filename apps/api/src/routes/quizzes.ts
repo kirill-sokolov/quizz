@@ -68,7 +68,7 @@ export async function quizzesRoutes(app: FastifyInstance) {
 
   app.patch<{
     Params: { id: string };
-    Body: { title?: string; status?: "draft" | "active" | "finished" };
+    Body: { title?: string; status?: "draft" | "active" | "finished" | "archived"; demoImageUrl?: string; rulesImageUrl?: string };
   }>(
     "/api/quizzes/:id",
     { preHandler: authenticateToken },

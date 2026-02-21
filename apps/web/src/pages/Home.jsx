@@ -6,6 +6,7 @@ const STATUS_LABEL = {
   draft: "Черновик",
   active: "Идёт",
   finished: "Завершён",
+  archived: "Архивирован",
 };
 
 function formatDate(iso) {
@@ -164,9 +165,9 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                {q.status === "finished" ? (
+                {q.status === "finished" || q.status === "archived" ? (
                   <div className="text-stone-400 text-sm text-center py-2">
-                    Квиз завершён
+                    {q.status === "finished" ? "Квиз завершён" : "Квиз архивирован"}
                   </div>
                 ) : (
                   <div className="flex gap-2">
@@ -269,9 +270,9 @@ export default function Home() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        {q.status === "finished" ? (
+                        {q.status === "finished" || q.status === "archived" ? (
                           <span className="inline-flex px-3 py-1.5 text-stone-400 text-sm">
-                            Квиз завершён
+                            {q.status === "finished" ? "Квиз завершён" : "Квиз архивирован"}
                           </span>
                         ) : (
                           <>

@@ -81,7 +81,14 @@ export default function TV() {
       setState(stateData);
       setQuestions(questionsData);
       setTeams(teamsData.filter((t) => !t.isKicked));
-      setResults(null);
+
+      // Если квиз завершен, загрузить результаты
+      if (stateData?.status === "finished") {
+        const resultsData = await gameApi.getResults(id);
+        setResults(resultsData);
+      } else {
+        setResults(null);
+      }
     } catch (e) {
       setError(e.message);
     }
@@ -95,15 +102,12 @@ export default function TV() {
       let id = urlQuizId ? Number(urlQuizId) : null;
       if (!id) {
         try {
-          // Try to get active quiz first, otherwise get the latest quiz
-          const active = await quizzesApi.getActive();
-          if (active && active.length > 0) {
-            id = active[0].id;
-          } else {
-            // No active quiz, get the latest quiz
-            const all = await quizzesApi.list();
-            id = all[0]?.id ?? null;
-          }
+          // Priority: active → finished → latest (excluding archived)
+          const all = await quizzesApi.list();
+          const notArchived = all.filter((q) => q.status !== "archived");
+          const active = notArchived.find((q) => q.status === "active");
+          const finished = notArchived.find((q) => q.status === "finished");
+          id = active?.id ?? finished?.id ?? notArchived[0]?.id ?? null;
         } catch {
           setError("Нет квизов");
           setLoading(false);
@@ -255,7 +259,7 @@ export default function TV() {
         className="tv-screen bg-black overflow-hidden"
         style={{ ...screenStyle, cursor: "none" }}
       >
-      {state?.status === "finished" && results && results.length > 0 ? (
+      {state?.status === "finished" && results !== null ? (
         <TVResults results={results} />
       ) : state?.status === "playing" && currentQuestion ? (
         <>
