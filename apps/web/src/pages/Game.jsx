@@ -162,6 +162,9 @@ export default function Game() {
           case "game_lobby":
             load();
             break;
+          case "registration_opened":
+            gameApi.getState(quizId).then((s) => setState(s));
+            break;
           case "slide_changed":
             gameApi.getState(quizId).then((s) => setState(s));
             if (data.slide === "timer") refreshAnswers();
@@ -188,6 +191,13 @@ export default function Game() {
       wsRef.current = null;
     };
   }, [quizId, state?.quizId, setState, refreshAnswers, refreshTeams, load]);
+
+  // Автоматически открыть регистрацию при переходе на страницу управления
+  useEffect(() => {
+    if (state?.status === "lobby" && state?.registrationOpen === false) {
+      gameApi.openRegistration(quizId).then(() => load());
+    }
+  }, [state?.status, state?.registrationOpen, quizId, load]);
 
   const handleStart = async () => {
     await gameApi.start(quizId);

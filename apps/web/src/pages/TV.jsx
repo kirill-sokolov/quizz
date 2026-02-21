@@ -13,6 +13,9 @@ import TVAnswer from "../components/TV/TVAnswer";
 import TVResults from "../components/TV/TVResults";
 import TVVideoWarning from "../components/TV/TVVideoWarning";
 import TVVideoIntro from "../components/TV/TVVideoIntro";
+import TVDemo from "../components/TV/TVDemo";
+import TVRules from "../components/TV/TVRules";
+import TVLobby from "../components/TV/TVLobby";
 import { SLIDE_TYPES } from "../constants/slides";
 
 const W = 1920;
@@ -92,10 +95,17 @@ export default function TV() {
       let id = urlQuizId ? Number(urlQuizId) : null;
       if (!id) {
         try {
+          // Try to get active quiz first, otherwise get the latest quiz
           const active = await quizzesApi.getActive();
-          id = active[0]?.id ?? null;
+          if (active && active.length > 0) {
+            id = active[0].id;
+          } else {
+            // No active quiz, get the latest quiz
+            const all = await quizzesApi.list();
+            id = all[0]?.id ?? null;
+          }
         } catch {
-          setError("Нет активного квиза");
+          setError("Нет квизов");
           setLoading(false);
           return;
         }
@@ -110,47 +120,91 @@ export default function TV() {
   }, [urlQuizId, loadQuiz]);
 
   useEffect(() => {
-    const ws = new WebSocket(getWsUrl());
-    wsRef.current = ws;
-    ws.onmessage = (ev) => {
-      try {
-        const { event, data } = JSON.parse(ev.data);
+    let reconnectTimer = null;
 
-        // If we don't have a quizId yet, pick it up from the first event
-        if (!quizId && data?.quizId) {
-          const newId = data.quizId;
-          setQuizId(newId);
-          setLoading(true);
-          loadQuiz(newId).then(() => setLoading(false));
-          return;
-        }
+    const connect = () => {
+      const ws = new WebSocket(getWsUrl());
+      wsRef.current = ws;
 
-        if (data?.quizId !== quizId) return;
-        switch (event) {
-          case "game_lobby":
-            loadQuiz(quizId);
-            break;
-          case "team_registered":
-            teamsApi.list(quizId, true).then((t) => setTeams(t.filter((team) => !team.isKicked)));
-            break;
-          case "team_kicked":
-            setTeams((prev) => prev.filter((t) => t.id !== data.teamId));
-            break;
-          case "slide_changed":
-            gameApi.getState(quizId).then((s) => setState(s));
-            break;
-          case "quiz_finished":
-            setResults(data.results ?? []);
-            setState((prev) => (prev ? { ...prev, status: "finished" } : null));
-            break;
-          default:
-            break;
-        }
-      } catch (_) {}
+      ws.onopen = () => {
+        console.log("WS connected");
+      };
+
+      ws.onmessage = (ev) => {
+        try {
+          const { event, data } = JSON.parse(ev.data);
+
+          // If we don't have a quizId yet, pick it up from the first event
+          if (!quizId && data?.quizId) {
+            const newId = data.quizId;
+            setQuizId(newId);
+            setLoading(true);
+            loadQuiz(newId).then(() => setLoading(false));
+            return;
+          }
+
+          if (data?.quizId !== quizId) return;
+          console.log("WS event:", event, data);
+          switch (event) {
+            case "game_lobby":
+              console.log("game_lobby → loading quiz and state");
+              loadQuiz(quizId);
+              gameApi.getState(quizId).then((s) => {
+                console.log("game_lobby → state loaded:", s);
+                setState(s);
+              }).catch((err) => {
+                console.error("game_lobby → failed to load state:", err);
+              });
+              break;
+            case "registration_opened":
+              console.log("registration_opened → loading state");
+              gameApi.getState(quizId).then((s) => {
+                console.log("registration_opened → state loaded:", s);
+                setState(s);
+              });
+              break;
+            case "team_registered":
+              teamsApi.list(quizId, true).then((t) => setTeams(t.filter((team) => !team.isKicked)));
+              break;
+            case "team_kicked":
+              setTeams((prev) => prev.filter((t) => t.id !== data.teamId));
+              break;
+            case "slide_changed":
+              console.log("slide_changed → loading state");
+              gameApi.getState(quizId).then((s) => {
+                console.log("slide_changed → state loaded:", s);
+                setState(s);
+              });
+              break;
+            case "quiz_finished":
+              setResults(data.results ?? []);
+              setState((prev) => (prev ? { ...prev, status: "finished" } : null));
+              break;
+            default:
+              break;
+          }
+        } catch (_) {}
+      };
+
+      ws.onerror = (err) => {
+        console.error("WS error:", err);
+      };
+
+      ws.onclose = () => {
+        console.log("WS disconnected, reconnecting in 3s...");
+        wsRef.current = null;
+        reconnectTimer = setTimeout(connect, 3000);
+      };
     };
+
+    connect();
+
     return () => {
-      ws.close();
-      wsRef.current = null;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (wsRef.current) {
+        wsRef.current.close();
+        wsRef.current = null;
+      }
     };
   }, [quizId, loadQuiz]);
 
@@ -192,6 +246,8 @@ export default function TV() {
     : 0;
   const totalQuestions = questions.length;
   const slide = state?.currentSlide || SLIDE_TYPES.QUESTION;
+
+  console.log("TV render - state:", state, "teams:", teams.length, "quiz:", quiz?.title);
 
   return (
     <div className="tv-viewport" onClick={toggle}>
@@ -246,35 +302,12 @@ export default function TV() {
             />
           )}
         </>
+      ) : state?.status === "lobby" && state?.registrationOpen ? (
+        <TVLobby quiz={quiz} teams={teams} />
+      ) : state?.status === "lobby" ? (
+        <TVRules imageUrl={quiz?.rulesImageUrl} />
       ) : (
-        <div className="flex w-full h-full bg-stone-900 text-white">
-          <div className="flex flex-col items-center justify-center flex-1 gap-8">
-            <p className="text-4xl">Ожидание начала квиза…</p>
-            {quiz?.joinCode && (
-              <>
-                <p className="text-2xl text-stone-400">Код для входа:</p>
-                <p className="text-8xl font-mono font-bold tracking-widest text-amber-400">
-                  {quiz.joinCode}
-                </p>
-              </>
-            )}
-          </div>
-          {teams.length > 0 && (
-            <div className="w-[400px] border-l border-stone-700 p-8 flex flex-col">
-              <h3 className="text-2xl font-bold mb-6">Команды ({teams.length})</h3>
-              <div className="flex-1 overflow-y-auto space-y-3">
-                {teams.map((team, idx) => (
-                  <div key={team.id} className="bg-stone-800 rounded-lg p-4">
-                    <div className="flex items-center gap-3">
-                      <span className="text-2xl font-bold text-amber-400">#{idx + 1}</span>
-                      <span className="text-xl">{team.name}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <TVDemo imageUrl={quiz?.demoImageUrl} />
       )}
       </div>
       {!isFullscreen && (

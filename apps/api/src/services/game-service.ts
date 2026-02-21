@@ -47,6 +47,7 @@ export async function startGame(quizId: number) {
         currentQuestionId: null,
         currentSlide: "question",
         timerStartedAt: null,
+        registrationOpen: false,
       })
       .where(eq(gameState.quizId, quizId))
       .returning();
@@ -58,6 +59,7 @@ export async function startGame(quizId: number) {
         status: "lobby",
         currentQuestionId: null,
         currentSlide: "question",
+        registrationOpen: false,
       })
       .returning();
   }
@@ -65,6 +67,26 @@ export async function startGame(quizId: number) {
   broadcast("game_lobby", { quizId, joinCode });
 
   return { ...state, joinCode };
+}
+
+export async function openRegistration(quizId: number) {
+  const [state] = await db
+    .select()
+    .from(gameState)
+    .where(eq(gameState.quizId, quizId));
+  if (!state || state.status !== "lobby") {
+    throw new Error("Game is not in lobby state");
+  }
+
+  const [updated] = await db
+    .update(gameState)
+    .set({ registrationOpen: true })
+    .where(eq(gameState.quizId, quizId))
+    .returning();
+
+  broadcast("registration_opened", { quizId });
+
+  return updated;
 }
 
 export async function beginGame(quizId: number) {
@@ -76,6 +98,7 @@ export async function beginGame(quizId: number) {
     throw new Error("Game is not in lobby state");
   }
 
+  // Switch to "playing" and load first question
   const firstQuestion = await db
     .select()
     .from(questions)
@@ -109,6 +132,13 @@ export async function beginGame(quizId: number) {
     })
     .where(eq(gameState.quizId, quizId))
     .returning();
+
+  // Clear all answers for a fresh start
+  if (currentQuestionId) {
+    await db
+      .delete(answers)
+      .where(eq(answers.questionId, currentQuestionId));
+  }
 
   broadcast("slide_changed", {
     quizId,

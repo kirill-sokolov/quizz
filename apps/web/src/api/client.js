@@ -79,6 +79,11 @@ export const gameApi = {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
+  openRegistration: (quizId) =>
+    request("/game/open-registration", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
   begin: (quizId) =>
     request("/game/begin", {
       method: "POST",

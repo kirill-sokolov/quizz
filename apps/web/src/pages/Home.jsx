@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { quizzesApi } from "../api/client";
+import { quizzesApi, gameApi, mediaUpload, getMediaUrl } from "../api/client";
 
 const STATUS_LABEL = {
   draft: "Черновик",
@@ -25,6 +25,8 @@ export default function Home() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [creating, setCreating] = useState(false);
+  const [uploadingDemo, setUploadingDemo] = useState(null);
+  const [starting, setStarting] = useState(null);
 
   const loadQuizzes = async () => {
     setLoading(true);
@@ -57,6 +59,36 @@ export default function Home() {
       setError(msg);
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleUploadDemo = async (quizId, e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDemo(quizId);
+    setError(null);
+    try {
+      const result = await mediaUpload(file);
+      await quizzesApi.update(quizId, { demoImageUrl: result.path });
+      await loadQuizzes();
+    } catch (err) {
+      setError(err.message || "Ошибка загрузки demo");
+    } finally {
+      setUploadingDemo(null);
+      e.target.value = "";
+    }
+  };
+
+  const handleStart = async (quizId) => {
+    setStarting(quizId);
+    setError(null);
+    try {
+      await gameApi.start(quizId);
+      await loadQuizzes();
+    } catch (err) {
+      setError(err.message || "Ошибка запуска квиза");
+    } finally {
+      setStarting(null);
     }
   };
 
@@ -94,6 +126,28 @@ export default function Home() {
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h3 className="font-medium text-stone-800 mb-2">{q.title}</h3>
+                    <div className="mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-stone-500">Demo TV:</span>
+                        {q.demoImageUrl && (
+                          <img
+                            src={getMediaUrl(q.demoImageUrl)}
+                            alt="Demo"
+                            className="w-12 h-8 object-cover rounded border border-stone-200"
+                          />
+                        )}
+                        <label className="cursor-pointer text-xs text-amber-600 hover:text-amber-700 font-medium">
+                          {uploadingDemo === q.id ? "⏳" : q.demoImageUrl ? "Заменить" : "Загрузить"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleUploadDemo(q.id, e)}
+                            disabled={uploadingDemo === q.id}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
+                    </div>
                     <div className="flex gap-3 text-sm text-stone-600">
                       <span
                         className={`inline-flex px-2 py-0.5 rounded text-sm ${
@@ -122,12 +176,23 @@ export default function Home() {
                     >
                       Редактировать
                     </Link>
-                    <Link
-                      to={`/admin/game/${q.id}`}
-                      className="flex-1 px-3 py-2 text-center bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium"
-                    >
-                      Начать
-                    </Link>
+                    {q.status === "draft" ? (
+                      <button
+                        type="button"
+                        onClick={() => handleStart(q.id)}
+                        disabled={starting === q.id}
+                        className="flex-1 px-3 py-2 text-center bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
+                      >
+                        {starting === q.id ? "⏳" : "Начать"}
+                      </button>
+                    ) : (
+                      <Link
+                        to={`/admin/game/${q.id}`}
+                        className="flex-1 px-3 py-2 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                      >
+                        Управление
+                      </Link>
+                    )}
                   </div>
                 )}
               </div>
@@ -141,6 +206,9 @@ export default function Home() {
                 <tr>
                   <th className="text-left py-3 px-4 font-medium text-stone-600">
                     Название
+                  </th>
+                  <th className="text-left py-3 px-4 font-medium text-stone-600">
+                    Demo TV
                   </th>
                   <th className="text-left py-3 px-4 font-medium text-stone-600">
                     Статус
@@ -161,6 +229,27 @@ export default function Home() {
                   >
                     <td className="py-3 px-4 font-medium text-stone-800">
                       {q.title}
+                    </td>
+                    <td className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        {q.demoImageUrl && (
+                          <img
+                            src={getMediaUrl(q.demoImageUrl)}
+                            alt="Demo"
+                            className="w-12 h-8 object-cover rounded border border-stone-200"
+                          />
+                        )}
+                        <label className="cursor-pointer text-sm text-amber-600 hover:text-amber-700 font-medium">
+                          {uploadingDemo === q.id ? "⏳" : q.demoImageUrl ? "Заменить" : "Загрузить"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => handleUploadDemo(q.id, e)}
+                            disabled={uploadingDemo === q.id}
+                            className="hidden"
+                          />
+                        </label>
+                      </div>
                     </td>
                     <td className="py-3 px-4">
                       <span
@@ -192,12 +281,23 @@ export default function Home() {
                             >
                               Редактировать
                             </Link>
-                            <Link
-                              to={`/admin/game/${q.id}`}
-                              className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium"
-                            >
-                              Начать
-                            </Link>
+                            {q.status === "draft" ? (
+                              <button
+                                type="button"
+                                onClick={() => handleStart(q.id)}
+                                disabled={starting === q.id}
+                                className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
+                              >
+                                {starting === q.id ? "⏳" : "Начать"}
+                              </button>
+                            ) : (
+                              <Link
+                                to={`/admin/game/${q.id}`}
+                                className="inline-flex px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                              >
+                                Управление
+                              </Link>
+                            )}
                           </>
                         )}
                       </div>

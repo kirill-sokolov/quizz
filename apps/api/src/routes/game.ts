@@ -4,6 +4,7 @@ import { gameState, questions } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import {
   startGame,
+  openRegistration,
   beginGame,
   nextQuestion,
   setSlide,
@@ -43,6 +44,15 @@ export async function gameRoutes(app: FastifyInstance) {
     { preHandler: authenticateToken },
     async (req, reply) => {
       const state = await startGame(req.body.quizId);
+      return reply.code(200).send(state);
+    }
+  );
+
+  app.post<{ Body: { quizId: number } }>(
+    "/api/game/open-registration",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      const state = await openRegistration(req.body.quizId);
       return reply.code(200).send(state);
     }
   );

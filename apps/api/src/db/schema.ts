@@ -20,6 +20,8 @@ export const quizzes = pgTable("quizzes", {
     .notNull()
     .default("draft"),
   joinCode: text("join_code").unique(),
+  demoImageUrl: text("demo_image_url"),
+  rulesImageUrl: text("rules_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -96,6 +98,9 @@ export const gameState = pgTable(
     status: text("status", { enum: ["lobby", "playing", "finished"] })
       .notNull()
       .default("lobby"),
+    registrationOpen: boolean("registration_open")
+      .notNull()
+      .default(false),
   },
   (t) => [unique().on(t.quizId)]
 );

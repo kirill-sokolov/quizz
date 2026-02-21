@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { quizzesApi, questionsApi, mediaUpload, importApi, gameApi } from "../api/client";
+import { quizzesApi, questionsApi, mediaUpload, importApi, gameApi, getMediaUrl } from "../api/client";
 import QuestionForm from "../components/QuestionForm";
 import ImportPreview from "../components/ImportPreview";
 
@@ -16,6 +16,10 @@ export default function QuizEdit() {
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const zipInputRef = useRef(null);
+  const [editingSettings, setEditingSettings] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [uploadingDemo, setUploadingDemo] = useState(false);
+  const [uploadingRules, setUploadingRules] = useState(false);
 
   const loadQuiz = async () => {
     try {
@@ -100,6 +104,50 @@ export default function QuizEdit() {
     await loadQuestions();
   };
 
+  const handleSaveSettings = async (settings) => {
+    setSavingSettings(true);
+    setError(null);
+    try {
+      await quizzesApi.update(id, settings);
+      await loadQuiz();
+      setEditingSettings(false);
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка сохранения настроек");
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
+  const handleUploadDemo = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingDemo(true);
+    try {
+      const result = await mediaUpload(file);
+      await handleSaveSettings({ demoImageUrl: result.path });
+    } catch (err) {
+      setError(err.message || "Ошибка загрузки demo");
+    } finally {
+      setUploadingDemo(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleUploadRules = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingRules(true);
+    try {
+      const result = await mediaUpload(file);
+      await handleSaveSettings({ rulesImageUrl: result.path });
+    } catch (err) {
+      setError(err.message || "Ошибка загрузки rules");
+    } finally {
+      setUploadingRules(false);
+      e.target.value = "";
+    }
+  };
+
   const handleZipUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -165,6 +213,71 @@ export default function QuizEdit() {
         >
           Перейти к игре
         </Link>
+      </div>
+
+      <div className="mb-6 p-4 bg-white rounded-xl border border-stone-200 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-medium text-stone-700">Настройки квиза</h2>
+          {!editingSettings && (
+            <button
+              type="button"
+              onClick={() => setEditingSettings(true)}
+              className="text-amber-600 hover:text-amber-700 font-medium text-sm"
+            >
+              Редактировать
+            </button>
+          )}
+        </div>
+
+        {editingSettings ? (
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Правила (показываются после "Начать")
+              </label>
+              <div className="flex items-center gap-3">
+                {quiz.rulesImageUrl && (
+                  <img
+                    src={getMediaUrl(quiz.rulesImageUrl)}
+                    alt="Rules"
+                    className="w-24 h-16 object-cover rounded border"
+                  />
+                )}
+                <label className="cursor-pointer px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm font-medium transition">
+                  {uploadingRules ? "Загрузка..." : quiz.rulesImageUrl ? "Заменить" : "Загрузить"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadRules}
+                    disabled={uploadingRules}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingSettings(false)}
+                className="px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg font-medium text-sm transition"
+              >
+                Закрыть
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-2 text-sm text-stone-600">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Правила:</span>
+              {quiz.rulesImageUrl ? (
+                <span className="text-green-600">✓ Загружены</span>
+              ) : (
+                <span className="text-stone-400">Не загружены</span>
+              )}
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between mb-4">

@@ -58,7 +58,14 @@ async function seed() {
   console.log("Admin created: username=admin, password=admin");
 
   console.log("Seeding quiz...");
-  const [quiz] = await db.insert(quizzes).values({ title: QUIZ_TITLE }).returning();
+  const [quiz] = await db
+    .insert(quizzes)
+    .values({
+      title: QUIZ_TITLE,
+      demoImageUrl: "/api/media/seed/demo.jpg",
+      rulesImageUrl: "/api/media/seed/rules.png",
+    })
+    .returning();
   console.log(`Created quiz #${quiz.id}: "${quiz.title}"`);
 
   for (let i = 0; i < QUESTIONS.length; i++) {
