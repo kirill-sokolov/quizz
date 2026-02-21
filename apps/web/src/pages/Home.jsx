@@ -166,9 +166,12 @@ export default function Home() {
                   </div>
                 </div>
                 {q.status === "finished" || q.status === "archived" ? (
-                  <div className="text-stone-400 text-sm text-center py-2">
-                    {q.status === "finished" ? "Квиз завершён" : "Квиз архивирован"}
-                  </div>
+                  <Link
+                    to={`/admin/game/${q.id}`}
+                    className="px-3 py-2 text-center text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 transition text-sm font-medium"
+                  >
+                    📊 Посмотреть результаты
+                  </Link>
                 ) : (
                   <div className="flex gap-2">
                     <Link
@@ -271,9 +274,12 @@ export default function Home() {
                     <td className="py-3 px-4 text-right">
                       <div className="flex gap-2 justify-end">
                         {q.status === "finished" || q.status === "archived" ? (
-                          <span className="inline-flex px-3 py-1.5 text-stone-400 text-sm">
-                            {q.status === "finished" ? "Квиз завершён" : "Квиз архивирован"}
-                          </span>
+                          <Link
+                            to={`/admin/game/${q.id}`}
+                            className="inline-flex px-3 py-1.5 text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 transition text-sm font-medium"
+                          >
+                            📊 Посмотреть результаты
+                          </Link>
                         ) : (
                           <>
                             <Link

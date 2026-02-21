@@ -1,4 +1,4 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import { useState, useEffect, useRef, useCallback } from "react";
 import {
   quizzesApi,
@@ -31,6 +31,7 @@ function useGameState(quizId) {
   const [questions, setQuestions] = useState([]);
   const [teams, setTeams] = useState([]);
   const [answers, setAnswers] = useState([]);
+  const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -47,6 +48,13 @@ function useGameState(quizId) {
       setState(stateData);
       setQuestions(questionsData);
       setTeams(teamsData);
+
+      // Загрузить результаты если квиз завершен или архивирован
+      if (quizData.status === "finished" || quizData.status === "archived") {
+        const resultsData = await gameApi.getResults(quizId);
+        setResults(resultsData);
+      }
+
       if (stateData?.currentQuestionId) {
         const ans = await answersApi.list(stateData.currentQuestionId);
         setAnswers(ans);
@@ -82,6 +90,7 @@ function useGameState(quizId) {
     questions,
     teams,
     answers,
+    results,
     loading,
     error,
     setState,
@@ -121,6 +130,7 @@ function TimerDisplay({ startedAt, limitSec }) {
 export default function Game() {
   const { id } = useParams();
   const quizId = Number(id);
+  const navigate = useNavigate();
   const wsRef = useRef(null);
   const {
     quiz,
@@ -128,6 +138,7 @@ export default function Game() {
     questions,
     teams,
     answers,
+    results,
     loading,
     error,
     setState,
@@ -237,7 +248,7 @@ export default function Game() {
   const handleArchive = async () => {
     if (!confirm("Архивировать квиз? Он больше не будет показываться на TV.")) return;
     await quizzesApi.update(quizId, { status: "archived" });
-    await load();
+    navigate("/admin");
   };
 
   const handleResetToFirst = async () => {
@@ -269,6 +280,7 @@ export default function Game() {
   const gameNotStarted = !state;
   const gameLobby = state?.status === "lobby";
   const gameFinished = state?.status === "finished";
+  const quizArchived = quiz?.status === "archived";
 
   const handleBegin = async () => {
     await gameApi.begin(quizId);
@@ -372,7 +384,7 @@ export default function Game() {
     );
   }
 
-  if (gameFinished) {
+  if (gameFinished || quizArchived) {
     return (
       <div>
         <div className="mb-4 flex items-center gap-4">
@@ -380,13 +392,49 @@ export default function Game() {
             ← Квизы
           </Link>
           <h1 className="text-xl font-semibold text-stone-800">
-            {quiz.title} — завершён
+            {quiz.title} — {quizArchived ? "архивирован" : "завершён"}
           </h1>
         </div>
-        <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 space-y-4">
-          <p className="text-center text-stone-600">
-            Квиз завершён. Результаты можно посмотреть в TV-режиме.
-          </p>
+
+        {/* Результаты */}
+        {results && results.length > 0 ? (
+          <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm mb-4">
+            <h2 className="text-lg font-semibold text-stone-800 mb-4">Результаты</h2>
+            <div className="space-y-3">
+              {results.map((result, idx) => (
+                <div
+                  key={result.teamId}
+                  className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg"
+                >
+                  <div className="text-2xl font-bold text-amber-600 w-12 text-center">
+                    #{idx + 1}
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-stone-800">{result.name}</div>
+                    <div className="text-sm text-stone-500">
+                      {result.correct} из {result.total} правильных ответов
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-green-600">
+                      {result.correct}
+                    </div>
+                    <div className="text-xs text-stone-400">правильно</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="bg-stone-50 border border-stone-200 rounded-xl p-6 mb-4">
+            <p className="text-center text-stone-600">
+              {quizArchived ? "Квиз архивирован." : "Квиз завершён."}
+            </p>
+          </div>
+        )}
+
+        {/* Кнопка архивировать только для завершенных */}
+        {!quizArchived && (
           <div className="text-center">
             <button
               type="button"
@@ -396,7 +444,7 @@ export default function Game() {
               📦 Архивировать квиз
             </button>
           </div>
-        </div>
+        )}
       </div>
     );
   }
