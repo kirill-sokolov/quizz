@@ -384,7 +384,7 @@ export default function Game() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <Link to="/" className="text-amber-600 hover:text-amber-700 font-medium">
+        <Link to="/admin" className="text-amber-600 hover:text-amber-700 font-medium">
           ← Квизы
         </Link>
         <h1 className="text-xl font-semibold text-stone-800">
