@@ -37,7 +37,7 @@ export interface GameStateResponse {
   id: number;
   quizId: number;
   currentQuestionId: number | null;
-  currentSlide: "question" | "timer" | "answer";
+  currentSlide: "question" | "timer" | "answer" | "video_warning" | "video_intro";
   timerStartedAt: string | null;
   status: "lobby" | "playing" | "finished";
   question: {

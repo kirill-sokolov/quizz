@@ -1,43 +1,10 @@
 import { Bot, Context, InlineKeyboard } from "grammy";
-import { api, Quiz } from "../api-client.js";
+import { api } from "../api-client.js";
 import { getState, setState } from "../state.js";
 
 const ANSWER_LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 export function registerCaptainHandlers(bot: Bot) {
-  // "Я капитан" button → look for active quizzes
-  bot.callbackQuery("role:captain", async (ctx) => {
-    await ctx.answerCallbackQuery();
-    const chatId = ctx.chat!.id;
-
-    let quizzes: Quiz[];
-    try {
-      quizzes = await api.getActiveQuizzes();
-    } catch {
-      await ctx.reply("Ошибка соединения с сервером. Попробуй позже.");
-      return;
-    }
-
-    if (quizzes.length === 0) {
-      await ctx.reply("Сейчас нет активных квизов. Попробуй позже.");
-      return;
-    }
-
-    if (quizzes.length === 1) {
-      const quiz = quizzes[0];
-      setState(chatId, { step: "awaiting_name", quizId: quiz.id });
-      await ctx.reply(`Найден квиз «${quiz.title}». Введи название команды:`);
-      return;
-    }
-
-    // Multiple active quizzes — show buttons
-    const kb = new InlineKeyboard();
-    for (const quiz of quizzes) {
-      kb.text(quiz.title, `pick_quiz:${quiz.id}`).row();
-    }
-    await ctx.reply("Выбери квиз:", { reply_markup: kb });
-  });
-
   // Pick quiz from list of multiple
   bot.callbackQuery(/^pick_quiz:/, async (ctx) => {
     await ctx.answerCallbackQuery();
