@@ -47,6 +47,7 @@ export default function TVSlideBg({ imageUrl, videoUrl, children }) {
           <video
             ref={videoRef}
             src={videoSrc}
+            autoPlay
             controls
             className="w-full max-w-4xl aspect-video"
             style={{ maxHeight: "80vh" }}
