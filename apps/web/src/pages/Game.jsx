@@ -378,7 +378,12 @@ export default function Game() {
   const slideOrder = getSlideOrder(currentQuestion);
   const slideIndex = slideOrder.indexOf(currentSlide);
   const canPrevSlide = slideIndex > 0;
-  const canNextSlide = slideIndex < slideOrder.length - 1;
+
+  // Блокируем кнопку ▶ на таймере, пока не все засабмитили
+  const allTeamsSubmitted = activeTeams.length === 0 || activeTeams.every(t => submittedTeamIds.has(t.id));
+  const isTimerSlide = currentSlide === SLIDE_TYPES.TIMER;
+  const canNextSlide = slideIndex < slideOrder.length - 1 && (!isTimerSlide || allTeamsSubmitted);
+
   const hasNextQuestion = currentIndex < totalQuestions;
 
   return (

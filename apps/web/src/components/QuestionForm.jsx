@@ -44,6 +44,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   const [options, setOptions] = useState(ensureFourOptions(question?.options));
   const [correctAnswer, setCorrectAnswer] = useState(question?.correctAnswer ?? "A");
   const [timeLimitSec, setTimeLimitSec] = useState(question?.timeLimitSec ?? 30);
+  const [timerPosition, setTimerPosition] = useState(question?.timerPosition ?? "center");
   const [slides, setSlides] = useState(() => getSlides(question));
   const [hasVideoIntro, setHasVideoIntro] = useState(() => {
     return question?.slides?.some(s => VIDEO_SLIDE_TYPES.includes(s.type)) ?? false;
@@ -57,6 +58,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     setOptions(ensureFourOptions(question.options));
     setCorrectAnswer(question.correctAnswer ?? "A");
     setTimeLimitSec(question.timeLimitSec ?? 30);
+    setTimerPosition(question.timerPosition ?? "center");
     setSlides(getSlides(question));
     setHasVideoIntro(question?.slides?.some(s => VIDEO_SLIDE_TYPES.includes(s.type)) ?? false);
   }, [question?.id]);
@@ -132,6 +134,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         options,
         correctAnswer,
         timeLimitSec,
+        timerPosition,
         orderNum: question?.orderNum,
         slides: slides.map((s) => ({
           id: s.id,
@@ -191,7 +194,6 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         </div>
         <div>
           <label className="block text-sm font-medium text-stone-600 mb-1">Время (сек)</label>
-          {/*todo:*/}
           <input
             type="number"
             min={3}
@@ -200,6 +202,24 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
             onChange={(e) => setTimeLimitSec(Number(e.target.value) || 30)}
             className="w-24 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
           />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-stone-600 mb-1">Позиция таймера</label>
+          <select
+            value={timerPosition}
+            onChange={(e) => setTimerPosition(e.target.value)}
+            className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+          >
+            <option value="center">Центр</option>
+            <option value="top">Верх</option>
+            <option value="bottom">Низ</option>
+            <option value="left">Лево</option>
+            <option value="right">Право</option>
+            <option value="top-left">Верх-лево</option>
+            <option value="top-right">Верх-право</option>
+            <option value="bottom-left">Низ-лево</option>
+            <option value="bottom-right">Низ-право</option>
+          </select>
         </div>
       </div>
 

@@ -9,7 +9,9 @@ import {
   jsonb,
   unique,
 } from "drizzle-orm/pg-core";
-import { SLIDE_TYPES } from "../types/slide.js";
+
+// Типы слайдов - определены здесь для использования drizzle-kit
+const SLIDE_TYPES = ["video_warning", "video_intro", "question", "timer", "answer"] as const;
 
 export const quizzes = pgTable("quizzes", {
   id: serial("id").primaryKey(),
@@ -31,6 +33,11 @@ export const questions = pgTable("questions", {
   options: jsonb("options").$type<string[]>().notNull().default([]),
   correctAnswer: text("correct_answer").notNull().default(""),
   timeLimitSec: integer("time_limit_sec").notNull().default(30),
+  timerPosition: text("timer_position", {
+    enum: ["center", "top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"],
+  })
+    .notNull()
+    .default("center"),
 });
 
 export const slides = pgTable("slides", {

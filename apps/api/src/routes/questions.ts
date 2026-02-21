@@ -35,6 +35,7 @@ export async function questionsRoutes(app: FastifyInstance) {
       options?: string[];
       correctAnswer?: string;
       timeLimitSec?: number;
+      timerPosition?: string;
     };
   }>(
     "/api/quizzes/:id/questions",
@@ -58,6 +59,7 @@ export async function questionsRoutes(app: FastifyInstance) {
         options: req.body.options ?? [],
         correctAnswer: req.body.correctAnswer ?? "",
         timeLimitSec: req.body.timeLimitSec ?? 30,
+        timerPosition: req.body.timerPosition ?? "center",
       })
       .returning();
 
@@ -80,6 +82,7 @@ export async function questionsRoutes(app: FastifyInstance) {
       options?: string[];
       correctAnswer?: string;
       timeLimitSec?: number;
+      timerPosition?: string;
       orderNum?: number;
       slides?: Array<{
         id: number | null;

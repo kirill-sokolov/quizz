@@ -28,12 +28,12 @@ function useAlarm(playAtZero) {
       return;
     }
 
-    // 10 groups × 3 beeps — loud, insistent alarm
+    // ~4 seconds of alarm: 7 groups × 3 beeps each
     const BEEP_DUR = 0.13;   // seconds per beep
     const BEEP_GAP = 0.07;   // gap between beeps in a group
     const GROUP_GAP = 0.40;  // pause between groups
     const PER_GROUP = 3;
-    const GROUPS = 100;
+    const GROUPS = 7;        // 7 groups × (3×0.13 + 2×0.07 + 0.40) ≈ 4.2 sec
 
     let t = ctx.currentTime + 0.05;
     for (let g = 0; g < GROUPS; g++) {
@@ -69,12 +69,50 @@ function useAlarm(playAtZero) {
   }, [playAtZero]);
 }
 
+// Звук тика каждую секунду
+function useTickSound(secondsLeft, isDone) {
+  const prevSecondsRef = useRef(null);
+
+  useEffect(() => {
+    if (isDone || secondsLeft == null || secondsLeft === prevSecondsRef.current) return;
+
+    prevSecondsRef.current = secondsLeft;
+
+    // Воспроизводим тик только если таймер идет
+    if (secondsLeft > 0 && secondsLeft < 100) {
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        // Короткий клик
+        osc.frequency.setValueAtTime(1200, ctx.currentTime);
+        gain.gain.setValueAtTime(0, ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+        gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.05);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.05);
+
+        setTimeout(() => ctx.close(), 100);
+      } catch (_) {
+        // Ignore audio errors
+      }
+    }
+  }, [secondsLeft, isDone]);
+}
+
 export default function TVTimer({ question, startedAt, slides }) {
   const slide = getSlideByType(slides, SLIDE_TYPES.TIMER);
   const limitSec = question?.timeLimitSec ?? 30;
+  const timerPosition = question?.timerPosition ?? "center";
   const [secondsLeft, setSecondsLeft] = useState(null);
   const isDone = secondsLeft === 0;
   useAlarm(isDone);
+  useTickSound(secondsLeft, isDone);
 
   useEffect(() => {
     if (!startedAt) {
@@ -96,9 +134,24 @@ export default function TVTimer({ question, startedAt, slides }) {
   if (progress >= 0.66) colorClass = "text-red-500";
   else if (progress >= 0.33) colorClass = "text-yellow-400";
 
+  // Определяем CSS классы для позиционирования
+  const positionClasses = {
+    center: "items-center justify-center",
+    top: "items-start justify-center pt-16",
+    bottom: "items-end justify-center pb-16",
+    left: "items-center justify-start pl-16",
+    right: "items-center justify-end pr-16",
+    "top-left": "items-start justify-start pt-16 pl-16",
+    "top-right": "items-start justify-end pt-16 pr-16",
+    "bottom-left": "items-end justify-start pb-16 pl-16",
+    "bottom-right": "items-end justify-end pb-16 pr-16",
+  };
+
+  const positionClass = positionClasses[timerPosition] || positionClasses.center;
+
   return (
     <TVSlideBg imageUrl={slide?.imageUrl} videoUrl={slide?.videoUrl}>
-      <div className="absolute inset-0 flex items-center justify-center">
+      <div className={`absolute inset-0 flex ${positionClass}`}>
         {isDone ? (
           <div className="flex flex-col items-center gap-6">
             <div

@@ -65,6 +65,7 @@ export default function QuizEdit() {
         options: payload.options,
         correctAnswer: payload.correctAnswer,
         timeLimitSec: payload.timeLimitSec,
+        timerPosition: payload.timerPosition,
         orderNum: payload.orderNum,
         ...(slideUpdates.length > 0 && { slides: slideUpdates }),
       });
@@ -75,6 +76,7 @@ export default function QuizEdit() {
         options: payload.options,
         correctAnswer: payload.correctAnswer,
         timeLimitSec: payload.timeLimitSec,
+        timerPosition: payload.timerPosition,
       });
       setAdding(false);
     }
