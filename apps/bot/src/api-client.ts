@@ -56,6 +56,23 @@ export interface Answer {
   answerText: string;
 }
 
+export interface TeamDetails {
+  teamId: number;
+  teamName: string;
+  totalCorrect: number;
+  totalQuestions: number;
+  details: Array<{
+    questionId: number;
+    questionText: string;
+    options: string[];
+    teamAnswer: string | null;
+    teamAnswerText: string | null;
+    correctAnswer: string;
+    correctAnswerText: string;
+    isCorrect: boolean;
+  }>;
+}
+
 export const api = {
   getActiveQuizzes(): Promise<Quiz[]> {
     return request<Quiz[]>("/api/quizzes/active");
@@ -93,5 +110,9 @@ export const api = {
 
   getAnswers(questionId: number): Promise<Answer[]> {
     return request<Answer[]>(`/api/questions/${questionId}/answers`);
+  },
+
+  getTeamDetails(quizId: number, teamId: number): Promise<TeamDetails> {
+    return request<TeamDetails>(`/api/game/results/${quizId}/${teamId}`);
   },
 };

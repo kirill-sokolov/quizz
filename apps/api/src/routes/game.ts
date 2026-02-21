@@ -11,6 +11,7 @@ import {
   getRemind,
   finishGame,
   getResults,
+  getTeamDetails,
   resetToFirstQuestion,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
@@ -134,6 +135,16 @@ export async function gameRoutes(app: FastifyInstance) {
       const quizId = Number(req.params.quizId);
       const results = await getResults(quizId);
       return results;
+    }
+  );
+
+  app.get<{ Params: { quizId: string; teamId: string } }>(
+    "/api/game/results/:quizId/:teamId",
+    async (req, reply) => {
+      const quizId = Number(req.params.quizId);
+      const teamId = Number(req.params.teamId);
+      const details = await getTeamDetails(quizId, teamId);
+      return details;
     }
   );
 }

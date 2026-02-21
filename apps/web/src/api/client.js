@@ -121,6 +121,7 @@ export const gameApi = {
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
   getResults: (quizId) => request(`/game/results/${quizId}`),
+  getTeamDetails: (quizId, teamId) => request(`/game/results/${quizId}/${teamId}`),
 };
 
 export const teamsApi = {

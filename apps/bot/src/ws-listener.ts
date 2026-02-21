@@ -234,14 +234,40 @@ async function onQuizFinished(
   // Clean up tracking state
   lastQuestionId.delete(data.quizId);
 
+  // Overall results
   const lines = data.results.map(
     (r, i) => `${i + 1}. ${r.name} — ${r.correct}/${r.total} правильных`
   );
-  const text = ["🏆 Квиз окончен! Результаты:", "", ...lines].join("\n");
+  const overallText = ["🏆 Квиз окончен! Результаты:", "", ...lines].join("\n");
 
   for (const user of registered) {
     try {
-      await bot.api.sendMessage(user.chatId, text);
+      // Send overall results
+      await bot.api.sendMessage(user.chatId, overallText);
+
+      // Get and send detailed results for this team
+      const teamDetails = await api.getTeamDetails(data.quizId, user.teamId);
+      const place = data.results.findIndex((r) => r.teamId === user.teamId) + 1;
+
+      const detailsLines = [
+        `\n📊 Детальные результаты вашей команды "${teamDetails.teamName}":`,
+        `🏅 Место: ${place}`,
+        `✅ Правильно: ${teamDetails.totalCorrect}/${teamDetails.totalQuestions}`,
+        "",
+        ...teamDetails.details.map((d, idx) => {
+          const icon = d.isCorrect ? "✅" : "❌";
+          const answer = d.teamAnswer
+            ? `${d.teamAnswer} (${d.teamAnswerText})`
+            : "Не ответили";
+          let line = `${idx + 1}. ${icon} ${d.questionText}\nВаш ответ: ${answer}`;
+          if (!d.isCorrect) {
+            line += `\nПравильный ответ: ${d.correctAnswer} (${d.correctAnswerText})`;
+          }
+          return line;
+        }),
+      ].join("\n");
+
+      await bot.api.sendMessage(user.chatId, detailsLines);
     } catch (err) {
       console.error(`Failed to send results to ${user.chatId}:`, err);
     }

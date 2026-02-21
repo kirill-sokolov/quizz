@@ -132,6 +132,9 @@ export default function Game() {
   const quizId = Number(id);
   const navigate = useNavigate();
   const wsRef = useRef(null);
+  const [selectedTeam, setSelectedTeam] = useState(null);
+  const [teamDetails, setTeamDetails] = useState(null);
+  const [loadingDetails, setLoadingDetails] = useState(false);
   const {
     quiz,
     state,
@@ -249,6 +252,24 @@ export default function Game() {
     if (!confirm("Архивировать квиз? Он больше не будет показываться на TV.")) return;
     await quizzesApi.update(quizId, { status: "archived" });
     navigate("/admin");
+  };
+
+  const handleShowDetails = async (teamId) => {
+    setSelectedTeam(teamId);
+    setLoadingDetails(true);
+    try {
+      const details = await gameApi.getTeamDetails(quizId, teamId);
+      setTeamDetails(details);
+    } catch (err) {
+      console.error("Failed to load team details:", err);
+    } finally {
+      setLoadingDetails(false);
+    }
+  };
+
+  const handleCloseDetails = () => {
+    setSelectedTeam(null);
+    setTeamDetails(null);
   };
 
   const handleResetToFirst = async () => {
@@ -415,11 +436,20 @@ export default function Game() {
                       {result.correct} из {result.total} правильных ответов
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-green-600">
-                      {result.correct}
+                  <div className="text-right flex items-center gap-3">
+                    <div>
+                      <div className="text-xl font-bold text-green-600">
+                        {result.correct}
+                      </div>
+                      <div className="text-xs text-stone-400">правильно</div>
                     </div>
-                    <div className="text-xs text-stone-400">правильно</div>
+                    <button
+                      type="button"
+                      onClick={() => handleShowDetails(result.teamId)}
+                      className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+                    >
+                      Подробнее
+                    </button>
                   </div>
                 </div>
               ))}
@@ -443,6 +473,98 @@ export default function Game() {
             >
               📦 Архивировать квиз
             </button>
+          </div>
+        )}
+
+        {/* Модальное окно с детальными результатами */}
+        {selectedTeam && (
+          <div
+            className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+            onClick={handleCloseDetails}
+          >
+            <div
+              className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {loadingDetails ? (
+                <p className="text-center text-stone-500">Загрузка...</p>
+              ) : teamDetails ? (
+                <>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-xl font-semibold text-stone-800">
+                      {teamDetails.teamName}
+                    </h2>
+                    <button
+                      type="button"
+                      onClick={handleCloseDetails}
+                      className="text-stone-400 hover:text-stone-600 text-2xl"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  <div className="mb-6 p-4 bg-amber-50 rounded-lg">
+                    <p className="text-center text-lg">
+                      <span className="font-bold text-green-600">
+                        {teamDetails.totalCorrect}
+                      </span>{" "}
+                      из {teamDetails.totalQuestions} правильных ответов
+                    </p>
+                  </div>
+                  <div className="space-y-4">
+                    {teamDetails.details.map((detail, idx) => (
+                      <div
+                        key={detail.questionId}
+                        className={`p-4 rounded-lg border-2 ${
+                          detail.isCorrect
+                            ? "bg-green-50 border-green-200"
+                            : "bg-red-50 border-red-200"
+                        }`}
+                      >
+                        <div className="flex items-start gap-3 mb-2">
+                          <span className="font-bold text-stone-700">
+                            #{idx + 1}
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium text-stone-800 mb-2">
+                              {detail.questionText}
+                            </p>
+                            <div className="text-sm space-y-1">
+                              <div>
+                                <span className="text-stone-600">Ответ команды: </span>
+                                <span
+                                  className={`font-semibold ${
+                                    detail.isCorrect
+                                      ? "text-green-700"
+                                      : "text-red-700"
+                                  }`}
+                                >
+                                  {detail.teamAnswer
+                                    ? `${detail.teamAnswer} (${detail.teamAnswerText})`
+                                    : "Не ответили"}
+                                </span>
+                              </div>
+                              {!detail.isCorrect && (
+                                <div>
+                                  <span className="text-stone-600">
+                                    Правильный ответ:{" "}
+                                  </span>
+                                  <span className="font-semibold text-green-700">
+                                    {detail.correctAnswer} ({detail.correctAnswerText})
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-2xl">
+                            {detail.isCorrect ? "✅" : "❌"}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </div>
           </div>
         )}
       </div>
@@ -628,6 +750,98 @@ export default function Game() {
           ))}
         </div>
       </div>
+
+      {/* Модальное окно с детальными результатами */}
+      {selectedTeam && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseDetails}
+        >
+          <div
+            className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {loadingDetails ? (
+              <p className="text-center text-stone-500">Загрузка...</p>
+            ) : teamDetails ? (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-stone-800">
+                    {teamDetails.teamName}
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleCloseDetails}
+                    className="text-stone-400 hover:text-stone-600 text-2xl"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="mb-6 p-4 bg-amber-50 rounded-lg">
+                  <p className="text-center text-lg">
+                    <span className="font-bold text-green-600">
+                      {teamDetails.totalCorrect}
+                    </span>{" "}
+                    из {teamDetails.totalQuestions} правильных ответов
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  {teamDetails.details.map((detail, idx) => (
+                    <div
+                      key={detail.questionId}
+                      className={`p-4 rounded-lg border-2 ${
+                        detail.isCorrect
+                          ? "bg-green-50 border-green-200"
+                          : "bg-red-50 border-red-200"
+                      }`}
+                    >
+                      <div className="flex items-start gap-3 mb-2">
+                        <span className="font-bold text-stone-700">
+                          #{idx + 1}
+                        </span>
+                        <div className="flex-1">
+                          <p className="font-medium text-stone-800 mb-2">
+                            {detail.questionText}
+                          </p>
+                          <div className="text-sm space-y-1">
+                            <div>
+                              <span className="text-stone-600">Ответ команды: </span>
+                              <span
+                                className={`font-semibold ${
+                                  detail.isCorrect
+                                    ? "text-green-700"
+                                    : "text-red-700"
+                                }`}
+                              >
+                                {detail.teamAnswer
+                                  ? `${detail.teamAnswer} (${detail.teamAnswerText})`
+                                  : "Не ответили"}
+                              </span>
+                            </div>
+                            {!detail.isCorrect && (
+                              <div>
+                                <span className="text-stone-600">
+                                  Правильный ответ:{" "}
+                                </span>
+                                <span className="font-semibold text-green-700">
+                                  {detail.correctAnswer} ({detail.correctAnswerText})
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-2xl">
+                          {detail.isCorrect ? "✅" : "❌"}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

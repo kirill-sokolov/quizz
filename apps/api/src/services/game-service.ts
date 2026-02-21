@@ -309,6 +309,69 @@ export async function getRemind(quizId: number, teamId?: number) {
   return notSubmitted;
 }
 
+export async function getTeamDetails(quizId: number, teamId: number) {
+  const allQuestions = await db
+    .select()
+    .from(questions)
+    .where(eq(questions.quizId, quizId))
+    .orderBy(asc(questions.orderNum));
+
+  const [team] = await db
+    .select()
+    .from(teams)
+    .where(eq(teams.id, teamId));
+
+  if (!team) {
+    throw new Error("Team not found");
+  }
+
+  const teamAnswers = await db
+    .select()
+    .from(answers)
+    .where(eq(answers.teamId, teamId));
+
+  const answersByQuestion = new Map(
+    teamAnswers.map((a) => [a.questionId, a.answerText])
+  );
+
+  const details = allQuestions.map((q) => {
+    const teamAnswer = answersByQuestion.get(q.id) || null;
+    const isCorrect = teamAnswer === q.correctAnswer;
+
+    // Получить текст варианта по букве
+    const getAnswerText = (letter: string | null) => {
+      if (!letter) return null;
+      const index = letter.charCodeAt(0) - 'A'.charCodeAt(0);
+      return q.options[index] || letter;
+    };
+
+    const teamAnswerText = getAnswerText(teamAnswer);
+    const correctAnswerText = getAnswerText(q.correctAnswer);
+
+    return {
+      questionId: q.id,
+      questionText: q.text,
+      options: q.options,
+      teamAnswer,
+      teamAnswerText,
+      correctAnswer: q.correctAnswer,
+      correctAnswerText,
+      isCorrect,
+    };
+  });
+
+  const totalCorrect = details.filter((d) => d.isCorrect).length;
+  const totalQuestions = allQuestions.length;
+
+  return {
+    teamId: team.id,
+    teamName: team.name,
+    totalCorrect,
+    totalQuestions,
+    details,
+  };
+}
+
 export async function getResults(quizId: number) {
   const allQuestions = await db
     .select()
