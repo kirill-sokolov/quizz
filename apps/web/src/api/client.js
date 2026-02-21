@@ -115,6 +115,11 @@ export const gameApi = {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
+  archive: (quizId) =>
+    request("/game/archive", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
   resetToFirst: (quizId) =>
     request("/game/reset-to-first", {
       method: "POST",

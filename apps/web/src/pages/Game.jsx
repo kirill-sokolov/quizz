@@ -250,7 +250,7 @@ export default function Game() {
 
   const handleArchive = async () => {
     if (!confirm("Архивировать квиз? Он больше не будет показываться на TV.")) return;
-    await quizzesApi.update(quizId, { status: "archived" });
+    await gameApi.archive(quizId);
     navigate("/admin");
   };
 

@@ -185,6 +185,10 @@ export default function TV() {
               setResults(data.results ?? []);
               setState((prev) => (prev ? { ...prev, status: "finished" } : null));
               break;
+            case "quiz_archived":
+              console.log("quiz_archived → reloading quiz");
+              loadQuiz(quizId);
+              break;
             default:
               break;
           }
@@ -264,7 +268,7 @@ export default function TV() {
         className="tv-screen bg-black overflow-hidden"
         style={{ ...screenStyle, cursor: "none" }}
       >
-      {state?.status === "finished" && results !== null ? (
+      {state?.status === "finished" && quiz?.status !== "archived" && results !== null ? (
         <TVResults results={results} />
       ) : state?.status === "playing" && currentQuestion ? (
         <>

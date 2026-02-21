@@ -416,6 +416,17 @@ export async function getResults(quizId: number) {
   return results;
 }
 
+export async function archiveQuiz(quizId: number) {
+  await db
+    .update(quizzes)
+    .set({ status: "archived" })
+    .where(eq(quizzes.id, quizId));
+
+  broadcast("quiz_archived", { quizId });
+
+  return { success: true };
+}
+
 export async function finishGame(quizId: number) {
   await db
     .update(quizzes)

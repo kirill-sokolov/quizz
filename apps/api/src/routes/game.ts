@@ -10,6 +10,7 @@ import {
   setSlide,
   getRemind,
   finishGame,
+  archiveQuiz,
   getResults,
   getTeamDetails,
   resetToFirstQuestion,
@@ -117,6 +118,15 @@ export async function gameRoutes(app: FastifyInstance) {
     async (req, reply) => {
       const results = await finishGame(req.body.quizId);
       return results;
+    }
+  );
+
+  app.post<{ Body: { quizId: number } }>(
+    "/api/game/archive",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      const result = await archiveQuiz(req.body.quizId);
+      return result;
     }
   );
 
