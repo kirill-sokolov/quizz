@@ -1,4 +1,5 @@
 import TVSlideBg from "./TVSlideBg";
+import { SLIDE_TYPES } from "../../constants/slides";
 
 function getSlideByType(slides, type) {
   if (!Array.isArray(slides)) return null;
@@ -6,7 +7,7 @@ function getSlideByType(slides, type) {
 }
 
 export default function TVVideoWarning({ currentIndex, totalQuestions, slides }) {
-  const slide = getSlideByType(slides, "video_warning");
+  const slide = getSlideByType(slides, SLIDE_TYPES.VIDEO_WARNING);
 
   return (
     <TVSlideBg imageUrl={slide?.imageUrl}>

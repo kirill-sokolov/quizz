@@ -1,4 +1,5 @@
 import TVSlideBg from "./TVSlideBg";
+import { SLIDE_TYPES } from "../../constants/slides";
 
 const LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -8,7 +9,7 @@ function getSlideByType(slides, type) {
 }
 
 export default function TVAnswer({ question, currentIndex, totalQuestions, slides }) {
-  const slide = getSlideByType(slides, "answer");
+  const slide = getSlideByType(slides, SLIDE_TYPES.ANSWER);
   const options = question?.options ?? [];
   const correct = question?.correctAnswer ?? "";
 

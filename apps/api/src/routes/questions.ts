@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import { questions, slides } from "../db/schema.js";
 import { eq, asc } from "drizzle-orm";
 import { authenticateToken } from "../middleware/auth.js";
+import { BASE_SLIDE_TYPES, type SlideType } from "../types/slide.js";
 
 export async function questionsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>(
@@ -60,9 +61,8 @@ export async function questionsRoutes(app: FastifyInstance) {
       })
       .returning();
 
-    const slideTypes = ["question", "timer", "answer"] as const;
     const createdSlides = [];
-    for (const type of slideTypes) {
+    for (const type of BASE_SLIDE_TYPES) {
       const [slide] = await db
         .insert(slides)
         .values({ questionId: question.id, type })
@@ -83,7 +83,7 @@ export async function questionsRoutes(app: FastifyInstance) {
       orderNum?: number;
       slides?: Array<{
         id: number | null;
-        type: "video_warning" | "video_intro" | "question" | "timer" | "answer";
+        type: SlideType;
         imageUrl?: string | null;
         videoUrl?: string | null;
       }>;

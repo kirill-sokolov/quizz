@@ -13,6 +13,7 @@ import TVAnswer from "../components/TV/TVAnswer";
 import TVResults from "../components/TV/TVResults";
 import TVVideoWarning from "../components/TV/TVVideoWarning";
 import TVVideoIntro from "../components/TV/TVVideoIntro";
+import { SLIDE_TYPES } from "../constants/slides";
 
 const W = 1920;
 const H = 1080;
@@ -190,7 +191,7 @@ export default function TV() {
     ? questions.findIndex((q) => q.id === currentQuestion.id) + 1
     : 0;
   const totalQuestions = questions.length;
-  const slide = state?.currentSlide || "question";
+  const slide = state?.currentSlide || SLIDE_TYPES.QUESTION;
 
   return (
     <div className="tv-viewport" onClick={toggle}>
@@ -202,21 +203,21 @@ export default function TV() {
         <TVResults results={results} />
       ) : state?.status === "playing" && currentQuestion ? (
         <>
-          {slide === "video_warning" && (
+          {slide === SLIDE_TYPES.VIDEO_WARNING && (
             <TVVideoWarning
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
               slides={currentQuestion.slides}
             />
           )}
-          {slide === "video_intro" && (
+          {slide === SLIDE_TYPES.VIDEO_INTRO && (
             <TVVideoIntro
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
               slides={currentQuestion.slides}
             />
           )}
-          {slide === "question" && (
+          {slide === SLIDE_TYPES.QUESTION && (
             <TVQuestion
               question={currentQuestion}
               currentIndex={currentIndex}
@@ -224,14 +225,14 @@ export default function TV() {
               slides={currentQuestion.slides}
             />
           )}
-          {slide === "timer" && (
+          {slide === SLIDE_TYPES.TIMER && (
             <TVTimer
               question={currentQuestion}
               startedAt={state.timerStartedAt}
               slides={currentQuestion.slides}
             />
           )}
-          {slide === "answer" && (
+          {slide === SLIDE_TYPES.ANSWER && (
             <TVAnswer
               question={currentQuestion}
               currentIndex={currentIndex}

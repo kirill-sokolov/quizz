@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { importApi, getMediaUrl } from "../api/client";
+import { BASE_SLIDE_TYPES } from "../constants/slides";
 
 const ANSWER_LABELS = ["A", "B", "C", "D"];
 
@@ -129,7 +130,7 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
 
                 {/* Slide previews */}
                 <div className="flex gap-3">
-                  {["question", "timer", "answer"].map((type) => {
+                  {BASE_SLIDE_TYPES.map((type) => {
                     const url = item.slides[type];
                     return (
                       <div key={type} className="text-center">

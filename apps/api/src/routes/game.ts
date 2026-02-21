@@ -12,6 +12,7 @@ import {
   resetToFirstQuestion,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
+import type { SlideType } from "../types/slide.js";
 
 export async function gameRoutes(app: FastifyInstance) {
   app.get<{ Params: { quizId: string } }>(
@@ -69,7 +70,7 @@ export async function gameRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: { quizId: number; slide: "question" | "timer" | "answer" } }>(
+  app.post<{ Body: { quizId: number; slide: SlideType } }>(
     "/api/game/set-slide",
     { preHandler: authenticateToken },
     async (req, reply) => {

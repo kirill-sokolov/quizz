@@ -8,25 +8,20 @@ import {
   answersApi,
   getWsUrl,
 } from "../api/client";
+import { SLIDE_TYPES, BASE_SLIDE_TYPES, FULL_SLIDE_TYPES, TV_SLIDE_LABELS } from "../constants/slides";
 
-const SLIDE_LABELS = {
-  video_warning: "Предупреждение",
-  video_intro: "Видео",
-  question: "Вопрос",
-  timer: "Таймер",
-  answer: "Ответ"
-};
+const SLIDE_LABELS = TV_SLIDE_LABELS;
 
 function getSlideOrder(question) {
-  if (!question?.slides) return ["question", "timer", "answer"];
+  if (!question?.slides) return BASE_SLIDE_TYPES;
   const types = question.slides.map(s => s.type);
-  const hasVideoWarning = types.includes("video_warning");
-  const hasVideoIntro = types.includes("video_intro");
+  const hasVideoWarning = types.includes(SLIDE_TYPES.VIDEO_WARNING);
+  const hasVideoIntro = types.includes(SLIDE_TYPES.VIDEO_INTRO);
 
   const order = [];
-  if (hasVideoWarning) order.push("video_warning");
-  if (hasVideoIntro) order.push("video_intro");
-  order.push("question", "timer", "answer");
+  if (hasVideoWarning) order.push(SLIDE_TYPES.VIDEO_WARNING);
+  if (hasVideoIntro) order.push(SLIDE_TYPES.VIDEO_INTRO);
+  order.push(SLIDE_TYPES.QUESTION, SLIDE_TYPES.TIMER, SLIDE_TYPES.ANSWER);
   return order;
 }
 
@@ -379,7 +374,7 @@ export default function Game() {
     );
   }
 
-  const currentSlide = state.currentSlide || "question";
+  const currentSlide = state.currentSlide || SLIDE_TYPES.QUESTION;
   const slideOrder = getSlideOrder(currentQuestion);
   const slideIndex = slideOrder.indexOf(currentSlide);
   const canPrevSlide = slideIndex > 0;
@@ -447,7 +442,7 @@ export default function Game() {
             </div>
           </div>
 
-          {currentSlide === "timer" && currentQuestion && (
+          {currentSlide === SLIDE_TYPES.TIMER && currentQuestion && (
             <TimerDisplay
               startedAt={state.timerStartedAt}
               limitSec={currentQuestion.timeLimitSec}

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import TVSlideBg from "./TVSlideBg";
+import { SLIDE_TYPES } from "../../constants/slides";
 
 function getSlideByType(slides, type) {
   if (!Array.isArray(slides)) return null;
@@ -69,7 +70,7 @@ function useAlarm(playAtZero) {
 }
 
 export default function TVTimer({ question, startedAt, slides }) {
-  const slide = getSlideByType(slides, "timer");
+  const slide = getSlideByType(slides, SLIDE_TYPES.TIMER);
   const limitSec = question?.timeLimitSec ?? 30;
   const [secondsLeft, setSecondsLeft] = useState(null);
   const isDone = secondsLeft === 0;

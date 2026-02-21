@@ -1,14 +1,8 @@
 import { useState, useEffect } from "react";
 import { getMediaUrl } from "../api/client";
+import { SLIDE_TYPES, BASE_SLIDE_TYPES, FULL_SLIDE_TYPES, VIDEO_SLIDE_TYPES, SLIDE_LABELS } from "../constants/slides";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"];
-const SLIDE_LABELS = {
-  video_warning: "Предупреждение: вопрос с видео",
-  video_intro: "Видео перед вопросом",
-  question: "Слайд: вопрос",
-  timer: "Слайд: таймер",
-  answer: "Слайд: ответ"
-};
 
 function ensureFourOptions(options) {
   const arr = Array.isArray(options) ? [...options] : [];
@@ -17,11 +11,12 @@ function ensureFourOptions(options) {
 }
 
 function getSlides(question) {
-  const defaultSlides = [
-    { id: null, type: "question", imageUrl: null, videoUrl: null },
-    { id: null, type: "timer", imageUrl: null, videoUrl: null },
-    { id: null, type: "answer", imageUrl: null, videoUrl: null },
-  ];
+  const defaultSlides = BASE_SLIDE_TYPES.map(type => ({
+    id: null,
+    type,
+    imageUrl: null,
+    videoUrl: null,
+  }));
 
   if (!question?.slides?.length) return defaultSlides;
 
@@ -29,10 +24,8 @@ function getSlides(question) {
   for (const s of question.slides) byType[s.type] = s;
 
   // Если есть video_intro или video_warning, включаем их
-  const hasVideo = byType.video_intro || byType.video_warning;
-  const types = hasVideo
-    ? ["video_warning", "video_intro", "question", "timer", "answer"]
-    : ["question", "timer", "answer"];
+  const hasVideo = byType[SLIDE_TYPES.VIDEO_INTRO] || byType[SLIDE_TYPES.VIDEO_WARNING];
+  const types = hasVideo ? FULL_SLIDE_TYPES : BASE_SLIDE_TYPES;
 
   return types.map((type) => {
     const slide = byType[type];
@@ -53,7 +46,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   const [timeLimitSec, setTimeLimitSec] = useState(question?.timeLimitSec ?? 30);
   const [slides, setSlides] = useState(() => getSlides(question));
   const [hasVideoIntro, setHasVideoIntro] = useState(() => {
-    return question?.slides?.some(s => s.type === "video_intro" || s.type === "video_warning") ?? false;
+    return question?.slides?.some(s => VIDEO_SLIDE_TYPES.includes(s.type)) ?? false;
   });
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(null);
@@ -65,7 +58,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     setCorrectAnswer(question.correctAnswer ?? "A");
     setTimeLimitSec(question.timeLimitSec ?? 30);
     setSlides(getSlides(question));
-    setHasVideoIntro(question?.slides?.some(s => s.type === "video_intro" || s.type === "video_warning") ?? false);
+    setHasVideoIntro(question?.slides?.some(s => VIDEO_SLIDE_TYPES.includes(s.type)) ?? false);
   }, [question?.id]);
 
   const toggleVideoIntro = (enabled) => {
@@ -73,21 +66,21 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     if (enabled) {
       // Add video slides if not present
       setSlides(prev => {
-        const hasWarning = prev.some(s => s.type === "video_warning");
-        const hasIntro = prev.some(s => s.type === "video_intro");
+        const hasWarning = prev.some(s => s.type === SLIDE_TYPES.VIDEO_WARNING);
+        const hasIntro = prev.some(s => s.type === SLIDE_TYPES.VIDEO_INTRO);
         const result = [...prev];
         if (!hasWarning) {
-          result.unshift({ id: null, type: "video_warning", imageUrl: null, videoUrl: null });
+          result.unshift({ id: null, type: SLIDE_TYPES.VIDEO_WARNING, imageUrl: null, videoUrl: null });
         }
         if (!hasIntro) {
-          const insertIndex = result.findIndex(s => s.type === "question");
-          result.splice(insertIndex, 0, { id: null, type: "video_intro", imageUrl: null, videoUrl: null });
+          const insertIndex = result.findIndex(s => s.type === SLIDE_TYPES.QUESTION);
+          result.splice(insertIndex, 0, { id: null, type: SLIDE_TYPES.VIDEO_INTRO, imageUrl: null, videoUrl: null });
         }
         return result;
       });
     } else {
       // Remove video slides
-      setSlides(prev => prev.filter(s => s.type !== "video_warning" && s.type !== "video_intro"));
+      setSlides(prev => prev.filter(s => !VIDEO_SLIDE_TYPES.includes(s.type)));
     }
   };
 
@@ -227,7 +220,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         <label className="block text-sm font-medium text-stone-600 mb-2">Слайды (картинки и видео)</label>
         <div className="space-y-4">
           {slides.map((slide, idx) => {
-            const canHaveVideo = slide.type === "video_intro" || slide.type === "answer";
+            const canHaveVideo = slide.type === SLIDE_TYPES.VIDEO_INTRO || slide.type === SLIDE_TYPES.ANSWER;
             return (
               <div key={slide.type} className="p-3 bg-stone-50 rounded-lg border border-stone-200">
                 <div className="font-medium text-stone-700 mb-2">{SLIDE_LABELS[slide.type]}</div>

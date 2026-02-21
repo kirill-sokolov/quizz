@@ -9,6 +9,7 @@ import {
   jsonb,
   unique,
 } from "drizzle-orm/pg-core";
+import { SLIDE_TYPES } from "../types/slide.js";
 
 export const quizzes = pgTable("quizzes", {
   id: serial("id").primaryKey(),
@@ -37,7 +38,7 @@ export const slides = pgTable("slides", {
   questionId: integer("question_id")
     .notNull()
     .references(() => questions.id, { onDelete: "cascade" }),
-  type: text("type", { enum: ["video_warning", "video_intro", "question", "timer", "answer"] }).notNull(),
+  type: text("type", { enum: SLIDE_TYPES }).notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"),
 });
@@ -80,7 +81,7 @@ export const gameState = pgTable(
       () => questions.id
     ),
     currentSlide: text("current_slide", {
-      enum: ["video_warning", "video_intro", "question", "timer", "answer"],
+      enum: SLIDE_TYPES,
     })
       .notNull()
       .default("question"),

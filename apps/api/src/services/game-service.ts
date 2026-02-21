@@ -9,6 +9,7 @@ import {
 } from "../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
+import type { SlideType } from "../types/slide.js";
 
 function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -231,7 +232,7 @@ export async function nextQuestion(quizId: number) {
 
 export async function setSlide(
   quizId: number,
-  slide: "video_warning" | "video_intro" | "question" | "timer" | "answer"
+  slide: SlideType
 ) {
   const [updated] = await db
     .update(gameState)

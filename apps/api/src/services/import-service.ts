@@ -10,6 +10,7 @@ import { db } from "../db/index.js";
 import { questions, slides } from "../db/schema.js";
 import { eq, asc } from "drizzle-orm";
 import { analyzeImages, type ShrunkImage } from "./llm/index.js";
+import { BASE_SLIDE_TYPES } from "../types/slide.js";
 
 interface ExtractedImage {
   name: string;
@@ -225,7 +226,7 @@ export async function saveImportedQuiz(
       })
       .returning();
 
-    for (const type of ["question", "timer", "answer"] as const) {
+    for (const type of BASE_SLIDE_TYPES) {
       await db.insert(slides).values({
         questionId: question.id,
         type,

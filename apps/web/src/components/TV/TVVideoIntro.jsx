@@ -1,4 +1,5 @@
 import TVSlideBg from "./TVSlideBg";
+import { SLIDE_TYPES } from "../../constants/slides";
 
 function getSlideByType(slides, type) {
   if (!Array.isArray(slides)) return null;
@@ -6,7 +7,7 @@ function getSlideByType(slides, type) {
 }
 
 export default function TVVideoIntro({ currentIndex, totalQuestions, slides }) {
-  const slide = getSlideByType(slides, "video_intro");
+  const slide = getSlideByType(slides, SLIDE_TYPES.VIDEO_INTRO);
 
   return (
     <TVSlideBg imageUrl={slide?.imageUrl} videoUrl={slide?.videoUrl}>
