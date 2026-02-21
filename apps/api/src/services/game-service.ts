@@ -84,12 +84,26 @@ export async function beginGame(quizId: number) {
 
   const currentQuestionId = firstQuestion[0]?.id ?? null;
 
+  // Check if the first question has video slides to determine the starting slide
+  let startingSlide: "video_warning" | "question" = "question";
+  if (currentQuestionId) {
+    const questionSlides = await db
+      .select()
+      .from(slides)
+      .where(eq(slides.questionId, currentQuestionId));
+
+    const hasVideoWarning = questionSlides.some(s => s.type === "video_warning");
+    if (hasVideoWarning) {
+      startingSlide = "video_warning";
+    }
+  }
+
   const [updated] = await db
     .update(gameState)
     .set({
       status: "playing",
       currentQuestionId,
-      currentSlide: "question",
+      currentSlide: startingSlide,
       timerStartedAt: null,
     })
     .where(eq(gameState.quizId, quizId))
@@ -98,7 +112,7 @@ export async function beginGame(quizId: number) {
   broadcast("slide_changed", {
     quizId,
     questionId: currentQuestionId,
-    slide: "question",
+    slide: startingSlide,
   });
 
   return updated;
@@ -184,11 +198,23 @@ export async function nextQuestion(quizId: number) {
     return null;
   }
 
+  // Check if the next question has video slides to determine the starting slide
+  let startingSlide: "video_warning" | "question" = "question";
+  const questionSlides = await db
+    .select()
+    .from(slides)
+    .where(eq(slides.questionId, nextQ.id));
+
+  const hasVideoWarning = questionSlides.some(s => s.type === "video_warning");
+  if (hasVideoWarning) {
+    startingSlide = "video_warning";
+  }
+
   const [updated] = await db
     .update(gameState)
     .set({
       currentQuestionId: nextQ.id,
-      currentSlide: "question",
+      currentSlide: startingSlide,
       timerStartedAt: null,
     })
     .where(eq(gameState.quizId, quizId))
@@ -197,7 +223,7 @@ export async function nextQuestion(quizId: number) {
   broadcast("slide_changed", {
     quizId,
     questionId: nextQ.id,
-    slide: "question",
+    slide: startingSlide,
   });
 
   return updated;
@@ -205,7 +231,7 @@ export async function nextQuestion(quizId: number) {
 
 export async function setSlide(
   quizId: number,
-  slide: "question" | "timer" | "answer"
+  slide: "video_warning" | "video_intro" | "question" | "timer" | "answer"
 ) {
   const [updated] = await db
     .update(gameState)
