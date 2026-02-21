@@ -54,9 +54,9 @@ export default function QuizEdit() {
   const handleSaveQuestion = async (payload) => {
     if (payload.id) {
       const slideUpdates = (payload.slides ?? [])
-        .filter((s) => s.id != null && Number(s.id) > 0)
         .map((s) => ({
-          id: Number(s.id),
+          id: s.id != null && Number(s.id) > 0 ? Number(s.id) : null,
+          type: s.type,
           imageUrl: s.imageUrl != null ? String(s.imageUrl) : null,
           videoUrl: s.videoUrl != null ? String(s.videoUrl) : null,
         }));

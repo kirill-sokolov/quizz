@@ -124,6 +124,12 @@ export async function questionsRoutes(app: FastifyInstance) {
       const existingByType = new Map(existingSlides.map(s => [s.type, s]));
 
       for (const s of slideUpdates) {
+        // Skip slides without a valid type
+        if (!s.type) {
+          console.warn('Skipping slide without type:', s);
+          continue;
+        }
+
         const slideId = typeof s.id === "number" && s.id > 0 ? s.id : null;
         const existing = existingByType.get(s.type);
 
