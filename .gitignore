@@ -2,6 +2,12 @@
 .env
 .env.*
 
+# SSH keys
+**/ed25519
+**/ed25519.pub
+**/*.pem
+**/*.key
+
 # node
 node_modules
 npm-debug.log
