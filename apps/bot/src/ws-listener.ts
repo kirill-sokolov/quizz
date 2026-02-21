@@ -6,9 +6,6 @@ import { api } from "./api-client.js";
 
 const LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
-/** Active timers per quiz, so we can cancel on slide change */
-const activeTimers = new Map<number, NodeJS.Timeout>();
-
 /** Track last known questionId per quiz to detect "first question" = game start */
 const lastQuestionId = new Map<number, number>();
 
@@ -45,14 +42,6 @@ export function startWsListener(bot: Bot) {
   connect();
 }
 
-function clearQuizTimer(quizId: number) {
-  const existing = activeTimers.get(quizId);
-  if (existing) {
-    clearTimeout(existing);
-    activeTimers.delete(quizId);
-  }
-}
-
 async function handleEvent(bot: Bot, event: string, data: any) {
   switch (event) {
     case "slide_changed":
@@ -74,9 +63,6 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
   const registered = getAllRegistered().filter((u) => u.quizId === data.quizId);
   if (registered.length === 0) return;
 
-  // Clear any pending timer for this quiz on any slide change
-  clearQuizTimer(data.quizId);
-
   if (data.slide === "question" && data.questionId) {
     // Detect game start: first question we see for this quiz
     const prevQId = lastQuestionId.get(data.quizId);
@@ -92,7 +78,30 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
     }
     lastQuestionId.set(data.quizId, data.questionId);
 
-    // Set state to awaiting_answer (so text answers work immediately) but do NOT send the question yet
+    // Fetch question data
+    let question;
+    try {
+      const state = await api.getGameState(data.quizId);
+      question = state.question;
+    } catch {
+      return;
+    }
+    if (!question) return;
+
+    const options = question.options || [];
+    const optionLines = options
+      .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
+      .join("\n");
+
+    const text = [
+      `❓ Вопрос`,
+      "",
+      question.text,
+      "",
+      optionLines,
+    ].join("\n");
+
+    // Send question WITHOUT buttons, set awaiting_answer state
     for (const user of registered) {
       setState(user.chatId, {
         step: "awaiting_answer",
@@ -100,23 +109,39 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
         teamId: user.teamId,
         questionId: data.questionId,
       });
+      try {
+        await bot.api.sendMessage(user.chatId, text);
+      } catch (err) {
+        console.error(`Failed to send question to ${user.chatId}:`, err);
+      }
     }
   } else if (data.slide === "timer") {
-    // Fetch game state to get timer info and question data
-    let gameState;
+    // Fetch question data to build answer buttons
+    let question;
     try {
-      gameState = await api.getGameState(data.quizId);
+      const gameState = await api.getGameState(data.quizId);
+      question = gameState.question;
     } catch {
       return;
     }
-
-    const question = gameState.question;
     if (!question) return;
 
-    const timeLimitSec = question.timeLimitSec || 30;
-    const timerStartedAt = gameState.timerStartedAt ? new Date(gameState.timerStartedAt).getTime() : Date.now();
-    const timerEndAt = timerStartedAt + timeLimitSec * 1000;
-    const delayMs = Math.max(0, timerEndAt - Date.now());
+    const options = question.options || [];
+
+    // Build inline keyboard with answer buttons
+    const replyMarkup =
+      options.length >= 2 && options.length <= 8
+        ? (() => {
+            const kb = new InlineKeyboard();
+            const letters = LABELS.slice(0, options.length);
+            for (let i = 0; i < letters.length; i += 2) {
+              kb.text(letters[i], `answer:${letters[i]}`);
+              if (letters[i + 1]) kb.text(letters[i + 1], `answer:${letters[i + 1]}`);
+              if (i + 2 < letters.length) kb.row();
+            }
+            return kb;
+          })()
+        : undefined;
 
     // Ensure awaiting_answer is set for users who may have missed the question slide
     if (data.questionId) {
@@ -133,71 +158,55 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
       }
     }
 
-    // Schedule sending the question + buttons after timer expires
-    const timer = setTimeout(async () => {
-      activeTimers.delete(data.quizId);
-
-      // Re-fetch registered users (may have changed during wait)
-      const currentRegistered = getAllRegistered().filter((u) => u.quizId === data.quizId);
-      if (currentRegistered.length === 0) return;
-
-      const options = question.options || [];
-      const optionLines = options
-        .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
-        .join("\n");
-
-      const text = [
-        `❓ Вопрос`,
-        "",
-        question.text,
-        "",
-        optionLines,
-        "",
-        options.length >= 2 && options.length <= 8
-          ? "Выбери ответ кнопкой или отправь букву:"
-          : "Отправь букву ответа: " + LABELS.slice(0, options.length || 4).join(", "),
-      ].join("\n");
-
-      const replyMarkup =
-        options.length >= 2 && options.length <= 8
-          ? (() => {
-              const kb = new InlineKeyboard();
-              const letters = LABELS.slice(0, options.length);
-              for (let i = 0; i < letters.length; i += 2) {
-                kb.text(letters[i], `answer:${letters[i]}`);
-                if (letters[i + 1]) kb.text(letters[i + 1], `answer:${letters[i + 1]}`);
-                if (i + 2 < letters.length) kb.row();
-              }
-              return kb;
-            })()
-          : undefined;
-
-      for (const user of currentRegistered) {
-        // Only send to users still awaiting answer (skip those who already answered)
-        const st = getState(user.chatId);
-        if (st.step !== "awaiting_answer") continue;
-
-        try {
-          await bot.api.sendMessage(user.chatId, text, {
-            ...(replyMarkup && { reply_markup: replyMarkup }),
-          });
-        } catch (err) {
-          console.error(`Failed to send question to ${user.chatId}:`, err);
-        }
+    // Send "timer started" message with buttons IMMEDIATELY
+    for (const user of registered) {
+      try {
+        await bot.api.sendMessage(user.chatId, "⏱ Время пошло! Отправь ответ.", {
+          ...(replyMarkup && { reply_markup: replyMarkup }),
+        });
+      } catch (err) {
+        console.error(`Failed to send timer to ${user.chatId}:`, err);
       }
-    }, delayMs);
-
-    activeTimers.set(data.quizId, timer);
+    }
   } else if (data.slide === "answer") {
-    // When answer slide is shown, move back to registered (no longer awaiting)
+    // Get correct answer and team answers
+    let correctAnswer = "";
+    let answers: Array<{ teamId: number; answerText: string }> = [];
+    try {
+      const gameState = await api.getGameState(data.quizId);
+      correctAnswer = gameState.question?.correctAnswer || "";
+      if (data.questionId) {
+        answers = await api.getAnswers(data.questionId);
+      }
+    } catch (err) {
+      console.error("Failed to get answers:", err);
+    }
+
+    // Send result to each team and move back to registered
     for (const user of registered) {
       const st = getState(user.chatId);
-      if (st.step === "awaiting_answer") {
+      if (st.step === "awaiting_answer" || st.step === "registered") {
         setState(user.chatId, {
           step: "registered",
           quizId: user.quizId,
           teamId: user.teamId,
         });
+
+        // Find team's answer
+        const teamAnswer = answers.find((a) => a.teamId === user.teamId);
+        if (teamAnswer) {
+          const isCorrect = teamAnswer.answerText === correctAnswer;
+          const icon = isCorrect ? "✅" : "❌";
+          const text = isCorrect
+            ? `Твой ответ: ${teamAnswer.answerText} ${icon} Правильно!`
+            : `Твой ответ: ${teamAnswer.answerText} ${icon} Неправильно. Правильный ответ: ${correctAnswer}`;
+
+          try {
+            await bot.api.sendMessage(user.chatId, text);
+          } catch (err) {
+            console.error(`Failed to send result to ${user.chatId}:`, err);
+          }
+        }
       }
     }
   }
@@ -222,8 +231,7 @@ async function onQuizFinished(
   const registered = getAllRegistered().filter((u) => u.quizId === data.quizId);
   if (registered.length === 0) return;
 
-  // Clean up timer and tracking state
-  clearQuizTimer(data.quizId);
+  // Clean up tracking state
   lastQuestionId.delete(data.quizId);
 
   const lines = data.results.map(

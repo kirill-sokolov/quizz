@@ -8,21 +8,38 @@ export default function TVSlideBg({ imageUrl, videoUrl, children }) {
   const videoRef = useRef(null);
 
   useEffect(() => {
-    if (!videoRef.current || !videoSrc) return;
+    const video = videoRef.current;
+    if (!video || !videoSrc) return;
 
-    // Автоплей при монтировании
-    const playPromise = videoRef.current.play();
-    if (playPromise !== undefined) {
-      playPromise.catch(() => {
-        // Autoplay заблокирован браузером - ничего не делаем
-      });
+    // Сбросить состояние и запустить воспроизведение
+    video.currentTime = 0;
+    video.load();
+
+    // Попытка автоплея после загрузки метаданных
+    const tryPlay = () => {
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(() => {
+          // Autoplay заблокирован браузером
+          console.warn("Video autoplay blocked");
+        });
+      }
+    };
+
+    // Подписываемся на событие загрузки
+    video.addEventListener("loadeddata", tryPlay);
+
+    // Пытаемся сразу, если уже загружено
+    if (video.readyState >= 2) {
+      tryPlay();
     }
 
     // Автостоп при размонтировании
     return () => {
-      if (videoRef.current) {
-        videoRef.current.pause();
-        videoRef.current.currentTime = 0;
+      video.removeEventListener("loadeddata", tryPlay);
+      if (video) {
+        video.pause();
+        video.currentTime = 0;
       }
     };
   }, [videoSrc]);

@@ -24,6 +24,11 @@ function useAlarm(playAtZero) {
     try {
       ctx = new (window.AudioContext || window.webkitAudioContext)();
       ctxRef.current = ctx;
+
+      // Resume AudioContext if suspended (browser autoplay policy)
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => {});
+      }
     } catch (_) {
       return;
     }
@@ -82,6 +87,12 @@ function useTickSound(secondsLeft, isDone) {
     if (secondsLeft > 0 && secondsLeft < 100) {
       try {
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // Resume AudioContext if suspended
+        if (ctx.state === 'suspended') {
+          ctx.resume().catch(() => {});
+        }
+
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
 

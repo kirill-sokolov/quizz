@@ -52,8 +52,8 @@ export function registerCaptainHandlers(bot: Bot) {
         quizId: updated.quizId,
         teamId: updated.teamId,
       });
-      await ctx.answerCallbackQuery({ text: "Ответ принят ✅" });
-      await ctx.reply("Ответ принят ✅");
+      await ctx.answerCallbackQuery({ text: `Ответ ${letter} принят ✅` });
+      await ctx.reply(`Ответ принят: ${letter} ✅`);
     } catch (err: any) {
       if (err.status === 409) {
         setState(chatId, { step: "registered", quizId: updated.quizId, teamId: updated.teamId });
@@ -117,7 +117,7 @@ async function handleTextMessage(ctx: Context) {
           quizId: state.quizId,
           teamId: state.teamId,
         });
-        await ctx.reply("Ответ принят ✅");
+        await ctx.reply(`Ответ принят: ${letter} ✅`);
       } catch (err: any) {
         if (err.status === 409) {
           await ctx.reply("Ты уже ответил на этот вопрос ✅");
@@ -156,7 +156,7 @@ async function handleTextMessage(ctx: Context) {
         }
         try {
           await api.submitAnswer(gameState.currentQuestionId!, state.teamId, letter);
-          await ctx.reply("Ответ принят ✅");
+          await ctx.reply(`Ответ принят: ${letter} ✅`);
         } catch (err: any) {
           if (err.status === 409) {
             await ctx.reply("Ты уже ответил на этот вопрос ✅");

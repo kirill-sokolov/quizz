@@ -90,4 +90,8 @@ export const api = {
   getGameState(quizId: number): Promise<GameStateResponse> {
     return request<GameStateResponse>(`/api/game/state/${quizId}`);
   },
+
+  getAnswers(questionId: number): Promise<Answer[]> {
+    return request<Answer[]>(`/api/questions/${questionId}/answers`);
+  },
 };
