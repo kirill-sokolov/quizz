@@ -5,7 +5,7 @@ import { quizzes, questions, slides, answers, teams, gameState, admins } from ".
 
 const QUIZ_TITLE = "Свадебный квиз";
 
-// Картинки: положи файлы в apps/api/uploads/
+// Картинки: положи файлы в apps/api/uploads/seed/
 // questionImage — показывается на слайдах "question" и "timer"
 // answerImage   — показывается на слайде "answer"
 // videoWarningImage — показывается на слайде "video_warning"
@@ -16,25 +16,25 @@ const QUESTIONS = [
     text: "Какая историческая эпоха считается временем рыцарей и прекрасных дам?",
     options: ["Античность", "Средневековье", "Эпоха Возрождения", "Новое время"],
     correctAnswer: "B",
-    questionImage: "1a.png",
-    answerImage: "1b.png",
-    videoWarningImage: "warning.png",
-    videoIntroImage: "video-question.png",
-    videoUrl: "video.mp4",
+    questionImage: "seed/1a.png",
+    answerImage: "seed/1b.png",
+    videoWarningImage: "seed/warning.png",
+    videoIntroImage: "seed/video-question.png",
+    videoUrl: "seed/video.mp4",
   },
   {
     text: "В какой стране появились первые Олимпийские игры в древности?",
     options: ["Рим", "Египет", "Греция", "Турция"],
     correctAnswer: "C",
-    questionImage: "1a.png",
-    answerImage: "1b.png",
+    questionImage: "seed/1a.png",
+    answerImage: "seed/1b.png",
   },
   {
     text: "Какой исторический правитель прославился множеством жён, что сегодня явно усложнило бы свадьбу?",
     options: ["Наполеон Бонапарт", "Генрих VIII", "Юлий Цезарь", "Александр Македонский"],
     correctAnswer: "B",
-    questionImage: "1a.png",
-    answerImage: "1b.png",
+    questionImage: "seed/1a.png",
+    answerImage: "seed/1b.png",
   },
 ];
 
