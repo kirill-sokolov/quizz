@@ -8,6 +8,9 @@ const QUIZ_TITLE = "Свадебный квиз";
 // Картинки: положи файлы в apps/api/uploads/
 // questionImage — показывается на слайдах "question" и "timer"
 // answerImage   — показывается на слайде "answer"
+// videoWarningImage — показывается на слайде "video_warning"
+// videoIntroImage — показывается на слайде "video_intro"
+// videoUrl — видео файл для слайда "video_intro"
 const QUESTIONS = [
   {
     text: "Какая историческая эпоха считается временем рыцарей и прекрасных дам?",
@@ -15,6 +18,9 @@ const QUESTIONS = [
     correctAnswer: "B",
     questionImage: "1a.png",
     answerImage: "1b.png",
+    videoWarningImage: "warning.png",
+    videoIntroImage: "video-question.png",
+    videoUrl: "video.mp4",
   },
   {
     text: "В какой стране появились первые Олимпийские игры в древности?",
@@ -71,14 +77,42 @@ async function seed() {
 
     const qImg = q.questionImage ? `/api/media/${q.questionImage}` : null;
     const aImg = q.answerImage ? `/api/media/${q.answerImage}` : null;
+    const videoWarningImg = q.videoWarningImage ? `/api/media/${q.videoWarningImage}` : null;
+    const videoIntroImg = q.videoIntroImage ? `/api/media/${q.videoIntroImage}` : null;
+    const videoUrl = q.videoUrl ? `/api/media/${q.videoUrl}` : null;
 
-    await db.insert(slides).values([
-      { questionId: question.id, type: "question", imageUrl: qImg },
-      { questionId: question.id, type: "timer", imageUrl: qImg },
-      { questionId: question.id, type: "answer", imageUrl: aImg },
-    ]);
+    const slidesToInsert: any[] = [];
 
-    console.log(`  Question #${question.id}: "${q.text.slice(0, 50)}..." [${q.questionImage} / ${q.answerImage}]`);
+    // Если есть видео слайды, добавляем их в начало
+    if (videoWarningImg || videoIntroImg || videoUrl) {
+      if (videoWarningImg) {
+        slidesToInsert.push({
+          questionId: question.id,
+          type: "video_warning" as const,
+          imageUrl: videoWarningImg,
+        });
+      }
+      if (videoIntroImg || videoUrl) {
+        slidesToInsert.push({
+          questionId: question.id,
+          type: "video_intro" as const,
+          imageUrl: videoIntroImg,
+          videoUrl: videoUrl,
+        });
+      }
+    }
+
+    // Базовые слайды
+    slidesToInsert.push(
+      { questionId: question.id, type: "question" as const, imageUrl: qImg },
+      { questionId: question.id, type: "timer" as const, imageUrl: qImg },
+      { questionId: question.id, type: "answer" as const, imageUrl: aImg }
+    );
+
+    await db.insert(slides).values(slidesToInsert);
+
+    const videoInfo = videoUrl ? ` [VIDEO: ${q.videoUrl}]` : "";
+    console.log(`  Question #${question.id}: "${q.text.slice(0, 50)}..." [${q.questionImage} / ${q.answerImage}]${videoInfo}`);
   }
 
   console.log("Done!");

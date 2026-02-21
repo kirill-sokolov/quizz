@@ -205,6 +205,7 @@ export default function TV() {
         <>
           {slide === SLIDE_TYPES.VIDEO_WARNING && (
             <TVVideoWarning
+              key={`${currentQuestion.id}-video-warning`}
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
               slides={currentQuestion.slides}
@@ -212,6 +213,7 @@ export default function TV() {
           )}
           {slide === SLIDE_TYPES.VIDEO_INTRO && (
             <TVVideoIntro
+              key={`${currentQuestion.id}-video-intro`}
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
               slides={currentQuestion.slides}
@@ -219,6 +221,7 @@ export default function TV() {
           )}
           {slide === SLIDE_TYPES.QUESTION && (
             <TVQuestion
+              key={`${currentQuestion.id}-question`}
               question={currentQuestion}
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
@@ -227,6 +230,7 @@ export default function TV() {
           )}
           {slide === SLIDE_TYPES.TIMER && (
             <TVTimer
+              key={`${currentQuestion.id}-timer`}
               question={currentQuestion}
               startedAt={state.timerStartedAt}
               slides={currentQuestion.slides}
@@ -234,6 +238,7 @@ export default function TV() {
           )}
           {slide === SLIDE_TYPES.ANSWER && (
             <TVAnswer
+              key={`${currentQuestion.id}-answer`}
               question={currentQuestion}
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
