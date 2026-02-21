@@ -2,7 +2,6 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
-import fastifyStatic from "@fastify/static";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
@@ -34,11 +33,6 @@ async function main() {
   });
   await app.register(cookie);
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
-  await app.register(fastifyStatic, {
-    root: mediaRoot,
-    prefix: "/api/media/",
-    decorateReply: true,
-  });
 
   await app.register(wsPlugin);
   await app.register(authRoutes);

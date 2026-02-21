@@ -6,6 +6,7 @@ import {
   questionsApi,
   teamsApi,
   getWsUrl,
+  getMediaUrl,
 } from "../api/client";
 import TVQuestion from "../components/TV/TVQuestion";
 import TVTimer from "../components/TV/TVTimer";
@@ -234,8 +235,12 @@ export default function TV() {
     return (
       <div className="tv-viewport">
         <div className="tv-screen" style={screenStyle}>
-          <div className="flex items-center justify-center h-full bg-stone-900 text-white text-2xl">
-            {error || "Открой квиз в админке и запусти игру"}
+          <div className="flex items-center justify-center h-full bg-black">
+            <img
+              src={getMediaUrl("/api/media/seed/default-demo.png")}
+              alt="Demo"
+              className="w-full h-full object-cover"
+            />
           </div>
         </div>
       </div>
