@@ -63,6 +63,7 @@ export default function QuizEdit() {
           type: s.type,
           imageUrl: s.imageUrl != null ? String(s.imageUrl) : null,
           videoUrl: s.videoUrl != null ? String(s.videoUrl) : null,
+          videoLayout: s.videoLayout != null ? s.videoLayout : null,
         }));
       await questionsApi.update(payload.id, {
         text: payload.text,

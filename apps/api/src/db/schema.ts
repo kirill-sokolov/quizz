@@ -51,6 +51,7 @@ export const slides = pgTable("slides", {
   type: text("type", { enum: SLIDE_TYPES }).notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"),
+  videoLayout: jsonb("video_layout").$type<{ top: number; left: number; width: number; height: number } | null>(),
 });
 
 export const teams = pgTable("teams", {

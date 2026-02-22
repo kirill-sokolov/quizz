@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { getMediaUrl } from "../api/client";
 import { SLIDE_TYPES, BASE_SLIDE_TYPES, FULL_SLIDE_TYPES, VIDEO_SLIDE_TYPES, SLIDE_LABELS } from "../constants/slides";
+import VideoLayoutEditor from "./VideoLayoutEditor";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"];
 
@@ -16,6 +17,7 @@ function getSlides(question) {
     type,
     imageUrl: null,
     videoUrl: null,
+    videoLayout: null,
   }));
 
   if (!question?.slides?.length) return defaultSlides;
@@ -34,6 +36,7 @@ function getSlides(question) {
       type,
       imageUrl: slide?.imageUrl ?? slide?.image_url ?? null,
       videoUrl: slide?.videoUrl ?? slide?.video_url ?? null,
+      videoLayout: slide?.videoLayout ?? slide?.video_layout ?? null,
     };
   });
 }
@@ -74,11 +77,11 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         const hasIntro = prev.some(s => s.type === SLIDE_TYPES.VIDEO_INTRO);
         const result = [...prev];
         if (!hasWarning) {
-          result.unshift({ id: null, type: SLIDE_TYPES.VIDEO_WARNING, imageUrl: null, videoUrl: null });
+          result.unshift({ id: null, type: SLIDE_TYPES.VIDEO_WARNING, imageUrl: null, videoUrl: null, videoLayout: null });
         }
         if (!hasIntro) {
           const insertIndex = result.findIndex(s => s.type === SLIDE_TYPES.QUESTION);
-          result.splice(insertIndex, 0, { id: null, type: SLIDE_TYPES.VIDEO_INTRO, imageUrl: null, videoUrl: null });
+          result.splice(insertIndex, 0, { id: null, type: SLIDE_TYPES.VIDEO_INTRO, imageUrl: null, videoUrl: null, videoLayout: null });
         }
         return result;
       });
@@ -126,6 +129,14 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     }
   };
 
+  const handleVideoLayoutChange = (slideIndex, layout) => {
+    setSlides((prev) => {
+      const next = [...prev];
+      next[slideIndex] = { ...next[slideIndex], videoLayout: layout };
+      return next;
+    });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -144,6 +155,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
           type: s.type,
           imageUrl: s.imageUrl || null,
           videoUrl: s.videoUrl || null,
+          videoLayout: s.videoLayout || null,
         })),
       });
     } finally {
@@ -330,6 +342,17 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
                     </div>
                   )}
                 </div>
+                {canHaveVideo && slide.imageUrl && (
+                  <div className="mt-3">
+                    <div className="text-xs text-stone-500 mb-1">Позиция видео на слайде</div>
+                    <VideoLayoutEditor
+                      imageUrl={slide.imageUrl}
+                      videoUrl={slide.videoUrl}
+                      videoLayout={slide.videoLayout}
+                      onChange={(layout) => handleVideoLayoutChange(idx, layout)}
+                    />
+                  </div>
+                )}
               </div>
             );
           })}

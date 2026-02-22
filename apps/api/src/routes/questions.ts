@@ -89,6 +89,7 @@ export async function questionsRoutes(app: FastifyInstance) {
         type: SlideType;
         imageUrl?: string | null;
         videoUrl?: string | null;
+        videoLayout?: { top: number; left: number; width: number; height: number } | null;
       }>;
     };
   }>(
@@ -118,6 +119,7 @@ export async function questionsRoutes(app: FastifyInstance) {
     }
 
     if (slideUpdates && Array.isArray(slideUpdates)) {
+      console.log('slideUpdates received:', JSON.stringify(slideUpdates, null, 2));
       // Get existing slides
       const existingSlides = await db
         .select()
@@ -138,9 +140,10 @@ export async function questionsRoutes(app: FastifyInstance) {
 
         if (slideId && existing) {
           // Update existing slide
-          const setPayload: { imageUrl?: string | null; videoUrl?: string | null } = {};
+          const setPayload: { imageUrl?: string | null; videoUrl?: string | null; videoLayout?: { top: number; left: number; width: number; height: number } | null } = {};
           if (s.imageUrl !== undefined) setPayload.imageUrl = s.imageUrl;
           if (s.videoUrl !== undefined) setPayload.videoUrl = s.videoUrl;
+          if (s.videoLayout !== undefined) setPayload.videoLayout = s.videoLayout;
           if (Object.keys(setPayload).length > 0) {
             await db.update(slides).set(setPayload).where(eq(slides.id, slideId));
           }
@@ -151,6 +154,7 @@ export async function questionsRoutes(app: FastifyInstance) {
             type: s.type,
             imageUrl: s.imageUrl || null,
             videoUrl: s.videoUrl || null,
+            videoLayout: s.videoLayout || null,
           });
         }
       }
