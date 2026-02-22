@@ -138,6 +138,7 @@ export default function Game() {
   const [showResults, setShowResults] = useState(false);
   const [currentResults, setCurrentResults] = useState(null);
   const [loadingResults, setLoadingResults] = useState(false);
+  const [showUnanswered, setShowUnanswered] = useState(false);
   const {
     quiz,
     state,
@@ -259,6 +260,7 @@ export default function Game() {
 
   const handleShowDetails = async (teamId) => {
     setSelectedTeam(teamId);
+    setShowUnanswered(false);
     setLoadingDetails(true);
     try {
       const details = await gameApi.getTeamDetails(quizId, teamId);
@@ -273,6 +275,7 @@ export default function Game() {
   const handleCloseDetails = () => {
     setSelectedTeam(null);
     setTeamDetails(null);
+    setShowUnanswered(false);
   };
 
   const handleResetToFirst = async () => {
@@ -814,56 +817,83 @@ export default function Game() {
                   </p>
                 </div>
                 <div className="space-y-4">
-                  {teamDetails.details.map((detail, idx) => (
-                    <div
-                      key={detail.questionId}
-                      className={`p-4 rounded-lg border-2 ${
-                        detail.isCorrect
-                          ? "bg-green-50 border-green-200"
-                          : "bg-red-50 border-red-200"
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 mb-2">
-                        <span className="font-bold text-stone-700">
-                          #{idx + 1}
-                        </span>
-                        <div className="flex-1">
-                          <p className="font-medium text-stone-800 mb-2">
-                            {detail.questionText}
-                          </p>
-                          <div className="text-sm space-y-1">
-                            <div>
-                              <span className="text-stone-600">Ответ команды: </span>
-                              <span
-                                className={`font-semibold ${
-                                  detail.isCorrect
-                                    ? "text-green-700"
-                                    : "text-red-700"
-                                }`}
-                              >
-                                {detail.teamAnswer
-                                  ? `${detail.teamAnswer} (${detail.teamAnswerText})`
-                                  : "Не ответили"}
+                  {(() => {
+                    // Определяем текущий индекс вопроса
+                    const currentQuestionIndex = currentQuestion
+                      ? questions.findIndex((q) => q.id === currentQuestion.id)
+                      : -1;
+
+                    // Фильтруем детали: показываем только до текущего вопроса, если не включен режим "показать все"
+                    const filteredDetails = showUnanswered
+                      ? teamDetails.details
+                      : teamDetails.details.filter((_, idx) => idx <= currentQuestionIndex);
+
+                    const hasHidden = teamDetails.details.length > filteredDetails.length;
+
+                    return (
+                      <>
+                        {filteredDetails.map((detail, idx) => (
+                          <div
+                            key={detail.questionId}
+                            className={`p-4 rounded-lg border-2 ${
+                              detail.isCorrect
+                                ? "bg-green-50 border-green-200"
+                                : "bg-red-50 border-red-200"
+                            }`}
+                          >
+                            <div className="flex items-start gap-3 mb-2">
+                              <span className="font-bold text-stone-700">
+                                #{idx + 1}
                               </span>
-                            </div>
-                            {!detail.isCorrect && (
-                              <div>
-                                <span className="text-stone-600">
-                                  Правильный ответ:{" "}
-                                </span>
-                                <span className="font-semibold text-green-700">
-                                  {detail.correctAnswer} ({detail.correctAnswerText})
-                                </span>
+                              <div className="flex-1">
+                                <p className="font-medium text-stone-800 mb-2">
+                                  {detail.questionText}
+                                </p>
+                                <div className="text-sm space-y-1">
+                                  <div>
+                                    <span className="text-stone-600">Ответ команды: </span>
+                                    <span
+                                      className={`font-semibold ${
+                                        detail.isCorrect
+                                          ? "text-green-700"
+                                          : "text-red-700"
+                                      }`}
+                                    >
+                                      {detail.teamAnswer
+                                        ? `${detail.teamAnswer} (${detail.teamAnswerText})`
+                                        : "Не ответили"}
+                                    </span>
+                                  </div>
+                                  {!detail.isCorrect && (
+                                    <div>
+                                      <span className="text-stone-600">
+                                        Правильный ответ:{" "}
+                                      </span>
+                                      <span className="font-semibold text-green-700">
+                                        {detail.correctAnswer} ({detail.correctAnswerText})
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            )}
+                              <div className="text-2xl">
+                                {detail.isCorrect ? "✅" : "❌"}
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                        <div className="text-2xl">
-                          {detail.isCorrect ? "✅" : "❌"}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                        ))}
+                        {hasHidden && !showUnanswered && (
+                          <button
+                            type="button"
+                            onClick={() => setShowUnanswered(true)}
+                            className="w-full px-4 py-3 border-2 border-dashed border-stone-300 rounded-lg text-stone-600 hover:bg-stone-50 hover:border-stone-400 transition"
+                          >
+                            📋 Показать ещё не отвеченные ({teamDetails.details.length - filteredDetails.length})
+                          </button>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </>
             ) : null}
