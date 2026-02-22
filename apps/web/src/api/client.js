@@ -61,6 +61,7 @@ export const questionsApi = {
         text: data.text ?? "",
         options: data.options ?? ["", "", "", ""],
         correctAnswer: data.correctAnswer ?? "",
+        explanation: data.explanation ?? null,
         timeLimitSec: data.timeLimitSec ?? 30,
       }),
     }),

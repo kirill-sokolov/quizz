@@ -135,6 +135,9 @@ export default function Game() {
   const [selectedTeam, setSelectedTeam] = useState(null);
   const [teamDetails, setTeamDetails] = useState(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const [showResults, setShowResults] = useState(false);
+  const [currentResults, setCurrentResults] = useState(null);
+  const [loadingResults, setLoadingResults] = useState(false);
   const {
     quiz,
     state,
@@ -277,6 +280,24 @@ export default function Game() {
     const newState = await gameApi.resetToFirst(quizId);
     setState(newState);
     await refreshAnswers();
+  };
+
+  const handleShowResults = async () => {
+    setShowResults(true);
+    setLoadingResults(true);
+    try {
+      const resultsData = await gameApi.getResults(quizId);
+      setCurrentResults(resultsData);
+    } catch (err) {
+      console.error("Failed to load results:", err);
+    } finally {
+      setLoadingResults(false);
+    }
+  };
+
+  const handleCloseResults = () => {
+    setShowResults(false);
+    setCurrentResults(null);
   };
 
   if (loading) return <p className="text-stone-500">Загрузка…</p>;
@@ -606,6 +627,16 @@ export default function Game() {
                   </span>
                 ))}
               </div>
+
+              {/* Объяснение ответа */}
+              {currentQuestion.explanation && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <p className="text-sm text-blue-900">
+                    <span className="font-semibold">Объяснение: </span>
+                    {currentQuestion.explanation}
+                  </p>
+                </div>
+              )}
             </>
           )}
 
@@ -656,6 +687,13 @@ export default function Game() {
               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium"
             >
               ↺ К первому вопросу
+            </button>
+            <button
+              type="button"
+              onClick={handleShowResults}
+              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium"
+            >
+              📊 Результаты
             </button>
             <button
               type="button"
@@ -741,7 +779,7 @@ export default function Game() {
         </div>
       </div>
 
-      {/* Модальное окно с детальными результатами */}
+      {/* Модальное окно с детальными результатами команды */}
       {selectedTeam && (
         <div
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
@@ -823,6 +861,74 @@ export default function Game() {
                         <div className="text-2xl">
                           {detail.isCorrect ? "✅" : "❌"}
                         </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : null}
+          </div>
+        </div>
+      )}
+
+      {/* Модальное окно с общими результатами */}
+      {showResults && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          onClick={handleCloseResults}
+        >
+          <div
+            className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {loadingResults ? (
+              <p className="text-center text-stone-500">Загрузка...</p>
+            ) : currentResults ? (
+              <>
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-semibold text-stone-800">
+                    Текущие результаты
+                  </h2>
+                  <button
+                    type="button"
+                    onClick={handleCloseResults}
+                    className="text-stone-400 hover:text-stone-600 text-2xl"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {currentResults.map((result, idx) => (
+                    <div
+                      key={result.teamId}
+                      className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg"
+                    >
+                      <div className="text-2xl font-bold text-amber-600 w-12 text-center">
+                        #{idx + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-semibold text-stone-800">{result.name}</div>
+                        <div className="text-sm text-stone-500">
+                          {result.correct} из {result.total} правильных
+                        </div>
+                      </div>
+                      <div className="text-right flex items-center gap-3">
+                        <div>
+                          <div className="text-xl font-bold text-green-600">
+                            {result.correct}
+                          </div>
+                          <div className="text-xs text-stone-400">правильно</div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCloseResults();
+                            handleShowDetails(result.teamId);
+                          }}
+                          className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+                        >
+                          Подробнее
+                        </button>
                       </div>
                     </div>
                   ))}

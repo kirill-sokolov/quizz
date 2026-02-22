@@ -68,6 +68,7 @@ export default function QuizEdit() {
         text: payload.text,
         options: payload.options,
         correctAnswer: payload.correctAnswer,
+        explanation: payload.explanation ?? null,
         timeLimitSec: payload.timeLimitSec,
         timerPosition: payload.timerPosition,
         orderNum: payload.orderNum,
@@ -79,6 +80,7 @@ export default function QuizEdit() {
         text: payload.text,
         options: payload.options,
         correctAnswer: payload.correctAnswer,
+        explanation: payload.explanation ?? null,
         timeLimitSec: payload.timeLimitSec,
         timerPosition: payload.timerPosition,
       });

@@ -43,6 +43,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   const [text, setText] = useState(question?.text ?? "");
   const [options, setOptions] = useState(ensureFourOptions(question?.options));
   const [correctAnswer, setCorrectAnswer] = useState(question?.correctAnswer ?? "A");
+  const [explanation, setExplanation] = useState(question?.explanation ?? "");
   const [timeLimitSec, setTimeLimitSec] = useState(question?.timeLimitSec ?? 30);
   const [timerPosition, setTimerPosition] = useState(question?.timerPosition ?? "center");
   const [slides, setSlides] = useState(() => getSlides(question));
@@ -57,6 +58,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     setText(question.text ?? "");
     setOptions(ensureFourOptions(question.options));
     setCorrectAnswer(question.correctAnswer ?? "A");
+    setExplanation(question.explanation ?? "");
     setTimeLimitSec(question.timeLimitSec ?? 30);
     setTimerPosition(question.timerPosition ?? "center");
     setSlides(getSlides(question));
@@ -133,6 +135,7 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         text,
         options,
         correctAnswer,
+        explanation: explanation || null,
         timeLimitSec,
         timerPosition,
         orderNum: question?.orderNum,
@@ -177,6 +180,19 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
             </div>
           ))}
         </div>
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-stone-600 mb-1">
+          Объяснение ответа <span className="text-stone-400 font-normal">(опционально)</span>
+        </label>
+        <textarea
+          value={explanation}
+          onChange={(e) => setExplanation(e.target.value)}
+          rows={2}
+          className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+          placeholder="Почему именно этот ответ правильный?"
+        />
       </div>
 
       <div className="flex flex-wrap gap-6">

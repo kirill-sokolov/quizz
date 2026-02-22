@@ -17,6 +17,7 @@ const QUESTIONS = [
     text: "Какая историческая эпоха считается временем рыцарей и прекрасных дам?",
     options: ["Античность", "Средневековье", "Эпоха Возрождения", "Новое время"],
     correctAnswer: "B",
+    explanation: "Средневековье (V-XV века) — период расцвета рыцарства, куртуазной любви и рыцарских турниров.",
     questionImage: "seed/1a.png",
     answerImage: "seed/1b.png",
     videoWarningImage: "seed/warning.png",
@@ -27,6 +28,7 @@ const QUESTIONS = [
     text: "В какой стране появились первые Олимпийские игры в древности?",
     options: ["Рим", "Египет", "Греция", "Турция"],
     correctAnswer: "C",
+    explanation: "Олимпийские игры проводились в Древней Греции начиная с 776 года до н.э. в городе Олимпия.",
     questionImage: "seed/1a.png",
     answerImage: "seed/1b.png",
   },
@@ -81,6 +83,7 @@ async function seed() {
         text: q.text,
         options: q.options,
         correctAnswer: q.correctAnswer,
+        explanation: q.explanation || null,
         timeLimitSec: 30,
       })
       .returning();

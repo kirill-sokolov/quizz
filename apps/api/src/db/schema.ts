@@ -34,6 +34,7 @@ export const questions = pgTable("questions", {
   text: text("text").notNull().default(""),
   options: jsonb("options").$type<string[]>().notNull().default([]),
   correctAnswer: text("correct_answer").notNull().default(""),
+  explanation: text("explanation"),
   timeLimitSec: integer("time_limit_sec").notNull().default(30),
   timerPosition: text("timer_position", {
     enum: ["center", "top", "bottom", "left", "right", "top-left", "top-right", "bottom-left", "bottom-right"],
