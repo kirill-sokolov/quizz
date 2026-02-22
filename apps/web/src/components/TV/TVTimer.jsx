@@ -173,9 +173,7 @@ export default function TVTimer({ question, startedAt, slides }) {
             </div>
             <div className="text-white text-5xl font-black drop-shadow-2xl tracking-wide"
               style={{ animation: "alarmPulse 0.8s ease-in-out infinite" }}
-            >
-              ВРЕМЯ ВЫШЛО!
-            </div>
+            ></div>
           </div>
         ) : (
           <div
