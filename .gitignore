@@ -37,11 +37,8 @@ wedding-quiz.iml
 postgres/data
 
 # uploaded media (slide images)
-uploads/*
-
-# seeds
-!uploads/seed/
-!uploads/seed/**
+apps/api/uploads/*
+!apps/api/uploads/seed/
 
 # prisma
 apps/**/prisma/dev.db
