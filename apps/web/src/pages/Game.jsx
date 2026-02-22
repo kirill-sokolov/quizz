@@ -645,7 +645,7 @@ export default function Game() {
             <button
               type="button"
               onClick={handleNextQuestion}
-              disabled={!hasNextQuestion}
+              disabled={!hasNextQuestion || state?.currentSlide !== "answer"}
               className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 font-medium"
             >
               → Следующий вопрос
