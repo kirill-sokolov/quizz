@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import { quizzes } from "../db/schema.js";
 import { eq, ne, and } from "drizzle-orm";
 import { authenticateToken } from "../middleware/auth.js";
+import { generateJoinCode } from "../services/game-service.js";
 
 export async function quizzesRoutes(app: FastifyInstance) {
   app.get("/api/quizzes", async (req, reply) => {
@@ -47,7 +48,8 @@ export async function quizzesRoutes(app: FastifyInstance) {
       if (!title) {
         return reply.code(400).send({ error: "title is required" });
       }
-      const [quiz] = await db.insert(quizzes).values({ title }).returning();
+      const joinCode = generateJoinCode();
+      const [quiz] = await db.insert(quizzes).values({ title, joinCode }).returning();
       return reply.code(201).send(quiz);
     } catch (err) {
       req.log.error(err);

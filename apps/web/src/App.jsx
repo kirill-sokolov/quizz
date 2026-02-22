@@ -16,7 +16,7 @@ export default function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/admin/login" element={<Login />} />
         <Route path="/tv" element={<TV />} />
-        <Route path="/tv/:quizId" element={<TV />} />
+        <Route path="/tv/:joinCode" element={<TV />} />
         <Route
           path="/admin"
           element={

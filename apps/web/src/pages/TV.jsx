@@ -57,7 +57,7 @@ function useFullscreen() {
 }
 
 export default function TV() {
-  const { quizId: urlQuizId } = useParams();
+  const { joinCode } = useParams();
   const tvTransform = useTVScale();
   const { isFullscreen, toggle } = useFullscreen();
   const [quizId, setQuizId] = useState(null);
@@ -100,21 +100,21 @@ export default function TV() {
     (async () => {
       setLoading(true);
       setError(null);
-      let id = urlQuizId ? Number(urlQuizId) : null;
-      if (!id) {
+      let id = null;
+
+      if (joinCode) {
+        // Найти квиз по joinCode
         try {
-          // Priority: active → finished → latest (excluding archived)
-          const all = await quizzesApi.list();
-          const notArchived = all.filter((q) => q.status !== "archived");
-          const active = notArchived.find((q) => q.status === "active");
-          const finished = notArchived.find((q) => q.status === "finished");
-          id = active?.id ?? finished?.id ?? notArchived[0]?.id ?? null;
+          const quizData = await quizzesApi.getByCode(joinCode);
+          id = quizData.id;
         } catch {
-          setError("Нет квизов");
+          setError("Квиз не найден");
           setLoading(false);
           return;
         }
       }
+      // Если нет joinCode — показываем заглушку (quizId останется null)
+
       if (!cancelled && id) {
         setQuizId(id);
         await loadQuiz(id);
@@ -122,9 +122,12 @@ export default function TV() {
       if (!cancelled) setLoading(false);
     })();
     return () => { cancelled = true; };
-  }, [urlQuizId, loadQuiz]);
+  }, [joinCode, loadQuiz]);
 
   useEffect(() => {
+    // Не подключаться к WebSocket, если нет quizId (например, на /tv/ без кода)
+    if (!quizId) return;
+
     let reconnectTimer = null;
 
     const connect = () => {
@@ -139,15 +142,7 @@ export default function TV() {
         try {
           const { event, data } = JSON.parse(ev.data);
 
-          // If we don't have a quizId yet, pick it up from the first event
-          if (!quizId && data?.quizId) {
-            const newId = data.quizId;
-            setQuizId(newId);
-            setLoading(true);
-            loadQuiz(newId).then(() => setLoading(false));
-            return;
-          }
-
+          // Игнорировать события не нашего квиза
           if (data?.quizId !== quizId) return;
           console.log("WS event:", event, data);
           switch (event) {

@@ -1,9 +1,26 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { useAuth } from "./AuthProvider";
+import { quizzesApi } from "../api/client";
 
 export default function Layout() {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const [activeQuiz, setActiveQuiz] = useState(null);
+
+  useEffect(() => {
+    // Загрузить квиз для ссылки на TV (приоритет: draft → active → finished)
+    quizzesApi.list().then((quizzes) => {
+      const notArchived = quizzes.filter((q) => q.status !== "archived");
+      const draft = notArchived.find((q) => q.status === "draft");
+      const active = notArchived.find((q) => q.status === "active");
+      const finished = notArchived.find((q) => q.status === "finished");
+      const target = draft ?? active ?? finished;
+      if (target) {
+        setActiveQuiz(target);
+      }
+    }).catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -24,14 +41,20 @@ export default function Layout() {
             >
               Квизы
             </Link>
-            <a
-              href="/tv"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-amber-100 hover:text-white transition"
-            >
-              TV
-            </a>
+            {activeQuiz?.joinCode ? (
+              <a
+                href={`/tv/${activeQuiz.joinCode}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-amber-100 hover:text-white transition"
+              >
+                TV
+              </a>
+            ) : (
+              <span className="text-amber-300 opacity-50 cursor-not-allowed">
+                TV
+              </span>
+            )}
             <button
               onClick={handleLogout}
               className="text-amber-100 hover:text-white transition text-sm"

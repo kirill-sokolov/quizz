@@ -43,6 +43,7 @@ export function getMediaUrl(path) {
 export const quizzesApi = {
   list: () => request("/quizzes"),
   get: (id) => request(`/quizzes/${id}`),
+  getByCode: (code) => request(`/quizzes/by-code/${code}`),
   getActive: () => request("/quizzes/active"),
   create: (title) =>
     request("/quizzes", { method: "POST", body: JSON.stringify({ title }) }),

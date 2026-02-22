@@ -21,15 +21,6 @@ export default function TVLobby({ quiz, teams }) {
             <p className="text-lg text-stone-600 mt-2">Отсканируйте QR код</p>
           </div>
         </div>
-
-        {quiz?.joinCode && (
-          <div className="flex flex-col items-center gap-3">
-            <p className="text-2xl text-stone-400">Код для входа:</p>
-            <p className="text-8xl font-mono font-bold tracking-widest text-amber-400">
-              {quiz.joinCode}
-            </p>
-          </div>
-        )}
       </div>
 
       {teams.length > 0 && (

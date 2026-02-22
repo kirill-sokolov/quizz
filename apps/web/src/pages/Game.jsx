@@ -345,16 +345,6 @@ export default function Game() {
           </h1>
         </div>
 
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-8 text-center">
-          <p className="text-stone-500 mb-2">Код для входа:</p>
-          <p className="text-5xl font-mono font-bold text-amber-700 tracking-widest mb-6">
-            {quiz.joinCode}
-          </p>
-          <p className="text-stone-500 text-sm">
-            Капитаны вводят этот код в Telegram-боте для регистрации
-          </p>
-        </div>
-
         <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
           <h2 className="font-semibold text-stone-800 mb-3">
             Зарегистрированные команды ({activeTeams.length})

@@ -11,7 +11,7 @@ import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 import type { SlideType } from "../types/slide.js";
 
-function generateJoinCode(): string {
+export function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   for (let i = 0; i < 6; i++) {

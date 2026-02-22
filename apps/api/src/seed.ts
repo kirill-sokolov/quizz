@@ -2,6 +2,7 @@ import "dotenv/config";
 import bcrypt from "bcrypt";
 import { db } from "./db/index.js";
 import { quizzes, questions, slides, answers, teams, gameState, admins } from "./db/schema.js";
+import { generateJoinCode } from "./services/game-service.js";
 
 const QUIZ_TITLE = "Свадебный квиз";
 
@@ -58,15 +59,17 @@ async function seed() {
   console.log("Admin created: username=admin, password=admin");
 
   console.log("Seeding quiz...");
+  const joinCode = generateJoinCode();
   const [quiz] = await db
     .insert(quizzes)
     .values({
       title: QUIZ_TITLE,
+      joinCode,
       demoImageUrl: "/api/media/seed/demo.jpg",
       rulesImageUrl: "/api/media/seed/rules.png",
     })
     .returning();
-  console.log(`Created quiz #${quiz.id}: "${quiz.title}"`);
+  console.log(`Created quiz #${quiz.id}: "${quiz.title}" (joinCode: ${joinCode})`);
 
   for (let i = 0; i < QUESTIONS.length; i++) {
     const q = QUESTIONS[i];
