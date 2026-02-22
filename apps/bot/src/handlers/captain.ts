@@ -53,11 +53,51 @@ export function registerCaptainHandlers(bot: Bot) {
         teamId: updated.teamId,
       });
       await ctx.answerCallbackQuery({ text: `Ответ ${letter} принят ✅` });
-      await ctx.reply(`Ответ принят: ${letter} ✅`);
+
+      // Update button states to show selected answer
+      try {
+        const gameState = await api.getGameState(updated.quizId);
+        const options = gameState.question?.options || [];
+        if (options.length >= 2 && options.length <= 8) {
+          const kb = new InlineKeyboard();
+          const letters = ANSWER_LABELS.slice(0, options.length);
+          for (let i = 0; i < letters.length; i += 2) {
+            const label1 = letters[i] === letter ? `✅ ${letters[i]}` : letters[i];
+            kb.text(label1, `answer:${letters[i]}`);
+            if (letters[i + 1]) {
+              const label2 = letters[i + 1] === letter ? `✅ ${letters[i + 1]}` : letters[i + 1];
+              kb.text(label2, `answer:${letters[i + 1]}`);
+            }
+            if (i + 2 < letters.length) kb.row();
+          }
+          await ctx.editMessageText(`✅ Ответ принят: ${letter}`, { reply_markup: kb });
+        }
+      } catch (editErr) {
+        // If editing fails, send new message as fallback
+        await ctx.reply(`Ответ принят: ${letter} ✅`);
+      }
     } catch (err: any) {
       if (err.status === 409) {
         setState(chatId, { step: "registered", quizId: updated.quizId, teamId: updated.teamId });
         await ctx.answerCallbackQuery({ text: "Ты уже ответил ✅" });
+
+        // Try to update buttons to show already answered state
+        try {
+          const gameState = await api.getGameState(updated.quizId);
+          const options = gameState.question?.options || [];
+          if (options.length >= 2 && options.length <= 8) {
+            const kb = new InlineKeyboard();
+            const letters = ANSWER_LABELS.slice(0, options.length);
+            for (let i = 0; i < letters.length; i += 2) {
+              kb.text(letters[i], `answer:${letters[i]}`);
+              if (letters[i + 1]) kb.text(letters[i + 1], `answer:${letters[i + 1]}`);
+              if (i + 2 < letters.length) kb.row();
+            }
+            await ctx.editMessageText("✅ Ты уже ответил на этот вопрос", { reply_markup: kb });
+          }
+        } catch {
+          // Ignore editing errors for already answered case
+        }
       } else {
         await ctx.answerCallbackQuery({ show_alert: true, text: "Не удалось отправить ответ." }).catch(() => {});
       }
