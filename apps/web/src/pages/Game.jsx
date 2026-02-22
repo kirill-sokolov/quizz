@@ -72,6 +72,14 @@ function useGameState(quizId) {
     load();
   }, [load]);
 
+  // Автоматически запустить игру (перейти в lobby) если она еще не запущена
+  useEffect(() => {
+    if (loading || !quizId || !quiz) return;
+    if (state === null) {
+      gameApi.start(quizId).then(() => load());
+    }
+  }, [loading, quizId, quiz, state, load]);
+
   const refreshAnswers = useCallback(async () => {
     if (state?.currentQuestionId) {
       const ans = await answersApi.list(state.currentQuestionId);
@@ -210,15 +218,13 @@ export default function Game() {
     };
   }, [quizId, state?.quizId, setState, refreshAnswers, refreshTeams, load]);
 
-  // Автоматически открыть регистрацию при переходе на страницу управления
-  useEffect(() => {
-    if (state?.status === "lobby" && state?.registrationOpen === false) {
-      gameApi.openRegistration(quizId).then(() => load());
-    }
-  }, [state?.status, state?.registrationOpen, quizId, load]);
-
   const handleStart = async () => {
     await gameApi.start(quizId);
+    await load();
+  };
+
+  const handleOpenRegistration = async () => {
+    await gameApi.openRegistration(quizId);
     await load();
   };
 
@@ -357,7 +363,34 @@ export default function Game() {
     );
   }
 
-  if (gameLobby) {
+  // Lobby - правила (регистрация закрыта)
+  if (gameLobby && !state?.registrationOpen) {
+    return (
+      <div>
+        <div className="mb-4 flex items-center gap-4">
+          <Link to="/admin" className="text-amber-600 hover:text-amber-700 font-medium">
+            ← Квизы
+          </Link>
+          <h1 className="text-xl font-semibold text-stone-800">
+            Подготовка: {quiz.title}
+          </h1>
+        </div>
+        <div className="bg-blue-50 border border-blue-200 rounded-xl p-8 text-center">
+          <p className="text-stone-600 mb-4">На TV экране показываются правила игры.</p>
+          <button
+            type="button"
+            onClick={handleOpenRegistration}
+            className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium"
+          >
+            Открыть регистрацию
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // Lobby - регистрация (показываем QR код)
+  if (gameLobby && state?.registrationOpen) {
     return (
       <div className="space-y-6">
         <div className="mb-4 flex items-center gap-4">
