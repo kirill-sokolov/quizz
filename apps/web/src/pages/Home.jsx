@@ -114,23 +114,13 @@ export default function Home() {
     <div>
       <div className="flex items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl font-semibold text-stone-800">Квизы</h1>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={handleReseed}
-            disabled={seeding}
-            className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition font-medium disabled:opacity-50"
-          >
-            {seeding ? "⏳ Пересоздаём..." : "Пересоздать из seed"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setCreateOpen(true)}
-            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium"
-          >
-            Создать квиз
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium"
+        >
+          Создать квиз
+        </button>
       </div>
 
       {error && (
@@ -340,6 +330,18 @@ export default function Home() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Блок с кнопкой пересоздания */}
+          <div className="hidden md:block mt-4 bg-stone-200 rounded-lg p-4">
+            <button
+              type="button"
+              onClick={handleReseed}
+              disabled={seeding}
+              className="px-4 py-2 bg-white text-stone-700 rounded-lg hover:bg-stone-50 transition font-medium disabled:opacity-50 border border-stone-200"
+            >
+              {seeding ? "⏳ Пересоздаём..." : "Пересоздать из seed"}
+            </button>
           </div>
         </>
       )}
