@@ -195,6 +195,13 @@ export async function mediaUpload(file) {
   return res.json();
 }
 
+export const adminApi = {
+  reseed: () =>
+    request("/admin/seed", {
+      method: "POST",
+    }),
+};
+
 export const authApi = {
   login: (username, password) =>
     request("/auth/login", {
