@@ -193,7 +193,7 @@ export default function Game() {
             break;
           case "slide_changed":
             gameApi.getState(quizId).then((s) => setState(s));
-            if (data.slide === "timer") refreshAnswers();
+            if (data.slide === "timer" || data.slide === "answer") refreshAnswers();
             break;
           case "answer_submitted":
             refreshAnswers();
@@ -808,33 +808,44 @@ export default function Game() {
                       </button>
                     )}
                   </div>
-                  {isTextQ && isOnAnswerSlide && teamAnswer && (
-                    <div className="ml-6 text-sm space-y-1">
-                      <div className="text-stone-500 italic truncate" title={teamAnswer.answerText}>
-                        {teamAnswer.answerText}
+                  {isTextQ && isOnAnswerSlide && teamAnswer && (() => {
+                    const correctAnswersCount = currentQuestion.correctAnswer
+                      .split(',')
+                      .map(s => s.trim())
+                      .filter(Boolean).length;
+                    const step = correctAnswersCount > 0
+                      ? currentQuestion.weight / correctAnswersCount
+                      : 0.25;
+                    const stepsCount = Math.round(currentQuestion.weight / step) + 1;
+
+                    return (
+                      <div className="ml-6 text-sm space-y-1">
+                        <div className="text-stone-500 italic max-w-xs break-words" title={teamAnswer.answerText}>
+                          {teamAnswer.answerText}
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-stone-600">Балл:</span>
+                          <select
+                            value={teamAnswer.awardedScore ?? 0}
+                            onChange={async (e) => {
+                              const newScore = parseFloat(e.target.value);
+                              await answersApi.updateScore(teamAnswer.id, newScore);
+                              refreshAnswers();
+                            }}
+                            className="px-2 py-0.5 border border-stone-300 rounded text-sm"
+                          >
+                            {Array.from(
+                              { length: stepsCount },
+                              (_, i) => Math.round((i * step) * 100) / 100
+                            ).map((v) => (
+                              <option key={v} value={v}>{v}</option>
+                            ))}
+                          </select>
+                          <span className="text-stone-400">/ {currentQuestion.weight}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-600">Балл:</span>
-                        <select
-                          value={teamAnswer.awardedScore ?? 0}
-                          onChange={async (e) => {
-                            const newScore = parseFloat(e.target.value);
-                            await answersApi.updateScore(teamAnswer.id, newScore);
-                            refreshAnswers();
-                          }}
-                          className="px-2 py-0.5 border border-stone-300 rounded text-sm"
-                        >
-                          {Array.from(
-                            { length: (currentQuestion.weight / 0.5) + 1 },
-                            (_, i) => i * 0.5
-                          ).map((v) => (
-                            <option key={v} value={v}>{v}</option>
-                          ))}
-                        </select>
-                        <span className="text-stone-400">/ {currentQuestion.weight}</span>
-                      </div>
-                    </div>
-                  )}
+                    );
+                  })()}
                 </li>
               );
             })}
