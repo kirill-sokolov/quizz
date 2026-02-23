@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { quizzesApi, gameApi, mediaUpload, getMediaUrl } from "../api/client";
+import { quizzesApi, gameApi, mediaUpload, getMediaUrl, adminApi } from "../api/client";
 
 const STATUS_LABEL = {
   draft: "Черновик",
@@ -28,6 +28,7 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [uploadingDemo, setUploadingDemo] = useState(null);
   const [starting, setStarting] = useState(null);
+  const [seeding, setSeeding] = useState(false);
 
   const loadQuizzes = async () => {
     setLoading(true);
@@ -80,6 +81,22 @@ export default function Home() {
     }
   };
 
+  const handleReseed = async () => {
+    const confirmed = window.confirm("Это удалит текущие квизы, команды и прогресс. Пересоздать demo-данные из seed?");
+    if (!confirmed) return;
+
+    setSeeding(true);
+    setError(null);
+    try {
+      await adminApi.reseed();
+      await loadQuizzes();
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка запуска seed");
+    } finally {
+      setSeeding(false);
+    }
+  };
+
   const handleStart = async (quizId) => {
     setStarting(quizId);
     setError(null);
@@ -95,15 +112,25 @@ export default function Home() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-6 gap-3">
         <h1 className="text-2xl font-semibold text-stone-800">Квизы</h1>
-        <button
-          type="button"
-          onClick={() => setCreateOpen(true)}
-          className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium"
-        >
-          Создать квиз
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleReseed}
+            disabled={seeding}
+            className="px-4 py-2 bg-stone-100 text-stone-700 rounded-lg hover:bg-stone-200 transition font-medium disabled:opacity-50"
+          >
+            {seeding ? "⏳ Пересоздаём..." : "Пересоздать из seed"}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCreateOpen(true)}
+            className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition font-medium"
+          >
+            Создать квиз
+          </button>
+        </div>
       </div>
 
       {error && (

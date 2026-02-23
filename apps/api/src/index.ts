@@ -15,6 +15,7 @@ import { answersRoutes } from "./routes/answers.js";
 import { gameRoutes } from "./routes/game.js";
 import { mediaRoutes } from "./routes/media.js";
 import { importRoutes } from "./routes/import.js";
+import { adminRoutes } from "./routes/admin.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,6 +44,7 @@ async function main() {
   await app.register(gameRoutes);
   await app.register(mediaRoutes);
   await app.register(importRoutes);
+  await app.register(adminRoutes);
 
   app.get("/health", async () => ({ status: "ok" }));
 
