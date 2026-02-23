@@ -6,20 +6,22 @@ import { quizzesApi } from "../api/client";
 export default function Layout() {
   const { logout } = useAuth();
   const navigate = useNavigate();
-  const [activeQuiz, setActiveQuiz] = useState(null);
+  const [tvQuizCode, setTvQuizCode] = useState(null);
 
   useEffect(() => {
-    // Загрузить квиз для ссылки на TV (приоритет: draft → active → finished)
-    quizzesApi.list().then((quizzes) => {
-      const notArchived = quizzes.filter((q) => q.status !== "archived");
-      const draft = notArchived.find((q) => q.status === "draft");
-      const active = notArchived.find((q) => q.status === "active");
-      const finished = notArchived.find((q) => q.status === "finished");
-      const target = draft ?? active ?? finished;
-      if (target) {
-        setActiveQuiz(target);
-      }
-    }).catch(() => {});
+    // Загрузить квиз для TV-ссылки (приоритет: draft → active → finished)
+    quizzesApi
+      .list()
+      .then((quizzes) => {
+        const quiz = quizzes
+          .filter((q) => q.status !== "archived")
+          .find((q) => q.status === "draft" || q.status === "active" || q.status === "finished");
+
+        setTvQuizCode(quiz?.joinCode || null);
+      })
+      .catch((err) => {
+        console.error("Failed to load quiz for TV link:", err);
+      });
   }, []);
 
   const handleLogout = () => {
@@ -41,9 +43,9 @@ export default function Layout() {
             >
               Квизы
             </Link>
-            {activeQuiz?.joinCode ? (
+            {tvQuizCode ? (
               <a
-                href={`/tv/${activeQuiz.joinCode}`}
+                href={`/tv/${tvQuizCode}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-amber-100 hover:text-white transition"
