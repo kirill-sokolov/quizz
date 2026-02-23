@@ -22,6 +22,7 @@
     "bcrypt": "^6.0.0",
     "dotenv": "^16.5.0",
     "drizzle-orm": "^0.39.3",
+    "fast-xml-parser": "^5.3.7",
     "fastify": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "postgres": "^3.4.5",

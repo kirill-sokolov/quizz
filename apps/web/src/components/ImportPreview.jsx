@@ -1,11 +1,24 @@
 import { useState } from "react";
 import { importApi, getMediaUrl } from "../api/client";
-import { BASE_SLIDE_TYPES } from "../constants/slides";
+import { ALL_SLIDE_TYPES, SLIDE_LABELS } from "../constants/slides";
 
 const ANSWER_LABELS = ["A", "B", "C", "D"];
+const TIMER_POSITIONS = [
+  { value: "center", label: "Центр" },
+  { value: "top", label: "Верх" },
+  { value: "bottom", label: "Низ" },
+  { value: "left", label: "Лево" },
+  { value: "right", label: "Право" },
+  { value: "top-left", label: "Верх-лево" },
+  { value: "top-right", label: "Верх-право" },
+  { value: "bottom-left", label: "Низ-лево" },
+  { value: "bottom-right", label: "Низ-право" },
+];
 
-export default function ImportPreview({ quizId, questions: initial, onDone, onCancel }) {
-  const [items, setItems] = useState(initial);
+export default function ImportPreview({ quizId, data: initial, onDone, onCancel }) {
+  const [items, setItems] = useState(initial.questions);
+  const [demoImageUrl, setDemoImageUrl] = useState(initial.demoImageUrl || null);
+  const [rulesImageUrl, setRulesImageUrl] = useState(initial.rulesImageUrl || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -33,7 +46,11 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
     setSaving(true);
     setError(null);
     try {
-      await importApi.save(quizId, items);
+      await importApi.save(quizId, {
+        questions: items,
+        demoImageUrl,
+        rulesImageUrl,
+      });
       onDone();
     } catch (e) {
       setError(e.message || "Ошибка сохранения");
@@ -69,6 +86,35 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
+      {/* Demo and Rules slides */}
+      {(demoImageUrl || rulesImageUrl) && (
+        <div className="bg-stone-50 rounded-xl border border-stone-200 p-4 space-y-3">
+          <h4 className="font-medium text-stone-700">Дополнительные слайды</h4>
+          <div className="grid grid-cols-2 gap-4">
+            {demoImageUrl && (
+              <div>
+                <label className="block text-sm text-stone-600 mb-2">Заставка / Демо</label>
+                <img
+                  src={getMediaUrl(demoImageUrl)}
+                  alt="Demo"
+                  className="w-full h-32 object-cover rounded border border-stone-200"
+                />
+              </div>
+            )}
+            {rulesImageUrl && (
+              <div>
+                <label className="block text-sm text-stone-600 mb-2">Правила</label>
+                <img
+                  src={getMediaUrl(rulesImageUrl)}
+                  alt="Rules"
+                  className="w-full h-32 object-cover rounded border border-stone-200"
+                />
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="space-y-4">
         {items.map((item, qi) => (
           <div key={qi} className="bg-white rounded-xl border border-stone-200 shadow-sm p-4 space-y-3">
@@ -100,8 +146,8 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
                   ))}
                 </div>
 
-                {/* Correct answer & time */}
-                <div className="flex gap-4 items-center">
+                {/* Correct answer, time, timer position */}
+                <div className="flex flex-wrap gap-4 items-center">
                   <label className="flex items-center gap-2 text-sm">
                     <span className="text-stone-600">Правильный:</span>
                     <select
@@ -116,7 +162,6 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
                   </label>
                   <label className="flex items-center gap-2 text-sm">
                     <span className="text-stone-600">Время (сек):</span>
-                    {/*todo:*/}
                     <input
                       type="number"
                       min={3}
@@ -126,15 +171,36 @@ export default function ImportPreview({ quizId, questions: initial, onDone, onCa
                       className="w-20 border border-stone-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                   </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <span className="text-stone-600">Таймер:</span>
+                    <select
+                      value={item.timerPosition || "center"}
+                      onChange={(e) => update(qi, "timerPosition", e.target.value)}
+                      className="border border-stone-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    >
+                      {TIMER_POSITIONS.map((tp) => (
+                        <option key={tp.value} value={tp.value}>{tp.label}</option>
+                      ))}
+                    </select>
+                  </label>
                 </div>
 
+                {/* Explanation */}
+                <textarea
+                  value={item.explanation || ""}
+                  onChange={(e) => update(qi, "explanation", e.target.value || null)}
+                  rows={1}
+                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  placeholder="Объяснение (опционально)"
+                />
+
                 {/* Slide previews */}
-                <div className="flex gap-3">
-                  {BASE_SLIDE_TYPES.map((type) => {
+                <div className="flex gap-3 flex-wrap">
+                  {ALL_SLIDE_TYPES.map((type) => {
                     const url = item.slides[type];
                     return (
                       <div key={type} className="text-center">
-                        <p className="text-xs text-stone-400 mb-1 capitalize">{type}</p>
+                        <p className="text-xs text-stone-400 mb-1">{SLIDE_LABELS[type]}</p>
                         {url ? (
                           <img
                             src={getMediaUrl(url)}

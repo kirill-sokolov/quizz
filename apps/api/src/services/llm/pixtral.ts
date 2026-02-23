@@ -2,23 +2,16 @@ import { config } from "../../config.js";
 import { type ShrunkImage, type ParsedResult, buildPrompt, parseJsonResponse } from "./types.js";
 import { logCost } from "./cost-logger.js";
 
-const ENDPOINT = "https://api.groq.com/openai/v1/chat/completions";
+const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 const MODELS = [
-  "meta-llama/llama-4-scout-17b-16e-instruct", // 5 free images per request
+  "mistralai/pixtral-12b",
+  "mistral/pixtral-12b",
+  "pixtral-12b",
 ];
 
-interface GroqResponse {
-  choices: { message: { content: string } }[];
-  usage?: {
-    prompt_tokens?: number;
-    completion_tokens?: number;
-    total_tokens?: number;
-  };
-}
-
-export async function analyzeWithGroq(images: ShrunkImage[], promptOverride?: string): Promise<ParsedResult> {
-  if (!config.GROQ_API_KEY) {
-    throw Object.assign(new Error("GROQ_API_KEY is not configured"), { statusCode: 500 });
+export async function analyzeWithPixtral(images: ShrunkImage[], promptOverride?: string): Promise<ParsedResult> {
+  if (!config.OPENROUTER_API_KEY) {
+    throw Object.assign(new Error("OPENROUTER_API_KEY is not configured"), { statusCode: 500 });
   }
 
   const content: unknown[] = [
@@ -37,7 +30,9 @@ export async function analyzeWithGroq(images: ShrunkImage[], promptOverride?: st
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${config.GROQ_API_KEY}`,
+          Authorization: `Bearer ${config.OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "http://localhost",
+          "X-Title": "WeddingQuiz",
         },
         body: JSON.stringify({
           model,
@@ -51,35 +46,33 @@ export async function analyzeWithGroq(images: ShrunkImage[], promptOverride?: st
         throw new Error(`HTTP ${res.status}: ${text.slice(0, 200)}`);
       }
 
-      const json = (await res.json()) as GroqResponse;
-      const raw = json.choices[0]?.message?.content ?? "";
-
-      // Log token usage if available
-      if (json.usage) {
+      // Log cost from headers
+      const creditsUsed = res.headers.get("x-openrouter-credits-used");
+      if (creditsUsed) {
         logCost({
           timestamp: new Date().toISOString(),
-          provider: "Groq",
+          provider: "OpenRouter",
           model,
-          tokensPrompt: json.usage.prompt_tokens,
-          tokensCompletion: json.usage.completion_tokens,
-          tokensTotal: json.usage.total_tokens,
-          details: `${images.length} images`,
+          creditsUsed: parseFloat(creditsUsed),
+          details: `Pixtral 12B - ${images.length} images`,
         });
       }
 
-      console.log(`[Groq] used model: ${model}, tokens: ${json.usage?.total_tokens || "unknown"}`);
-      console.log("[Groq raw response]", raw.slice(0, 500));
+      const json = (await res.json()) as { choices: { message: { content: string } }[] };
+      const raw = json.choices[0]?.message?.content ?? "";
+      console.log(`[Pixtral] used model: ${model}, credits: ${creditsUsed || "unknown"}`);
+      console.log("[Pixtral raw response]", raw.slice(0, 500));
       return parseJsonResponse(raw);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[Groq] ${model} failed: ${msg.slice(0, 150)}`);
+      console.warn(`[Pixtral] ${model} failed: ${msg.slice(0, 150)}`);
       lastError = err;
     }
   }
 
   throw Object.assign(
     new Error(
-      `All Groq models failed. Last error: ${lastError instanceof Error ? lastError.message.slice(0, 200) : String(lastError)}`
+      `All Pixtral model variants failed. Last error: ${lastError instanceof Error ? lastError.message.slice(0, 200) : String(lastError)}`
     ),
     { statusCode: 502 }
   );

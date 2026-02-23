@@ -15,7 +15,10 @@ export default function QuizEdit() {
   const [adding, setAdding] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
+  const [selectedModel, setSelectedModel] = useState("");
   const zipInputRef = useRef(null);
+  const docxInputRef = useRef(null);
+  const [docxFile, setDocxFile] = useState(null);
   const [editingSettings, setEditingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploadingDemo, setUploadingDemo] = useState(false);
@@ -161,8 +164,8 @@ export default function QuizEdit() {
     setImporting(true);
     setError(null);
     try {
-      const result = await importApi.uploadZip(id, file);
-      setImportPreview(result.questions);
+      const result = await importApi.uploadZip(id, file, selectedModel || null, docxFile);
+      setImportPreview(result);
     } catch (err) {
       setError(err.body?.error || err.message || "Ошибка импорта ZIP");
     } finally {
@@ -289,7 +292,48 @@ export default function QuizEdit() {
 
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-medium text-stone-700">Вопросы</h2>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+          >
+            <option value="">Авто (пробовать все)</option>
+            <option value="Gemini">Gemini</option>
+            <option value="Groq">Groq</option>
+            <option value="OpenRouter">OpenRouter (Llama 3.2 11B)</option>
+            <option value="Pixtral">Pixtral 12B</option>
+            <option value="GPT-4o-mini">GPT-4o mini</option>
+          </select>
+          <input
+            ref={docxInputRef}
+            type="file"
+            accept=".docx"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              setDocxFile(f || null);
+            }}
+            className="hidden"
+          />
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => docxInputRef.current?.click()}
+              className="px-3 py-2 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 transition text-sm font-medium"
+            >
+              {docxFile ? docxFile.name : "DOCX (опц.)"}
+            </button>
+            {docxFile && (
+              <button
+                type="button"
+                onClick={() => { setDocxFile(null); if (docxInputRef.current) docxInputRef.current.value = ""; }}
+                className="text-red-500 hover:text-red-700 text-sm px-1"
+                title="Убрать DOCX"
+              >
+                &times;
+              </button>
+            )}
+          </div>
           <input
             ref={zipInputRef}
             type="file"
@@ -319,7 +363,7 @@ export default function QuizEdit() {
         <div className="mb-6">
           <ImportPreview
             quizId={id}
-            questions={importPreview}
+            data={importPreview}
             onDone={() => {
               setImportPreview(null);
               loadQuestions();

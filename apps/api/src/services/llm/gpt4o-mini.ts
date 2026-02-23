@@ -3,9 +3,9 @@ import { type ShrunkImage, type ParsedResult, buildPrompt, parseJsonResponse } f
 import { logCost } from "./cost-logger.js";
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
-const MODEL = "meta-llama/llama-3.2-11b-vision-instruct";
+const MODEL = "openai/gpt-4o-mini";
 
-export async function analyzeWithOpenRouter(images: ShrunkImage[], promptOverride?: string): Promise<ParsedResult> {
+export async function analyzeWithGPT4oMini(images: ShrunkImage[], promptOverride?: string): Promise<ParsedResult> {
   if (!config.OPENROUTER_API_KEY) {
     throw Object.assign(new Error("OPENROUTER_API_KEY is not configured"), { statusCode: 500 });
   }
@@ -37,7 +37,7 @@ export async function analyzeWithOpenRouter(images: ShrunkImage[], promptOverrid
   if (!res.ok) {
     const text = await res.text();
     throw Object.assign(
-      new Error(`OpenRouter HTTP ${res.status}: ${text.slice(0, 200)}`),
+      new Error(`GPT-4o mini HTTP ${res.status}: ${text.slice(0, 200)}`),
       { statusCode: 502 }
     );
   }
@@ -50,13 +50,13 @@ export async function analyzeWithOpenRouter(images: ShrunkImage[], promptOverrid
       provider: "OpenRouter",
       model: MODEL,
       creditsUsed: parseFloat(creditsUsed),
-      details: `Llama 3.2 11B Vision - ${images.length} images`,
+      details: `GPT-4o mini - ${images.length} images`,
     });
   }
 
   const json = (await res.json()) as { choices: { message: { content: string } }[] };
   const raw = json.choices[0]?.message?.content ?? "";
-  console.log(`[OpenRouter] used model: ${MODEL}, credits: ${creditsUsed || "unknown"}`);
-  console.log("[OpenRouter raw response]", raw.slice(0, 500));
+  console.log(`[GPT-4o mini] used model: ${MODEL}, credits: ${creditsUsed || "unknown"}`);
+  console.log("[GPT-4o mini raw response]", raw.slice(0, 500));
   return parseJsonResponse(raw);
 }

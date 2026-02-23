@@ -149,9 +149,15 @@ export const answersApi = {
 };
 
 export const importApi = {
-  uploadZip: async (quizId, file) => {
+  uploadZip: async (quizId, file, selectedModel = null, docxFile = null) => {
     const form = new FormData();
     form.append("file", file);
+    if (selectedModel) {
+      form.append("model", selectedModel);
+    }
+    if (docxFile) {
+      form.append("docx", docxFile);
+    }
     const res = await fetch(`${API}/quizzes/${quizId}/import-zip`, {
       method: "POST",
       credentials: "include",
@@ -165,10 +171,10 @@ export const importApi = {
     }
     return res.json();
   },
-  save: (quizId, questions) =>
+  save: (quizId, data) =>
     request(`/quizzes/${quizId}/import-save`, {
       method: "POST",
-      body: JSON.stringify({ questions }),
+      body: JSON.stringify(data),
     }),
 };
 
