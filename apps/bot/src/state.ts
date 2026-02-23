@@ -2,7 +2,7 @@ export type BotUser =
   | { step: "idle" }
   | { step: "awaiting_name"; quizId: number }
   | { step: "registered"; quizId: number; teamId: number }
-  | { step: "awaiting_answer"; quizId: number; teamId: number; questionId: number };
+  | { step: "awaiting_answer"; quizId: number; teamId: number; questionId: number; questionType?: "choice" | "text" };
 
 const users = new Map<number, BotUser>();
 

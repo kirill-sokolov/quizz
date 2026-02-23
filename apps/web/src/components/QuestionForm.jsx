@@ -43,12 +43,14 @@ function getSlides(question) {
 
 export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   const isNew = !question?.id;
+  const [questionType, setQuestionType] = useState(question?.questionType ?? "choice");
   const [text, setText] = useState(question?.text ?? "");
   const [options, setOptions] = useState(ensureFourOptions(question?.options));
   const [correctAnswer, setCorrectAnswer] = useState(question?.correctAnswer ?? "A");
   const [explanation, setExplanation] = useState(question?.explanation ?? "");
   const [timeLimitSec, setTimeLimitSec] = useState(question?.timeLimitSec ?? 30);
   const [timerPosition, setTimerPosition] = useState(question?.timerPosition ?? "center");
+  const [weight, setWeight] = useState(question?.weight ?? 1);
   const [slides, setSlides] = useState(() => getSlides(question));
   const [hasVideoIntro, setHasVideoIntro] = useState(() => {
     return question?.slides?.some(s => VIDEO_SLIDE_TYPES.includes(s.type)) ?? false;
@@ -58,12 +60,14 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
 
   useEffect(() => {
     if (!question) return;
+    setQuestionType(question.questionType ?? "choice");
     setText(question.text ?? "");
     setOptions(ensureFourOptions(question.options));
     setCorrectAnswer(question.correctAnswer ?? "A");
     setExplanation(question.explanation ?? "");
     setTimeLimitSec(question.timeLimitSec ?? 30);
     setTimerPosition(question.timerPosition ?? "center");
+    setWeight(question.weight ?? 1);
     setSlides(getSlides(question));
     setHasVideoIntro(question?.slides?.some(s => VIDEO_SLIDE_TYPES.includes(s.type)) ?? false);
   }, [question?.id]);
@@ -144,8 +148,10 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
       await onSave({
         id: question?.id ?? null,
         text,
-        options,
-        correctAnswer,
+        questionType,
+        weight: questionType === "text" ? weight : 1,
+        options: questionType === "choice" ? options : [],
+        correctAnswer: questionType === "choice" ? correctAnswer : correctAnswer,
         explanation: explanation || null,
         timeLimitSec,
         timerPosition,
@@ -163,8 +169,38 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
     }
   };
 
+  const isText = questionType === "text";
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="flex items-center gap-4 mb-2">
+        <label className="block text-sm font-medium text-stone-600">Тип вопроса</label>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setQuestionType("choice")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              !isText
+                ? "bg-amber-600 text-white"
+                : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+            }`}
+          >
+            Варианты (A/B/C/D)
+          </button>
+          <button
+            type="button"
+            onClick={() => setQuestionType("text")}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              isText
+                ? "bg-amber-600 text-white"
+                : "bg-stone-100 text-stone-600 hover:bg-stone-200"
+            }`}
+          >
+            Текстовый ввод
+          </button>
+        </div>
+      </div>
+
       <div>
         <label className="block text-sm font-medium text-stone-600 mb-1">Текст вопроса</label>
         <textarea
@@ -176,80 +212,147 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-stone-600 mb-2">Варианты ответов</label>
-        <div className="grid gap-2">
-          {OPTION_LETTERS.map((letter, i) => (
-            <div key={letter} className="flex items-center gap-2">
-              <span className="w-6 font-medium text-stone-500">{letter})</span>
+      {isText ? (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-stone-600 mb-1">
+              Правильные ответы (через запятую)
+            </label>
+            <textarea
+              value={correctAnswer}
+              onChange={(e) => setCorrectAnswer(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+              placeholder="ответ1, ответ2, ответ3"
+            />
+            <p className="text-xs text-stone-400 mt-1">
+              Перечислите все правильные ответы через запятую. LLM будет сравнивать ответы команд с этим списком.
+            </p>
+          </div>
+          <div className="flex flex-wrap gap-6">
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Вес вопроса</label>
               <input
-                type="text"
-                value={options[i] ?? ""}
-                onChange={(e) => handleOptionChange(i, e.target.value)}
-                className="flex-1 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
-                placeholder={`Вариант ${letter}`}
+                type="number"
+                min={1}
+                max={10}
+                value={weight}
+                onChange={(e) => setWeight(Number(e.target.value) || 1)}
+                className="w-24 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+              <p className="text-xs text-stone-400 mt-1">
+                Максимум баллов за полный правильный ответ
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Время (сек)</label>
+              <input
+                type="number"
+                min={3}
+                max={300}
+                value={timeLimitSec}
+                onChange={(e) => setTimeLimitSec(Number(e.target.value) || 30)}
+                className="w-24 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
               />
             </div>
-          ))}
-        </div>
-      </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Позиция таймера</label>
+              <select
+                value={timerPosition}
+                onChange={(e) => setTimerPosition(e.target.value)}
+                className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+              >
+                <option value="center">Центр</option>
+                <option value="top">Верх</option>
+                <option value="bottom">Низ</option>
+                <option value="left">Лево</option>
+                <option value="right">Право</option>
+                <option value="top-left">Верх-лево</option>
+                <option value="top-right">Верх-право</option>
+                <option value="bottom-left">Низ-лево</option>
+                <option value="bottom-right">Низ-право</option>
+              </select>
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          <div>
+            <label className="block text-sm font-medium text-stone-600 mb-2">Варианты ответов</label>
+            <div className="grid gap-2">
+              {OPTION_LETTERS.map((letter, i) => (
+                <div key={letter} className="flex items-center gap-2">
+                  <span className="w-6 font-medium text-stone-500">{letter})</span>
+                  <input
+                    type="text"
+                    value={options[i] ?? ""}
+                    onChange={(e) => handleOptionChange(i, e.target.value)}
+                    className="flex-1 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                    placeholder={`Вариант ${letter}`}
+                  />
+                </div>
+              ))}
+            </div>
+          </div>
 
-      <div>
-        <label className="block text-sm font-medium text-stone-600 mb-1">
-          Объяснение ответа <span className="text-stone-400 font-normal">(опционально)</span>
-        </label>
-        <textarea
-          value={explanation}
-          onChange={(e) => setExplanation(e.target.value)}
-          rows={2}
-          className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
-          placeholder="Почему именно этот ответ правильный?"
-        />
-      </div>
+          <div>
+            <label className="block text-sm font-medium text-stone-600 mb-1">
+              Объяснение ответа <span className="text-stone-400 font-normal">(опционально)</span>
+            </label>
+            <textarea
+              value={explanation}
+              onChange={(e) => setExplanation(e.target.value)}
+              rows={2}
+              className="w-full px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+              placeholder="Почему именно этот ответ правильный?"
+            />
+          </div>
 
-      <div className="flex flex-wrap gap-6">
-        <div>
-          <label className="block text-sm font-medium text-stone-600 mb-1">Правильный ответ</label>
-          <select
-            value={correctAnswer}
-            onChange={(e) => setCorrectAnswer(e.target.value)}
-            className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
-          >
-            {OPTION_LETTERS.map((letter) => (
-              <option key={letter} value={letter}>{letter}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-stone-600 mb-1">Время (сек)</label>
-          <input
-            type="number"
-            min={3}
-            max={120}
-            value={timeLimitSec}
-            onChange={(e) => setTimeLimitSec(Number(e.target.value) || 30)}
-            className="w-24 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-stone-600 mb-1">Позиция таймера</label>
-          <select
-            value={timerPosition}
-            onChange={(e) => setTimerPosition(e.target.value)}
-            className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
-          >
-            <option value="center">Центр</option>
-            <option value="top">Верх</option>
-            <option value="bottom">Низ</option>
-            <option value="left">Лево</option>
-            <option value="right">Право</option>
-            <option value="top-left">Верх-лево</option>
-            <option value="top-right">Верх-право</option>
-            <option value="bottom-left">Низ-лево</option>
-            <option value="bottom-right">Низ-право</option>
-          </select>
-        </div>
-      </div>
+          <div className="flex flex-wrap gap-6">
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Правильный ответ</label>
+              <select
+                value={correctAnswer}
+                onChange={(e) => setCorrectAnswer(e.target.value)}
+                className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+              >
+                {OPTION_LETTERS.map((letter) => (
+                  <option key={letter} value={letter}>{letter}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Время (сек)</label>
+              <input
+                type="number"
+                min={3}
+                max={120}
+                value={timeLimitSec}
+                onChange={(e) => setTimeLimitSec(Number(e.target.value) || 30)}
+                className="w-24 px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-stone-600 mb-1">Позиция таймера</label>
+              <select
+                value={timerPosition}
+                onChange={(e) => setTimerPosition(e.target.value)}
+                className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+              >
+                <option value="center">Центр</option>
+                <option value="top">Верх</option>
+                <option value="bottom">Низ</option>
+                <option value="left">Лево</option>
+                <option value="right">Право</option>
+                <option value="top-left">Верх-лево</option>
+                <option value="top-right">Верх-право</option>
+                <option value="bottom-left">Низ-лево</option>
+                <option value="bottom-right">Низ-право</option>
+              </select>
+            </div>
+          </div>
+        </>
+      )}
 
       <div>
         <div className="flex items-center gap-3 mb-3">

@@ -144,20 +144,28 @@ async function handleTextMessage(ctx: Context) {
 
   // --- Answer submission ---
   if (state.step === "awaiting_answer") {
-      const letter = text.toUpperCase();
-      if (!ANSWER_LABELS.includes(letter)) {
-        await ctx.reply("Отправь букву: A, B, C или D");
-        return;
+      const isTextQuestion = state.questionType === "text";
+      let answerToSubmit: string;
+
+      if (isTextQuestion) {
+        answerToSubmit = text;
+      } else {
+        const letter = text.toUpperCase();
+        if (!ANSWER_LABELS.includes(letter)) {
+          await ctx.reply("Отправь букву: A, B, C или D");
+          return;
+        }
+        answerToSubmit = letter;
       }
 
       try {
-        await api.submitAnswer(state.questionId, state.teamId, letter);
+        await api.submitAnswer(state.questionId, state.teamId, answerToSubmit);
         setState(chatId, {
           step: "registered",
           quizId: state.quizId,
           teamId: state.teamId,
         });
-        await ctx.reply(`Ответ принят: ${letter} ✅`);
+        await ctx.reply(`Ответ принят ✅`);
       } catch (err: any) {
         if (err.status === 409) {
           await ctx.reply("Ты уже ответил на этот вопрос ✅");
@@ -177,26 +185,28 @@ async function handleTextMessage(ctx: Context) {
   // Зарегистрирован: если прислал букву ответа — пробуем сдать по текущему состоянию игры
     // (на случай если бот не получил slide_changed или капитан зарегался после показа вопроса)
   if (state.step === "registered" && "teamId" in state && "quizId" in state) {
+      let gameState;
+      try {
+        gameState = await api.getGameState(state.quizId);
+      } catch {
+        await ctx.reply("Квиз ещё не начался или ожидай следующий вопрос.");
+        return;
+      }
+
+      const canAnswer =
+        gameState.status === "playing" &&
+        gameState.currentQuestionId != null &&
+        (gameState.currentSlide === "question" || gameState.currentSlide === "timer");
+
+      const isTextQuestion = gameState.question?.questionType === "text";
       const letter = text.toUpperCase();
-      if (text.length === 1 && ANSWER_LABELS.includes(letter)) {
-        let gameState;
+      const isValidChoiceAnswer = text.length === 1 && ANSWER_LABELS.includes(letter);
+
+      if (canAnswer && (isTextQuestion || isValidChoiceAnswer)) {
+        const answerToSubmit = isTextQuestion ? text : letter;
         try {
-          gameState = await api.getGameState(state.quizId);
-        } catch {
-          await ctx.reply("Квиз ещё не начался или ожидай следующий вопрос.");
-          return;
-        }
-        const canAnswer =
-          gameState.status === "playing" &&
-          gameState.currentQuestionId != null &&
-          (gameState.currentSlide === "question" || gameState.currentSlide === "timer");
-        if (!canAnswer) {
-          await ctx.reply("Сейчас приём ответов закрыт. Ожидай следующий вопрос.");
-          return;
-        }
-        try {
-          await api.submitAnswer(gameState.currentQuestionId!, state.teamId, letter);
-          await ctx.reply(`Ответ принят: ${letter} ✅`);
+          await api.submitAnswer(gameState.currentQuestionId!, state.teamId, answerToSubmit);
+          await ctx.reply(`Ответ принят ✅`);
         } catch (err: any) {
           if (err.status === 409) {
             await ctx.reply("Ты уже ответил на этот вопрос ✅");
@@ -207,6 +217,12 @@ async function handleTextMessage(ctx: Context) {
         }
         return;
       }
+
+      if (!canAnswer && isValidChoiceAnswer) {
+        await ctx.reply("Сейчас приём ответов закрыт. Ожидай следующий вопрос.");
+        return;
+      }
+
       await ctx.reply("Квиз ещё не начался или ожидай следующий вопрос.");
     return;
   }

@@ -2,7 +2,7 @@ import WebSocket from "ws";
 import { Bot, InlineKeyboard } from "grammy";
 import { config } from "./config.js";
 import { getAllRegistered, getRegisteredByTeamId, setState, deleteState, getState } from "./state.js";
-import { api } from "./api-client.js";
+import { api, type GameStateResponse } from "./api-client.js";
 
 const LABELS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
@@ -88,18 +88,30 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
     }
     if (!question) return;
 
-    const options = question.options || [];
-    const optionLines = options
-      .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
-      .join("\n");
+    const isTextQuestion = question.questionType === "text";
 
-    const text = [
-      `❓ Вопрос`,
-      "",
-      question.text,
-      "",
-      optionLines,
-    ].join("\n");
+    let text: string;
+    if (isTextQuestion) {
+      text = [
+        `❓ Вопрос`,
+        "",
+        question.text,
+        "",
+        "✏️ Напишите ответ текстом.",
+      ].join("\n");
+    } else {
+      const options = question.options || [];
+      const optionLines = options
+        .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
+        .join("\n");
+      text = [
+        `❓ Вопрос`,
+        "",
+        question.text,
+        "",
+        optionLines,
+      ].join("\n");
+    }
 
     // Send question WITHOUT buttons, set awaiting_answer state
     for (const user of registered) {
@@ -108,6 +120,7 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
         quizId: user.quizId,
         teamId: user.teamId,
         questionId: data.questionId,
+        questionType: question.questionType || "choice",
       });
       try {
         await bot.api.sendMessage(user.chatId, text);
@@ -126,11 +139,12 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
     }
     if (!question) return;
 
+    const isTextQuestion = question.questionType === "text";
     const options = question.options || [];
 
-    // Build inline keyboard with answer buttons
+    // Build inline keyboard with answer buttons (only for choice questions)
     const replyMarkup =
-      options.length >= 2 && options.length <= 8
+      !isTextQuestion && options.length >= 2 && options.length <= 8
         ? (() => {
             const kb = new InlineKeyboard();
             const letters = LABELS.slice(0, options.length);
@@ -153,15 +167,20 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
             quizId: user.quizId,
             teamId: user.teamId,
             questionId: data.questionId,
+            questionType: question.questionType || "choice",
           });
         }
       }
     }
 
+    const timerText = isTextQuestion
+      ? "⏱ Время пошло! Напиши ответ текстом."
+      : "⏱ Время пошло! Отправь ответ.";
+
     // Send "timer started" message with buttons IMMEDIATELY
     for (const user of registered) {
       try {
-        await bot.api.sendMessage(user.chatId, "⏱ Время пошло! Отправь ответ.", {
+        await bot.api.sendMessage(user.chatId, timerText, {
           ...(replyMarkup && { reply_markup: replyMarkup }),
         });
       } catch (err) {
@@ -171,10 +190,12 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
   } else if (data.slide === "answer") {
     // Get correct answer and team answers
     let correctAnswer = "";
-    let answers: Array<{ teamId: number; answerText: string }> = [];
+    let gameQuestion: GameStateResponse["question"] = null;
+    let answers: Array<{ teamId: number; answerText: string; awardedScore?: number | null }> = [];
     try {
       const gameState = await api.getGameState(data.quizId);
-      correctAnswer = gameState.question?.correctAnswer || "";
+      gameQuestion = gameState.question;
+      correctAnswer = gameQuestion?.correctAnswer || "";
       if (data.questionId) {
         answers = await api.getAnswers(data.questionId);
       }
@@ -195,11 +216,19 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
         // Find team's answer
         const teamAnswer = answers.find((a) => a.teamId === user.teamId);
         if (teamAnswer) {
-          const isCorrect = teamAnswer.answerText === correctAnswer;
-          const icon = isCorrect ? "✅" : "❌";
-          const text = isCorrect
-            ? `Твой ответ: ${teamAnswer.answerText} ${icon} Правильно!`
-            : `Твой ответ: ${teamAnswer.answerText} ${icon} Неправильно. Правильный ответ: ${correctAnswer}`;
+          const isTextQ = gameQuestion?.questionType === "text";
+          let text: string;
+          if (isTextQ) {
+            const score = teamAnswer.awardedScore ?? 0;
+            const weight = gameQuestion?.weight ?? 1;
+            text = `Твой ответ: ${teamAnswer.answerText}\nОценка: ${score}/${weight}`;
+          } else {
+            const isCorrect = teamAnswer.answerText === correctAnswer;
+            const icon = isCorrect ? "✅" : "❌";
+            text = isCorrect
+              ? `Твой ответ: ${teamAnswer.answerText} ${icon} Правильно!`
+              : `Твой ответ: ${teamAnswer.answerText} ${icon} Неправильно. Правильный ответ: ${correctAnswer}`;
+          }
 
           try {
             await bot.api.sendMessage(user.chatId, text);
@@ -226,7 +255,7 @@ async function onTeamKicked(bot: Bot, data: { teamId: number; name: string }) {
 
 async function onQuizFinished(
   bot: Bot,
-  data: { quizId: number; results: Array<{ teamId: number; name: string; correct: number; total: number }> }
+  data: { quizId: number; results: Array<{ teamId: number; name: string; correct: number; total: number; fastest: number | null }> }
 ) {
   const registered = getAllRegistered().filter((u) => u.quizId === data.quizId);
   if (registered.length === 0) return;
@@ -236,7 +265,10 @@ async function onQuizFinished(
 
   // Overall results
   const lines = data.results.map(
-    (r, i) => `${i + 1}. ${r.name} — ${r.correct}/${r.total} правильных`
+    (r, i) => {
+      const score = Number.isInteger(r.correct) ? r.correct : r.correct.toFixed(1);
+      return `${i + 1}. ${r.name} — ${score} баллов`;
+    }
   );
   const overallText = ["🏆 Квиз окончен! Результаты:", "", ...lines].join("\n");
 
@@ -249,12 +281,21 @@ async function onQuizFinished(
       const teamDetails = await api.getTeamDetails(data.quizId, user.teamId);
       const place = data.results.findIndex((r) => r.teamId === user.teamId) + 1;
 
+      const totalScore = Number.isInteger(teamDetails.totalCorrect)
+        ? teamDetails.totalCorrect
+        : teamDetails.totalCorrect.toFixed(1);
+
       const detailsLines = [
         `\n📊 Детальные результаты вашей команды "${teamDetails.teamName}":`,
         `🏅 Место: ${place}`,
-        `✅ Правильно: ${teamDetails.totalCorrect}/${teamDetails.totalQuestions}`,
+        `✅ Баллов: ${totalScore}`,
         "",
-        ...teamDetails.details.map((d, idx) => {
+        ...teamDetails.details.map((d: any, idx: number) => {
+          if (d.questionType === "text") {
+            const score = d.awardedScore ?? 0;
+            const answer = d.teamAnswer || "Не ответили";
+            return `${idx + 1}. ${d.questionText}\nВаш ответ: ${answer}\nОценка: ${score}/${d.weight}`;
+          }
           const icon = d.isCorrect ? "✅" : "❌";
           const answer = d.teamAnswer
             ? `${d.teamAnswer} (${d.teamAnswerText})`
@@ -281,11 +322,13 @@ async function onRemind(
 ) {
   let kb: InlineKeyboard | undefined;
   let currentQuestionId: number | null = null;
+  let isTextQuestion = false;
   try {
     const gameState = await api.getGameState(data.quizId);
     currentQuestionId = gameState.currentQuestionId;
+    isTextQuestion = gameState.question?.questionType === "text";
     const opts = gameState.question?.options || [];
-    if (opts.length >= 2 && opts.length <= 8) {
+    if (!isTextQuestion && opts.length >= 2 && opts.length <= 8) {
       kb = new InlineKeyboard();
       const letters = LABELS.slice(0, opts.length);
       for (let i = 0; i < letters.length; i += 2) {

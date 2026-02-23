@@ -10,6 +10,7 @@ import {
 import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 import type { SlideType } from "../types/slide.js";
+import { evaluateTextAnswers } from "./llm/evaluate-text-answer.js";
 
 export function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -273,6 +274,46 @@ export async function setSlide(
     .where(eq(gameState.quizId, quizId))
     .returning();
 
+  // When switching to answer slide for text questions — trigger LLM evaluation
+  if (slide === "answer" && updated.currentQuestionId) {
+    const [question] = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.id, updated.currentQuestionId));
+
+    if (question?.questionType === "text") {
+      const questionAnswers = await db
+        .select()
+        .from(answers)
+        .where(eq(answers.questionId, question.id));
+
+      // Only evaluate answers that haven't been scored yet
+      const unscored = questionAnswers.filter((a) => a.awardedScore === null);
+      if (unscored.length > 0) {
+        const correctAnswers = question.correctAnswer
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        const results = await evaluateTextAnswers(
+          correctAnswers,
+          unscored.map((a) => ({ teamId: a.teamId, answerText: a.answerText })),
+          question.weight
+        );
+
+        for (const r of results) {
+          const answer = unscored.find((a) => a.teamId === r.teamId);
+          if (answer) {
+            await db
+              .update(answers)
+              .set({ awardedScore: r.score })
+              .where(eq(answers.id, answer.id));
+          }
+        }
+      }
+    }
+  }
+
   broadcast("slide_changed", {
     quizId,
     questionId: updated.currentQuestionId,
@@ -331,11 +372,29 @@ export async function getTeamDetails(quizId: number, teamId: number) {
     .where(eq(answers.teamId, teamId));
 
   const answersByQuestion = new Map(
-    teamAnswers.map((a) => [a.questionId, a.answerText])
+    teamAnswers.map((a) => [a.questionId, { answerText: a.answerText, awardedScore: a.awardedScore }])
   );
 
   const details = allQuestions.map((q) => {
-    const teamAnswer = answersByQuestion.get(q.id) || null;
+    const teamAnswerData = answersByQuestion.get(q.id) || null;
+    const teamAnswer = teamAnswerData?.answerText || null;
+
+    if (q.questionType === "text") {
+      return {
+        questionId: q.id,
+        questionText: q.text,
+        questionType: q.questionType as "text",
+        weight: q.weight,
+        options: q.options,
+        teamAnswer,
+        teamAnswerText: teamAnswer,
+        correctAnswer: q.correctAnswer,
+        correctAnswerText: q.correctAnswer,
+        awardedScore: teamAnswerData?.awardedScore ?? null,
+        isCorrect: (teamAnswerData?.awardedScore ?? 0) >= q.weight,
+      };
+    }
+
     const isCorrect = teamAnswer === q.correctAnswer;
 
     // Получить текст варианта по букве
@@ -351,22 +410,32 @@ export async function getTeamDetails(quizId: number, teamId: number) {
     return {
       questionId: q.id,
       questionText: q.text,
+      questionType: q.questionType as "choice",
+      weight: q.weight,
       options: q.options,
       teamAnswer,
       teamAnswerText,
       correctAnswer: q.correctAnswer,
       correctAnswerText,
+      awardedScore: null as number | null,
       isCorrect,
     };
   });
 
-  const totalCorrect = details.filter((d) => d.isCorrect).length;
+  let totalScore = 0;
+  for (const d of details) {
+    if (d.questionType === "text") {
+      totalScore += d.awardedScore ?? 0;
+    } else {
+      totalScore += d.isCorrect ? 1 : 0;
+    }
+  }
   const totalQuestions = allQuestions.length;
 
   return {
     teamId: team.id,
     teamName: team.name,
-    totalCorrect,
+    totalCorrect: totalScore,
     totalQuestions,
     details,
   };
@@ -399,8 +468,12 @@ export async function getResults(quizId: number) {
       const stats = answersByTeam.get(a.teamId);
       if (!stats) continue;
       stats.total++;
-      if (a.answerText === q.correctAnswer) {
-        stats.correct++;
+      if (q.questionType === "text") {
+        stats.correct += a.awardedScore ?? 0;
+      } else {
+        if (a.answerText === q.correctAnswer) {
+          stats.correct++;
+        }
       }
     }
   }

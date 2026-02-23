@@ -72,6 +72,8 @@ export default function QuizEdit() {
         explanation: payload.explanation ?? null,
         timeLimitSec: payload.timeLimitSec,
         timerPosition: payload.timerPosition,
+        questionType: payload.questionType,
+        weight: payload.weight,
         orderNum: payload.orderNum,
         ...(slideUpdates.length > 0 && { slides: slideUpdates }),
       });
@@ -84,6 +86,8 @@ export default function QuizEdit() {
         explanation: payload.explanation ?? null,
         timeLimitSec: payload.timeLimitSec,
         timerPosition: payload.timerPosition,
+        questionType: payload.questionType,
+        weight: payload.weight,
       });
       setAdding(false);
     }

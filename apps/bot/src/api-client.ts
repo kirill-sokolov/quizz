@@ -46,6 +46,8 @@ export interface GameStateResponse {
     options: string[];
     correctAnswer: string;
     timeLimitSec: number;
+    questionType: "choice" | "text";
+    weight: number;
   } | null;
 }
 

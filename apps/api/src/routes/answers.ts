@@ -3,6 +3,7 @@ import { db } from "../db/index.js";
 import { answers, teams, questions } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
+import { authenticateToken } from "../middleware/auth.js";
 
 export async function answersRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>(
@@ -15,6 +16,7 @@ export async function answersRoutes(app: FastifyInstance) {
           questionId: answers.questionId,
           teamId: answers.teamId,
           answerText: answers.answerText,
+          awardedScore: answers.awardedScore,
           submittedAt: answers.submittedAt,
           teamName: teams.name,
         })
@@ -57,4 +59,28 @@ export async function answersRoutes(app: FastifyInstance) {
       throw err;
     }
   });
+
+  app.patch<{
+    Params: { id: string };
+    Body: { score: number };
+  }>(
+    "/api/answers/:id/score",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      const answerId = Number(req.params.id);
+      const { score } = req.body;
+
+      const [updated] = await db
+        .update(answers)
+        .set({ awardedScore: score })
+        .where(eq(answers.id, answerId))
+        .returning();
+
+      if (!updated) {
+        return reply.code(404).send({ error: "Answer not found" });
+      }
+
+      return updated;
+    }
+  );
 }

@@ -8,6 +8,7 @@ import {
   bigint,
   jsonb,
   unique,
+  real,
 } from "drizzle-orm/pg-core";
 
 // Типы слайдов - определены здесь для использования drizzle-kit
@@ -41,6 +42,10 @@ export const questions = pgTable("questions", {
   })
     .notNull()
     .default("center"),
+  questionType: text("question_type", { enum: ["choice", "text"] })
+    .notNull()
+    .default("choice"),
+  weight: integer("weight").notNull().default(1),
 });
 
 export const slides = pgTable("slides", {
@@ -76,6 +81,7 @@ export const answers = pgTable(
       .notNull()
       .references(() => teams.id, { onDelete: "cascade" }),
     answerText: text("answer_text").notNull(),
+    awardedScore: real("awarded_score"),
     submittedAt: timestamp("submitted_at").defaultNow().notNull(),
   },
   (t) => [unique().on(t.questionId, t.teamId)]

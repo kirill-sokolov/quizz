@@ -63,6 +63,8 @@ export const questionsApi = {
         correctAnswer: data.correctAnswer ?? "",
         explanation: data.explanation ?? null,
         timeLimitSec: data.timeLimitSec ?? 30,
+        questionType: data.questionType ?? "choice",
+        weight: data.weight ?? 1,
       }),
     }),
   update: (questionId, data) =>
@@ -139,6 +141,11 @@ export const teamsApi = {
 
 export const answersApi = {
   list: (questionId) => request(`/questions/${questionId}/answers`),
+  updateScore: (answerId, score) =>
+    request(`/answers/${answerId}/score`, {
+      method: "PATCH",
+      body: JSON.stringify({ score }),
+    }),
 };
 
 export const importApi = {

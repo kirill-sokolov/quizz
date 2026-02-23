@@ -469,37 +469,40 @@ export default function Game() {
           <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm mb-4">
             <h2 className="text-lg font-semibold text-stone-800 mb-4">Результаты</h2>
             <div className="space-y-3">
-              {results.map((result, idx) => (
-                <div
-                  key={result.teamId}
-                  className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg"
-                >
-                  <div className="text-2xl font-bold text-amber-600 w-12 text-center">
-                    #{idx + 1}
-                  </div>
-                  <div className="flex-1">
-                    <div className="font-semibold text-stone-800">{result.name}</div>
-                    <div className="text-sm text-stone-500">
-                      {result.correct} из {result.total} правильных ответов
+              {results.map((result, idx) => {
+                const score = Number.isInteger(result.correct) ? result.correct : result.correct.toFixed(1);
+                return (
+                  <div
+                    key={result.teamId}
+                    className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg"
+                  >
+                    <div className="text-2xl font-bold text-amber-600 w-12 text-center">
+                      #{idx + 1}
                     </div>
-                  </div>
-                  <div className="text-right flex items-center gap-3">
-                    <div>
-                      <div className="text-xl font-bold text-green-600">
-                        {result.correct}
+                    <div className="flex-1">
+                      <div className="font-semibold text-stone-800">{result.name}</div>
+                      <div className="text-sm text-stone-500">
+                        {score} баллов
                       </div>
-                      <div className="text-xs text-stone-400">правильно</div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => handleShowDetails(result.teamId)}
-                      className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
-                    >
-                      Подробнее
-                    </button>
+                    <div className="text-right flex items-center gap-3">
+                      <div>
+                        <div className="text-xl font-bold text-green-600">
+                          {score}
+                        </div>
+                        <div className="text-xs text-stone-400">баллов</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleShowDetails(result.teamId)}
+                        className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+                      >
+                        Подробнее
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -552,62 +555,79 @@ export default function Game() {
                   <div className="mb-6 p-4 bg-amber-50 rounded-lg">
                     <p className="text-center text-lg">
                       <span className="font-bold text-green-600">
-                        {teamDetails.totalCorrect}
+                        {Number.isInteger(teamDetails.totalCorrect) ? teamDetails.totalCorrect : teamDetails.totalCorrect.toFixed(1)}
                       </span>{" "}
-                      из {teamDetails.totalQuestions} правильных ответов
+                      баллов из {teamDetails.totalQuestions} вопросов
                     </p>
                   </div>
                   <div className="space-y-4">
-                    {teamDetails.details.map((detail, idx) => (
-                      <div
-                        key={detail.questionId}
-                        className={`p-4 rounded-lg border-2 ${
-                          detail.isCorrect
-                            ? "bg-green-50 border-green-200"
-                            : "bg-red-50 border-red-200"
-                        }`}
-                      >
-                        <div className="flex items-start gap-3 mb-2">
-                          <span className="font-bold text-stone-700">
-                            #{idx + 1}
-                          </span>
-                          <div className="flex-1">
-                            <p className="font-medium text-stone-800 mb-2">
-                              {detail.questionText}
-                            </p>
-                            <div className="text-sm space-y-1">
-                              <div>
-                                <span className="text-stone-600">Ответ команды: </span>
-                                <span
-                                  className={`font-semibold ${
-                                    detail.isCorrect
-                                      ? "text-green-700"
-                                      : "text-red-700"
-                                  }`}
-                                >
-                                  {detail.teamAnswer
-                                    ? `${detail.teamAnswer} (${detail.teamAnswerText})`
-                                    : "Не ответили"}
-                                </span>
-                              </div>
-                              {!detail.isCorrect && (
-                                <div>
-                                  <span className="text-stone-600">
-                                    Правильный ответ:{" "}
+                    {teamDetails.details.map((detail, idx) => {
+                      const isTextQ = detail.questionType === "text";
+                      const score = detail.awardedScore ?? 0;
+                      const bgClass = isTextQ
+                        ? (score > 0 ? "bg-green-50 border-green-200" : "bg-stone-50 border-stone-200")
+                        : (detail.isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200");
+                      return (
+                        <div
+                          key={detail.questionId}
+                          className={`p-4 rounded-lg border-2 ${bgClass}`}
+                        >
+                          <div className="flex items-start gap-3 mb-2">
+                            <span className="font-bold text-stone-700">
+                              #{idx + 1}
+                            </span>
+                            <div className="flex-1">
+                              <p className="font-medium text-stone-800 mb-2">
+                                {detail.questionText}
+                                {isTextQ && (
+                                  <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                    текст
                                   </span>
-                                  <span className="font-semibold text-green-700">
-                                    {detail.correctAnswer} ({detail.correctAnswerText})
+                                )}
+                              </p>
+                              <div className="text-sm space-y-1">
+                                <div>
+                                  <span className="text-stone-600">Ответ команды: </span>
+                                  <span className="font-semibold text-stone-800">
+                                    {isTextQ
+                                      ? (detail.teamAnswer || "Не ответили")
+                                      : (detail.teamAnswer
+                                          ? `${detail.teamAnswer} (${detail.teamAnswerText})`
+                                          : "Не ответили")}
                                   </span>
                                 </div>
+                                {isTextQ ? (
+                                  <div>
+                                    <span className="text-stone-600">Оценка: </span>
+                                    <span className="font-semibold text-amber-700">
+                                      {score} / {detail.weight}
+                                    </span>
+                                  </div>
+                                ) : (
+                                  !detail.isCorrect && (
+                                    <div>
+                                      <span className="text-stone-600">
+                                        Правильный ответ:{" "}
+                                      </span>
+                                      <span className="font-semibold text-green-700">
+                                        {detail.correctAnswer} ({detail.correctAnswerText})
+                                      </span>
+                                    </div>
+                                  )
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-2xl">
+                              {isTextQ ? (
+                                <span className="text-lg font-bold text-amber-600">{score}/{detail.weight}</span>
+                              ) : (
+                                detail.isCorrect ? "✅" : "❌"
                               )}
                             </div>
                           </div>
-                          <div className="text-2xl">
-                            {detail.isCorrect ? "✅" : "❌"}
-                          </div>
                         </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </>
               ) : null}
@@ -646,23 +666,39 @@ export default function Game() {
         <div className="lg:col-span-2 bg-white rounded-xl border border-stone-200 p-6 shadow-sm">
           {currentQuestion && (
             <>
-              <p className="text-stone-700 whitespace-pre-wrap mb-4">
-                {currentQuestion.text || "(нет текста)"}
-              </p>
-              <div className="flex flex-wrap gap-2 mb-4">
-                {currentQuestion.options?.map((opt, i) => (
-                  <span
-                    key={i}
-                    className={`px-3 py-1 rounded-lg text-sm ${
-                      String.fromCharCode(65 + i) === currentQuestion.correctAnswer
-                        ? "bg-green-100 text-green-800"
-                        : "bg-stone-100 text-stone-600"
-                    }`}
-                  >
-                    {String.fromCharCode(65 + i)}) {opt}
+              <div className="flex items-center gap-2 mb-2">
+                <p className="text-stone-700 whitespace-pre-wrap">
+                  {currentQuestion.text || "(нет текста)"}
+                </p>
+                {currentQuestion.questionType === "text" && (
+                  <span className="px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs font-medium whitespace-nowrap">
+                    Текст (вес: {currentQuestion.weight})
                   </span>
-                ))}
+                )}
               </div>
+              {currentQuestion.questionType === "text" ? (
+                <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                  <p className="text-sm text-purple-900">
+                    <span className="font-semibold">Правильные ответы: </span>
+                    {currentQuestion.correctAnswer}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2 mb-4">
+                  {currentQuestion.options?.map((opt, i) => (
+                    <span
+                      key={i}
+                      className={`px-3 py-1 rounded-lg text-sm ${
+                        String.fromCharCode(65 + i) === currentQuestion.correctAnswer
+                          ? "bg-green-100 text-green-800"
+                          : "bg-stone-100 text-stone-600"
+                      }`}
+                    >
+                      {String.fromCharCode(65 + i)}) {opt}
+                    </span>
+                  ))}
+                </div>
+              )}
 
               {/* Объяснение ответа */}
               {currentQuestion.explanation && (
@@ -750,22 +786,54 @@ export default function Game() {
           <ul className="space-y-2 mb-4">
             {activeTeams.map((team) => {
               const submitted = submittedTeamIds.has(team.id);
+              const teamAnswer = answers.find((a) => a.teamId === team.id);
+              const isTextQ = currentQuestion?.questionType === "text";
+              const isOnAnswerSlide = currentSlide === SLIDE_TYPES.ANSWER;
               return (
                 <li
                   key={team.id}
-                  className="flex items-center justify-between gap-2"
+                  className="flex flex-col gap-1"
                 >
-                  <span>
-                    {submitted ? "✅" : "⏳"} {team.name}
-                  </span>
-                  {!submitted && (
-                    <button
-                      type="button"
-                      onClick={() => handleRemind(team.id)}
-                      className="text-sm text-amber-600 hover:underline"
-                    >
-                      Напомнить
-                    </button>
+                  <div className="flex items-center justify-between gap-2">
+                    <span>
+                      {submitted ? "✅" : "⏳"} {team.name}
+                    </span>
+                    {!submitted && (
+                      <button
+                        type="button"
+                        onClick={() => handleRemind(team.id)}
+                        className="text-sm text-amber-600 hover:underline"
+                      >
+                        Напомнить
+                      </button>
+                    )}
+                  </div>
+                  {isTextQ && isOnAnswerSlide && teamAnswer && (
+                    <div className="ml-6 text-sm space-y-1">
+                      <div className="text-stone-500 italic truncate" title={teamAnswer.answerText}>
+                        {teamAnswer.answerText}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-stone-600">Балл:</span>
+                        <select
+                          value={teamAnswer.awardedScore ?? 0}
+                          onChange={async (e) => {
+                            const newScore = parseFloat(e.target.value);
+                            await answersApi.updateScore(teamAnswer.id, newScore);
+                            refreshAnswers();
+                          }}
+                          className="px-2 py-0.5 border border-stone-300 rounded text-sm"
+                        >
+                          {Array.from(
+                            { length: (currentQuestion.weight / 0.5) + 1 },
+                            (_, i) => i * 0.5
+                          ).map((v) => (
+                            <option key={v} value={v}>{v}</option>
+                          ))}
+                        </select>
+                        <span className="text-stone-400">/ {currentQuestion.weight}</span>
+                      </div>
+                    </div>
                   )}
                 </li>
               );
@@ -845,9 +913,9 @@ export default function Game() {
                 <div className="mb-6 p-4 bg-amber-50 rounded-lg">
                   <p className="text-center text-lg">
                     <span className="font-bold text-green-600">
-                      {teamDetails.totalCorrect}
+                      {Number.isInteger(teamDetails.totalCorrect) ? teamDetails.totalCorrect : teamDetails.totalCorrect.toFixed(1)}
                     </span>{" "}
-                    из {teamDetails.totalQuestions} правильных ответов
+                    баллов из {teamDetails.totalQuestions} вопросов
                   </p>
                 </div>
                 <div className="space-y-4">
@@ -866,56 +934,72 @@ export default function Game() {
 
                     return (
                       <>
-                        {filteredDetails.map((detail, idx) => (
-                          <div
-                            key={detail.questionId}
-                            className={`p-4 rounded-lg border-2 ${
-                              detail.isCorrect
-                                ? "bg-green-50 border-green-200"
-                                : "bg-red-50 border-red-200"
-                            }`}
-                          >
-                            <div className="flex items-start gap-3 mb-2">
-                              <span className="font-bold text-stone-700">
-                                #{idx + 1}
-                              </span>
-                              <div className="flex-1">
-                                <p className="font-medium text-stone-800 mb-2">
-                                  {detail.questionText}
-                                </p>
-                                <div className="text-sm space-y-1">
-                                  <div>
-                                    <span className="text-stone-600">Ответ команды: </span>
-                                    <span
-                                      className={`font-semibold ${
-                                        detail.isCorrect
-                                          ? "text-green-700"
-                                          : "text-red-700"
-                                      }`}
-                                    >
-                                      {detail.teamAnswer
-                                        ? `${detail.teamAnswer} (${detail.teamAnswerText})`
-                                        : "Не ответили"}
-                                    </span>
-                                  </div>
-                                  {!detail.isCorrect && (
-                                    <div>
-                                      <span className="text-stone-600">
-                                        Правильный ответ:{" "}
+                        {filteredDetails.map((detail, idx) => {
+                          const isTextQ = detail.questionType === "text";
+                          const score = detail.awardedScore ?? 0;
+                          const bgClass = isTextQ
+                            ? (score > 0 ? "bg-green-50 border-green-200" : "bg-stone-50 border-stone-200")
+                            : (detail.isCorrect ? "bg-green-50 border-green-200" : "bg-red-50 border-red-200");
+
+                          return (
+                            <div
+                              key={detail.questionId}
+                              className={`p-4 rounded-lg border-2 ${bgClass}`}
+                            >
+                              <div className="flex items-start gap-3 mb-2">
+                                <span className="font-bold text-stone-700">
+                                  #{idx + 1}
+                                </span>
+                                <div className="flex-1">
+                                  <p className="font-medium text-stone-800 mb-2">
+                                    {detail.questionText}
+                                    {isTextQ && (
+                                      <span className="ml-2 px-2 py-0.5 bg-purple-100 text-purple-700 rounded text-xs">
+                                        текст
                                       </span>
-                                      <span className="font-semibold text-green-700">
-                                        {detail.correctAnswer} ({detail.correctAnswerText})
+                                    )}
+                                  </p>
+                                  <div className="text-sm space-y-1">
+                                    <div>
+                                      <span className="text-stone-600">Ответ команды: </span>
+                                      <span className="font-semibold text-stone-800">
+                                        {detail.teamAnswer || "Не ответили"}
                                       </span>
                                     </div>
+                                    {isTextQ ? (
+                                      <div>
+                                        <span className="text-stone-600">Оценка: </span>
+                                        <span className="font-semibold text-amber-700">
+                                          {score} / {detail.weight}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {!detail.isCorrect && (
+                                          <div>
+                                            <span className="text-stone-600">
+                                              Правильный ответ:{" "}
+                                            </span>
+                                            <span className="font-semibold text-green-700">
+                                              {detail.correctAnswer} ({detail.correctAnswerText})
+                                            </span>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-2xl">
+                                  {isTextQ ? (
+                                    <span className="text-lg font-bold text-amber-600">{score}/{detail.weight}</span>
+                                  ) : (
+                                    detail.isCorrect ? "✅" : "❌"
                                   )}
                                 </div>
                               </div>
-                              <div className="text-2xl">
-                                {detail.isCorrect ? "✅" : "❌"}
-                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {hasHidden && !showUnanswered && (
                           <button
                             type="button"
@@ -962,40 +1046,43 @@ export default function Game() {
                   </button>
                 </div>
                 <div className="space-y-3">
-                  {currentResults.map((result, idx) => (
-                    <div
-                      key={result.teamId}
-                      className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg"
-                    >
-                      <div className="text-2xl font-bold text-amber-600 w-12 text-center">
-                        #{idx + 1}
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-stone-800">{result.name}</div>
-                        <div className="text-sm text-stone-500">
-                          {result.correct} из {result.total} правильных
+                  {currentResults.map((result, idx) => {
+                    const score = Number.isInteger(result.correct) ? result.correct : result.correct.toFixed(1);
+                    return (
+                      <div
+                        key={result.teamId}
+                        className="flex items-center gap-4 p-4 bg-stone-50 rounded-lg"
+                      >
+                        <div className="text-2xl font-bold text-amber-600 w-12 text-center">
+                          #{idx + 1}
                         </div>
-                      </div>
-                      <div className="text-right flex items-center gap-3">
-                        <div>
-                          <div className="text-xl font-bold text-green-600">
-                            {result.correct}
+                        <div className="flex-1">
+                          <div className="font-semibold text-stone-800">{result.name}</div>
+                          <div className="text-sm text-stone-500">
+                            {score} баллов
                           </div>
-                          <div className="text-xs text-stone-400">правильно</div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            handleCloseResults();
-                            handleShowDetails(result.teamId);
-                          }}
-                          className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
-                        >
-                          Подробнее
-                        </button>
+                        <div className="text-right flex items-center gap-3">
+                          <div>
+                            <div className="text-xl font-bold text-green-600">
+                              {score}
+                            </div>
+                            <div className="text-xs text-stone-400">баллов</div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleCloseResults();
+                              handleShowDetails(result.teamId);
+                            }}
+                            className="px-3 py-1.5 text-sm bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition"
+                          >
+                            Подробнее
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </>
             ) : null}

@@ -15,6 +15,13 @@
       "when": 1771768802613,
       "tag": "0001_petite_whistler",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1771799404322,
+      "tag": "0002_chubby_tana_nile",
+      "breakpoints": true
     }
   ]
 }
