@@ -60,28 +60,30 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-24">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-stone-800">
           Предпросмотр импорта ({items.length} вопросов)
         </h3>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={onCancel}
-            className="px-4 py-2 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 transition font-medium"
-          >
-            Отмена
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving || items.length === 0}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50"
-          >
-            {saving ? "Сохранение…" : "Сохранить квиз"}
-          </button>
-        </div>
+      </div>
+
+      {/* Sticky buttons at bottom */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-stone-200 shadow-lg px-6 py-4 flex gap-3 justify-end z-50">
+        <button
+          type="button"
+          onClick={onCancel}
+          className="px-4 py-2 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 transition font-medium"
+        >
+          Отмена
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving || items.length === 0}
+          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium disabled:opacity-50"
+        >
+          {saving ? "Сохранение…" : "Сохранить квиз"}
+        </button>
       </div>
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
@@ -130,36 +132,26 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                   placeholder="Текст вопроса"
                 />
 
-                {/* Options */}
-                <div className="grid grid-cols-2 gap-2">
-                  {item.options.map((opt, oi) => (
-                    <div key={oi} className="flex items-center gap-2">
-                      <span className="text-sm font-medium text-stone-500 w-5">{ANSWER_LABELS[oi]}</span>
-                      <input
-                        type="text"
-                        value={opt}
-                        onChange={(e) => updateOption(qi, oi, e.target.value)}
-                        className="flex-1 border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                        placeholder={`Вариант ${ANSWER_LABELS[oi]}`}
-                      />
-                    </div>
-                  ))}
-                </div>
+                {/* Options (only for choice type) */}
+                {item.questionType !== "text" && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {item.options.map((opt, oi) => (
+                      <div key={oi} className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-stone-500 w-5">{ANSWER_LABELS[oi]}</span>
+                        <input
+                          type="text"
+                          value={opt}
+                          onChange={(e) => updateOption(qi, oi, e.target.value)}
+                          className="flex-1 border border-stone-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                          placeholder={`Вариант ${ANSWER_LABELS[oi]}`}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                )}
 
-                {/* Correct answer, time, timer position */}
+                {/* Settings row */}
                 <div className="flex flex-wrap gap-4 items-center">
-                  <label className="flex items-center gap-2 text-sm">
-                    <span className="text-stone-600">Правильный:</span>
-                    <select
-                      value={item.correctAnswer}
-                      onChange={(e) => update(qi, "correctAnswer", e.target.value)}
-                      className="border border-stone-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    >
-                      {ANSWER_LABELS.map((l) => (
-                        <option key={l} value={l}>{l}</option>
-                      ))}
-                    </select>
-                  </label>
                   <label className="flex items-center gap-2 text-sm">
                     <span className="text-stone-600">Время (сек):</span>
                     <input
@@ -185,14 +177,48 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                   </label>
                 </div>
 
+                {/* Correct answer */}
+                {item.questionType === "text" ? (
+                  <div>
+                    <label className="block text-sm text-stone-600 mb-1">Правильный ответ:</label>
+                    <input
+                      type="text"
+                      value={item.correctAnswer}
+                      onChange={(e) => update(qi, "correctAnswer", e.target.value)}
+                      className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="Правильный ответ"
+                    />
+                  </div>
+                ) : (
+                  <div>
+                    <label className="flex items-center gap-2 text-sm">
+                      <span className="text-stone-600">Правильный:</span>
+                      <select
+                        value={item.correctAnswer}
+                        onChange={(e) => update(qi, "correctAnswer", e.target.value)}
+                        className="border border-stone-300 rounded-lg px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      >
+                        {ANSWER_LABELS.map((l) => (
+                          <option key={l} value={l}>{l}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                )}
+
                 {/* Explanation */}
-                <textarea
-                  value={item.explanation || ""}
-                  onChange={(e) => update(qi, "explanation", e.target.value || null)}
-                  rows={1}
-                  className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                  placeholder="Объяснение (опционально)"
-                />
+                {item.explanation && (
+                  <div>
+                    <label className="block text-sm text-stone-600 mb-1">Объяснение:</label>
+                    <textarea
+                      value={item.explanation || ""}
+                      onChange={(e) => update(qi, "explanation", e.target.value || null)}
+                      rows={2}
+                      className="w-full border border-stone-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                      placeholder="Объяснение (опционально)"
+                    />
+                  </div>
+                )}
 
                 {/* Slide previews */}
                 <div className="flex gap-3 flex-wrap">
