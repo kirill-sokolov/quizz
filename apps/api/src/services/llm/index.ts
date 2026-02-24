@@ -1,9 +1,5 @@
 import { config } from "../../config.js";
-import { analyzeWithGemini } from "./gemini.js";
-import { analyzeWithGroq } from "./groq.js";
-import { analyzeWithOpenRouter } from "./openrouter.js";
-import { analyzeWithPixtral } from "./pixtral.js";
-import { analyzeWithGPT4oMini } from "./gpt4o-mini.js";
+import { analyzeWithOpenRouter, OPENROUTER_MODELS } from "./openrouter.js";
 import {
   type ShrunkImage,
   type ParsedResult,
@@ -11,7 +7,6 @@ import {
   type DocxParsedResult,
   type DocxParsedQuestion,
   buildHybridPrompt,
-  parseHybridJsonResponse,
   buildDocxParsePrompt,
   parseDocxJsonResponse,
   buildDocxImageParsePrompt,
@@ -23,43 +18,36 @@ export type { ShrunkImage, ParsedResult, HybridParsedResult, DocxParsedResult, D
 type Provider = {
   name: string;
   fn: (images: ShrunkImage[], promptOverride?: string) => Promise<ParsedResult>;
-  key: string | undefined;
 };
 
-const ALL_PROVIDERS: Provider[] = [
-  { name: "Gemini",      fn: analyzeWithGemini,     key: config.GEMINI_API_KEY },
-  { name: "Groq",        fn: analyzeWithGroq,       key: config.GROQ_API_KEY },
-  { name: "OpenRouter",  fn: analyzeWithOpenRouter, key: config.OPENROUTER_API_KEY },
-  { name: "Pixtral",     fn: analyzeWithPixtral,    key: config.OPENROUTER_API_KEY },
-  { name: "GPT-4o-mini", fn: analyzeWithGPT4oMini,  key: config.OPENROUTER_API_KEY },
-];
+const ALL_PROVIDERS: Provider[] = OPENROUTER_MODELS.map((m) => ({
+  name: m.name,
+  fn: analyzeWithOpenRouter(m.model, m.name),
+}));
+
+function getProvider(name: string): Provider {
+  const provider = ALL_PROVIDERS.find((p) => p.name === name);
+  if (!provider) {
+    throw Object.assign(new Error(`Unknown model: ${name}`), { statusCode: 400 });
+  }
+  if (!config.OPENROUTER_API_KEY) {
+    throw Object.assign(new Error(`${name}: OPENROUTER_API_KEY not configured`), { statusCode: 500 });
+  }
+  return provider;
+}
 
 export async function analyzeImages(
   images: ShrunkImage[],
   selectedModel?: string | null
 ): Promise<ParsedResult> {
-  // If a specific model is selected, use only that one
   if (selectedModel) {
-    const provider = ALL_PROVIDERS.find((p) => p.name === selectedModel);
-    if (!provider) {
-      throw Object.assign(
-        new Error(`Unknown model: ${selectedModel}`),
-        { statusCode: 400 }
-      );
-    }
-    if (!provider.key) {
-      throw Object.assign(
-        new Error(`${selectedModel}: API key not configured`),
-        { statusCode: 500 }
-      );
-    }
+    const provider = getProvider(selectedModel);
     console.log(`[LLM] using selected model: ${selectedModel}`);
     return await provider.fn(images);
   }
 
-  // Otherwise, try all providers in order
-  for (const { name, fn, key } of ALL_PROVIDERS) {
-    if (!key) {
+  for (const { name, fn } of ALL_PROVIDERS) {
+    if (!config.OPENROUTER_API_KEY) {
       console.log(`[LLM] ${name}: no key, skip`);
       continue;
     }
@@ -73,10 +61,7 @@ export async function analyzeImages(
     }
   }
 
-  throw Object.assign(
-    new Error("All LLM providers failed"),
-    { statusCode: 502 }
-  );
+  throw Object.assign(new Error("All LLM providers failed"), { statusCode: 502 });
 }
 
 // ─── Hybrid mode: DOCX text + LLM for slide grouping ──────────────────────
@@ -93,30 +78,19 @@ export async function analyzeImagesHybrid(
     docxQuestions.map((q) => ({ title: q.title, correctAnswer: q.correctAnswer ?? "" }))
   );
 
-  // Use the same provider logic but with promptOverride
   const runWithPrompt = async (fn: Provider["fn"]) => {
     const raw = await fn(images, prompt);
-    // The provider returns ParsedResult but we sent a hybrid prompt,
-    // so re-parse the raw response as HybridParsedResult.
-    // Since providers call parseJsonResponse which just JSON.parses,
-    // the result structure matches HybridParsedResult.
     return raw as unknown as HybridParsedResult;
   };
 
   if (selectedModel) {
-    const provider = ALL_PROVIDERS.find((p) => p.name === selectedModel);
-    if (!provider) {
-      throw Object.assign(new Error(`Unknown model: ${selectedModel}`), { statusCode: 400 });
-    }
-    if (!provider.key) {
-      throw Object.assign(new Error(`${selectedModel}: API key not configured`), { statusCode: 500 });
-    }
+    const provider = getProvider(selectedModel);
     console.log(`[LLM hybrid] using selected model: ${selectedModel}`);
     return await runWithPrompt(provider.fn);
   }
 
-  for (const { name, fn, key } of ALL_PROVIDERS) {
-    if (!key) {
+  for (const { name, fn } of ALL_PROVIDERS) {
+    if (!config.OPENROUTER_API_KEY) {
       console.log(`[LLM hybrid] ${name}: no key, skip`);
       continue;
     }
@@ -140,34 +114,17 @@ export async function parseDocxText(
   selectedModel?: string | null
 ): Promise<DocxParsedResult> {
   const prompt = buildDocxParsePrompt(text);
-
-  // Use Gemini for text-only requests (or OpenRouter as fallback)
-  // Pass empty images array with promptOverride
   const emptyImages: ShrunkImage[] = [];
 
-  const textProviders = [
-    { name: "Gemini",      fn: analyzeWithGemini,     key: config.GEMINI_API_KEY },
-    { name: "Groq",        fn: analyzeWithGroq,       key: config.GROQ_API_KEY },
-    { name: "OpenRouter",  fn: analyzeWithOpenRouter, key: config.OPENROUTER_API_KEY },
-    { name: "Pixtral",     fn: analyzeWithPixtral,    key: config.OPENROUTER_API_KEY },
-    { name: "GPT-4o-mini", fn: analyzeWithGPT4oMini,  key: config.OPENROUTER_API_KEY },
-  ];
-
   if (selectedModel) {
-    const provider = textProviders.find((p) => p.name === selectedModel);
-    if (!provider) {
-      throw Object.assign(new Error(`Unknown model for text: ${selectedModel}`), { statusCode: 400 });
-    }
-    if (!provider.key) {
-      throw Object.assign(new Error(`${selectedModel}: API key not configured`), { statusCode: 500 });
-    }
+    const provider = getProvider(selectedModel);
     console.log(`[LLM docx] using selected model: ${selectedModel}`);
     const raw = await provider.fn(emptyImages, prompt);
     return parseDocxJsonResponse(JSON.stringify(raw));
   }
 
-  for (const { name, fn, key } of textProviders) {
-    if (!key) {
+  for (const { name, fn } of ALL_PROVIDERS) {
+    if (!config.OPENROUTER_API_KEY) {
       console.log(`[LLM docx] ${name}: no key, skip`);
       continue;
     }
@@ -193,28 +150,20 @@ export async function parseDocxImages(
 ): Promise<DocxParsedResult> {
   const prompt = buildDocxImageParsePrompt();
 
-  // Convert to ShrunkImage format
   const shrunkImages: ShrunkImage[] = images.map((img, i) => ({
     ...img,
     name: `page-${i + 1}.png`,
   }));
 
-  // Use vision models (Gemini, GPT-4o-mini, etc.)
   if (selectedModel) {
-    const provider = ALL_PROVIDERS.find((p) => p.name === selectedModel);
-    if (!provider) {
-      throw Object.assign(new Error(`Unknown model: ${selectedModel}`), { statusCode: 400 });
-    }
-    if (!provider.key) {
-      throw Object.assign(new Error(`${selectedModel}: API key not configured`), { statusCode: 500 });
-    }
+    const provider = getProvider(selectedModel);
     console.log(`[LLM docx-image] using selected model: ${selectedModel}`);
     const raw = await provider.fn(shrunkImages, prompt);
     return parseDocxImageJsonResponse(JSON.stringify(raw));
   }
 
-  for (const { name, fn, key } of ALL_PROVIDERS) {
-    if (!key) {
+  for (const { name, fn } of ALL_PROVIDERS) {
+    if (!config.OPENROUTER_API_KEY) {
       console.log(`[LLM docx-image] ${name}: no key, skip`);
       continue;
     }

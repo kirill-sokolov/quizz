@@ -298,12 +298,16 @@ export default function QuizEdit() {
             onChange={(e) => setSelectedModel(e.target.value)}
             className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
           >
-            <option value="">Авто (пробовать все)</option>
-            <option value="Gemini">Gemini</option>
-            <option value="Groq">Groq</option>
-            <option value="OpenRouter">OpenRouter (Llama 3.2 11B)</option>
-            <option value="Pixtral">Pixtral 12B</option>
             <option value="GPT-4o-mini">GPT-4o mini</option>
+            <option value="GPT-5 mini">GPT-5 mini</option>
+            <option value="GPT-5 nano">GPT-5 nano</option>
+            <option value="GPT-OSS 120B">GPT-OSS 120B</option>
+            <option value="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</option>
+            <option value="Gemini 3 Flash">Gemini 3 Flash</option>
+            <option value="Gemini 3 Pro">Gemini 3 Pro</option>
+            <option value="Kimi K2.5">Kimi K2.5</option>
+            <option value="Qwen3 235B">Qwen3 235B</option>
+            <option value="Grok 3 Mini">Grok 3 Mini</option>
           </select>
           <input
             ref={docxInputRef}
