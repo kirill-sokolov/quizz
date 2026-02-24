@@ -300,7 +300,6 @@ export default function QuizEdit() {
           >
             <option value="GPT-4o-mini">GPT-4o mini</option>
             <option value="GPT-5 mini">GPT-5 mini</option>
-            <option value="GPT-OSS 120B">GPT-OSS 120B</option>
             <option value="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</option>
             <option value="Gemini 3 Flash">Gemini 3 Flash</option>
             <option value="Gemini 3 Pro">Gemini 3 Pro</option>

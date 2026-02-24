@@ -7,7 +7,6 @@ const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 export const OPENROUTER_MODELS = [
   { name: "GPT-4o-mini",         model: "openai/gpt-4o-mini" },
   { name: "GPT-5 mini",          model: "openai/gpt-5-mini" },
-  { name: "GPT-OSS 120B",        model: "openai/gpt-oss-120b" },
   { name: "Gemini 2.5 Flash Lite", model: "google/gemini-2.5-flash-lite" },
   { name: "Gemini 3 Flash",      model: "google/gemini-3-flash-preview" },
   { name: "Gemini 3 Pro",        model: "google/gemini-3-pro-preview" },
