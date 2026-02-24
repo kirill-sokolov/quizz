@@ -300,12 +300,10 @@ export default function QuizEdit() {
           >
             <option value="GPT-4o-mini">GPT-4o mini</option>
             <option value="GPT-5 mini">GPT-5 mini</option>
-            <option value="Gemini 2.5 Flash Lite">Gemini 2.5 Flash Lite</option>
             <option value="Gemini 3 Flash">Gemini 3 Flash</option>
             <option value="Gemini 3 Pro">Gemini 3 Pro</option>
             <option value="Kimi K2.5">Kimi K2.5</option>
-            <option value="Qwen3 235B">Qwen3 235B</option>
-            <option value="Grok 3 Mini">Grok 3 Mini</option>
+            <option value="Grok 4">Grok 4</option>
           </select>
           <input
             ref={docxInputRef}
