@@ -35,6 +35,7 @@ export interface ImportPreviewItem {
     timer: string | null;
     answer: string | null;
   };
+  extraSlides?: string[];
 }
 
 export interface ImportPreviewResult {
@@ -146,9 +147,15 @@ export async function importZip(
   _quizId: number,
   buffer: Buffer,
   selectedModel?: string | null,
-  docxBuffer?: Buffer | null
+  docxBuffer?: Buffer | null,
+  docxQuestions?: any[] | null
 ): Promise<ImportPreviewResult> {
-  // If DOCX is provided, use hybrid pipeline
+  // If pre-parsed DOCX questions are provided, use hybrid with pre-parsed data
+  if (docxQuestions && docxQuestions.length > 0) {
+    return importHybridWithParsed(buffer, docxQuestions, selectedModel);
+  }
+
+  // If DOCX buffer is provided, use hybrid pipeline (legacy)
   if (docxBuffer) {
     return importHybrid(buffer, docxBuffer, selectedModel);
   }
@@ -230,6 +237,106 @@ export async function importZip(
     questions,
     demoImageUrl: getUrl(llmResult.demoSlide ?? null),
     rulesImageUrl: getUrl(llmResult.rulesSlide ?? null),
+  };
+}
+
+// ─── Hybrid pipeline with pre-parsed DOCX ────────────────────────────────────
+
+async function importHybridWithParsed(
+  zipBuffer: Buffer,
+  docxQuestions: any[],
+  selectedModel?: string | null
+): Promise<ImportPreviewResult> {
+  // docxQuestions already parsed, skip DOCX processing
+
+  // 1. Extract and save images from ZIP
+  const images = processZip(zipBuffer);
+  if (images.length === 0) {
+    throw Object.assign(new Error("В ZIP не найдено изображений"), {
+      statusCode: 400,
+    });
+  }
+  const savedUrls = images.map((img) => saveImageToDisk(img));
+
+  // 2. Shrink images for LLM
+  const shrunk: ShrunkImage[] = await Promise.all(
+    images.map(async (img) => {
+      const s = await shrinkImage(img);
+      return { ...s, name: img.name };
+    })
+  );
+
+  // 3. Ask LLM to group slides and determine timer position
+  let hybridResult: Awaited<ReturnType<typeof analyzeImagesHybrid>>;
+  try {
+    hybridResult = await analyzeImagesHybrid(shrunk, docxQuestions, selectedModel);
+  } catch (err) {
+    console.error("LLM hybrid error:", err instanceof Error ? err.message : err);
+    // Fallback: distribute images evenly across questions
+    const perQ = Math.max(1, Math.floor(images.length / docxQuestions.length));
+    hybridResult = {
+      questions: docxQuestions.map((_, i) => ({
+        slides: {
+          video_warning: null,
+          video_intro: null,
+          question: i * perQ < images.length ? i * perQ : null,
+          timer: null,
+          answer: null,
+        },
+        timer_position: "center",
+      })),
+    };
+  }
+
+  // 4. Merge DOCX text with LLM slide grouping
+  const getUrl = (idx: number | null) =>
+    idx != null && idx >= 0 && idx < savedUrls.length ? savedUrls[idx] : null;
+
+  const questions = docxQuestions.map((dq, i) => {
+    const hybrid = hybridResult.questions[i] ?? {
+      slides: { video_warning: null, video_intro: null, question: null, timer: null, answer: null },
+      timer_position: "center",
+    };
+
+    // If timer/answer slides are missing, fall back to question slide
+    let videoWarningUrl = getUrl(hybrid.slides?.video_warning ?? null);
+    let videoIntroUrl = getUrl(hybrid.slides?.video_intro ?? null);
+    let questionUrl = getUrl(hybrid.slides?.question ?? null);
+    let timerUrl = getUrl(hybrid.slides?.timer ?? null);
+    let answerUrl = getUrl(hybrid.slides?.answer ?? null);
+    if (!timerUrl) timerUrl = questionUrl;
+    if (!answerUrl) answerUrl = questionUrl;
+    if (!questionUrl) questionUrl = timerUrl;
+
+    const questionType = dq.questionType ?? "choice";
+    const correctAnswer = questionType === "text"
+      ? (dq.correctAnswer ?? "")
+      : (ANSWER_LABELS[dq.correctIndex] ?? "A");
+
+    return {
+      orderNum: i + 1,
+      text: dq.title,
+      questionType,
+      options: dq.options,
+      correctAnswer,
+      explanation: dq.explanation,
+      timeLimitSec: 30,
+      timerPosition: hybrid.timer_position ?? "center",
+      slides: {
+        video_warning: videoWarningUrl,
+        video_intro: videoIntroUrl,
+        question: questionUrl,
+        timer: timerUrl,
+        answer: answerUrl,
+      },
+      extraSlides: (hybrid.extraSlides ?? []).map(idx => getUrl(idx)).filter(Boolean) as string[],
+    };
+  });
+
+  return {
+    questions,
+    demoImageUrl: getUrl(hybridResult.demoSlide ?? null),
+    rulesImageUrl: getUrl(hybridResult.rulesSlide ?? null),
   };
 }
 
@@ -351,6 +458,7 @@ async function importHybrid(
         timer: timerUrl,
         answer: answerUrl,
       },
+      extraSlides: (hybrid.extraSlides ?? []).map(idx => getUrl(idx)).filter(Boolean) as string[],
     };
   });
 

@@ -15,10 +15,12 @@ export default function QuizEdit() {
   const [adding, setAdding] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("GPT-4o-mini");
+  const [textModel, setTextModel] = useState("GPT-5 mini");
+  const [imageModel, setImageModel] = useState("Kimi K2.5");
   const zipInputRef = useRef(null);
   const docxInputRef = useRef(null);
-  const [docxFile, setDocxFile] = useState(null);
+  const [docxResult, setDocxResult] = useState(null);
+  const [processingDocx, setProcessingDocx] = useState(false);
   const [editingSettings, setEditingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploadingDemo, setUploadingDemo] = useState(false);
@@ -158,13 +160,36 @@ export default function QuizEdit() {
     }
   };
 
+  const handleDocxUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProcessingDocx(true);
+    setError(null);
+    setDocxResult(null);
+    try {
+      const result = await importApi.uploadDocx(id, file, textModel);
+      setDocxResult(result);
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка обработки DOCX");
+    } finally {
+      setProcessingDocx(false);
+      if (docxInputRef.current) docxInputRef.current.value = "";
+    }
+  };
+
   const handleZipUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setImporting(true);
     setError(null);
     try {
-      const result = await importApi.uploadZip(id, file, selectedModel || null, docxFile);
+      const result = await importApi.uploadZip(
+        id,
+        file,
+        imageModel,
+        null,
+        docxResult?.questions || null
+      );
       setImportPreview(result);
     } catch (err) {
       setError(err.body?.error || err.message || "Ошибка импорта ZIP");
@@ -293,47 +318,78 @@ export default function QuizEdit() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-medium text-stone-700">Вопросы</h2>
         <div className="flex gap-2 items-center">
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+          >
+            Добавить вопрос
+          </button>
+        </div>
+      </div>
+
+      {/* Import section */}
+      <div className="mb-6 p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-4">
+        <h3 className="text-md font-medium text-stone-700">Импорт из DOCX + ZIP</h3>
+
+        {/* Step 1: DOCX upload */}
+        <div className="flex gap-3 items-center">
+          <span className="text-sm text-stone-600 font-medium">1. Текст (DOCX):</span>
           <select
-            value={selectedModel}
-            onChange={(e) => setSelectedModel(e.target.value)}
+            value={textModel}
+            onChange={(e) => setTextModel(e.target.value)}
             className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm"
           >
             <option value="GPT-4o-mini">GPT-4o mini</option>
             <option value="GPT-5 mini">GPT-5 mini</option>
             <option value="Gemini 3 Flash">Gemini 3 Flash</option>
-            <option value="Gemini 3 Pro">Gemini 3 Pro</option>
-            <option value="Kimi K2.5">Kimi K2.5</option>
-            <option value="Grok 4">Grok 4</option>
           </select>
           <input
             ref={docxInputRef}
             type="file"
             accept=".docx"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              setDocxFile(f || null);
-            }}
+            onChange={handleDocxUpload}
             className="hidden"
           />
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => docxInputRef.current?.click()}
-              className="px-3 py-2 border border-stone-300 text-stone-600 rounded-lg hover:bg-stone-50 transition text-sm font-medium"
-            >
-              {docxFile ? docxFile.name : "DOCX (опц.)"}
-            </button>
-            {docxFile && (
-              <button
-                type="button"
-                onClick={() => { setDocxFile(null); if (docxInputRef.current) docxInputRef.current.value = ""; }}
-                className="text-red-500 hover:text-red-700 text-sm px-1"
-                title="Убрать DOCX"
-              >
-                &times;
-              </button>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={() => docxInputRef.current?.click()}
+            disabled={processingDocx}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium disabled:opacity-50"
+          >
+            {processingDocx ? "Обработка…" : "Загрузить DOCX"}
+          </button>
+          {docxResult && (
+            <span className="text-sm text-green-600 font-medium">✓ Готово ({docxResult.questions?.length || 0} вопросов)</span>
+          )}
+        </div>
+
+        {/* DOCX result viewer */}
+        {docxResult && (
+          <details className="bg-white rounded-lg border border-stone-200 p-3">
+            <summary className="cursor-pointer text-sm font-medium text-stone-600 hover:text-stone-800">
+              Просмотр результата DOCX (JSON)
+            </summary>
+            <pre className="mt-2 text-xs bg-stone-50 p-3 rounded overflow-auto max-h-64">
+              {JSON.stringify(docxResult, null, 2)}
+            </pre>
+          </details>
+        )}
+
+        {/* Step 2: ZIP upload (only enabled after DOCX) */}
+        <div className="flex gap-3 items-center">
+          <span className="text-sm text-stone-600 font-medium">2. Изображения (ZIP):</span>
+          <select
+            value={imageModel}
+            onChange={(e) => setImageModel(e.target.value)}
+            disabled={!docxResult}
+            className="px-3 py-2 border border-stone-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm disabled:opacity-50"
+          >
+            <option value="Kimi K2.5">Kimi K2.5</option>
+            <option value="Grok 4">Grok 4</option>
+            <option value="Gemini 3 Flash">Gemini 3 Flash</option>
+            <option value="Gemini 3 Pro">Gemini 3 Pro</option>
+          </select>
           <input
             ref={zipInputRef}
             type="file"
@@ -344,18 +400,14 @@ export default function QuizEdit() {
           <button
             type="button"
             onClick={() => zipInputRef.current?.click()}
-            disabled={importing}
+            disabled={importing || !docxResult}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50"
           >
-            {importing ? "Обработка…" : "Импорт из ZIP"}
+            {importing ? "Обработка…" : "Загрузить ZIP"}
           </button>
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
-          >
-            Добавить вопрос
-          </button>
+          {!docxResult && (
+            <span className="text-xs text-stone-400">Сначала загрузите DOCX</span>
+          )}
         </div>
       </div>
 

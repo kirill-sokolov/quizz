@@ -216,6 +216,24 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                     );
                   })}
                 </div>
+
+                {/* Extra slides (humor, timers, etc.) */}
+                {item.extraSlides && item.extraSlides.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-stone-200">
+                    <p className="text-xs text-stone-500 mb-2">Дополнительные слайды (юмор, таймеры):</p>
+                    <div className="flex gap-3 flex-wrap">
+                      {item.extraSlides.map((url, ei) => (
+                        <div key={ei} className="text-center">
+                          <img
+                            src={getMediaUrl(url)}
+                            alt={`Extra ${ei + 1}`}
+                            className="w-28 h-20 object-cover rounded border border-stone-200"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <button

@@ -149,13 +149,34 @@ export const answersApi = {
 };
 
 export const importApi = {
-  uploadZip: async (quizId, file, selectedModel = null, docxFile = null) => {
+  uploadDocx: async (quizId, docxFile, selectedModel = null) => {
+    const form = new FormData();
+    form.append("docx", docxFile);
+    if (selectedModel) {
+      form.append("model", selectedModel);
+    }
+    const res = await fetch(`${API}/quizzes/${quizId}/import-docx`, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = new Error(res.statusText || "DOCX import failed");
+      err.status = res.status;
+      err.body = await res.json().catch(() => ({}));
+      throw err;
+    }
+    return res.json();
+  },
+  uploadZip: async (quizId, file, selectedModel = null, docxFile = null, docxQuestions = null) => {
     const form = new FormData();
     form.append("file", file);
     if (selectedModel) {
       form.append("model", selectedModel);
     }
-    if (docxFile) {
+    if (docxQuestions) {
+      form.append("docxQuestions", JSON.stringify(docxQuestions));
+    } else if (docxFile) {
       form.append("docx", docxFile);
     }
     const res = await fetch(`${API}/quizzes/${quizId}/import-zip`, {

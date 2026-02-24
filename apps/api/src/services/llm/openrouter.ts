@@ -4,14 +4,21 @@ import { logCost } from "./cost-logger.js";
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
-export const OPENROUTER_MODELS = [
-  { name: "GPT-4o-mini",         model: "openai/gpt-4o-mini" },
-  { name: "GPT-5 mini",          model: "openai/gpt-5-mini" },
-  { name: "Gemini 3 Flash",      model: "google/gemini-3-flash-preview" },
-  { name: "Gemini 3 Pro",        model: "google/gemini-3-pro-preview" },
-  { name: "Kimi K2.5",           model: "moonshotai/kimi-k2.5" },
-  { name: "Grok 4",              model: "x-ai/grok-4" },
+export const TEXT_MODELS = [
+  { name: "GPT-4o-mini",    model: "openai/gpt-4o-mini" },
+  { name: "GPT-5 mini",     model: "openai/gpt-5-mini" },
+  { name: "Gemini 3 Flash", model: "google/gemini-3-flash-preview" },
 ] as const;
+
+export const IMAGE_MODELS = [
+  { name: "Kimi K2.5",      model: "moonshotai/kimi-k2.5" },
+  { name: "Grok 4",         model: "x-ai/grok-4" },
+  { name: "Gemini 3 Flash", model: "google/gemini-3-flash-preview" },
+  { name: "Gemini 3 Pro",   model: "google/gemini-3-pro-preview" },
+] as const;
+
+export const OPENROUTER_MODELS = [...TEXT_MODELS, ...IMAGE_MODELS];
+
 
 export type OpenRouterModelName = (typeof OPENROUTER_MODELS)[number]["name"];
 
