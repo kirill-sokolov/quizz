@@ -124,8 +124,8 @@ export const gameApi = {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
-  resetToFirst: (quizId) =>
-    request("/game/reset-to-first", {
+  restart: (quizId) =>
+    request("/game/restart", {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),

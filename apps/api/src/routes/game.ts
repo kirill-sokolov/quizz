@@ -13,7 +13,7 @@ import {
   archiveQuiz,
   getResults,
   getTeamDetails,
-  resetToFirstQuestion,
+  restartQuiz,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
 import type { SlideType } from "../types/slide.js";
@@ -131,11 +131,11 @@ export async function gameRoutes(app: FastifyInstance) {
   );
 
   app.post<{ Body: { quizId: number } }>(
-    "/api/game/reset-to-first",
+    "/api/game/restart",
     { preHandler: authenticateToken },
     async (req, reply) => {
-      const state = await resetToFirstQuestion(req.body.quizId);
-      return state;
+      const result = await restartQuiz(req.body.quizId);
+      return result;
     }
   );
 

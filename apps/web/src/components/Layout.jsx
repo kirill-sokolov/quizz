@@ -1,5 +1,5 @@
 import { Link, Outlet, useNavigate } from "react-router-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "./AuthProvider";
 import { quizzesApi } from "../api/client";
 
@@ -8,8 +8,7 @@ export default function Layout() {
   const navigate = useNavigate();
   const [tvQuizCode, setTvQuizCode] = useState(null);
 
-  useEffect(() => {
-    // Загрузить квиз для TV-ссылки (приоритет: draft → active → finished)
+  const refreshTvCode = useCallback(() => {
     quizzesApi
       .list()
       .then((quizzes) => {
@@ -23,6 +22,10 @@ export default function Layout() {
         console.error("Failed to load quiz for TV link:", err);
       });
   }, []);
+
+  useEffect(() => {
+    refreshTvCode();
+  }, [refreshTvCode]);
 
   const handleLogout = () => {
     logout();
@@ -67,7 +70,7 @@ export default function Layout() {
         </div>
       </header>
       <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-6">
-        <Outlet />
+        <Outlet context={{ refreshTvCode }} />
       </main>
     </div>
   );

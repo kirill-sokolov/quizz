@@ -150,62 +150,40 @@ export async function beginGame(quizId: number) {
   return updated;
 }
 
-export async function resetToFirstQuestion(quizId: number) {
-  const [state] = await db
+export async function restartQuiz(quizId: number) {
+  const [quiz] = await db
     .select()
-    .from(gameState)
-    .where(eq(gameState.quizId, quizId));
-  if (!state || state.status !== "playing") {
-    throw new Error("Game is not in playing state");
+    .from(quizzes)
+    .where(eq(quizzes.id, quizId));
+  if (!quiz) throw new Error("Quiz not found");
+  if (quiz.status === "draft") {
+    throw new Error("Quiz is already a draft");
   }
 
-  const firstQuestion = await db
-    .select()
+  const newJoinCode = generateJoinCode();
+
+  // Reset quiz status to draft with new join code
+  await db
+    .update(quizzes)
+    .set({ status: "draft", joinCode: newJoinCode })
+    .where(eq(quizzes.id, quizId));
+
+  // Delete all answers for this quiz's questions
+  const quizQuestions = await db
+    .select({ id: questions.id })
     .from(questions)
-    .where(eq(questions.quizId, quizId))
-    .orderBy(asc(questions.orderNum))
-    .limit(1);
-
-  const currentQuestionId = firstQuestion[0]?.id ?? null;
-
-  // Check if the first question has video slides to determine the starting slide
-  let startingSlide: "video_warning" | "question" = "question";
-  if (currentQuestionId) {
-    const questionSlides = await db
-      .select()
-      .from(slides)
-      .where(eq(slides.questionId, currentQuestionId));
-
-    const hasVideoWarning = questionSlides.some(s => s.type === "video_warning");
-    if (hasVideoWarning) {
-      startingSlide = "video_warning";
-    }
+    .where(eq(questions.quizId, quizId));
+  for (const q of quizQuestions) {
+    await db.delete(answers).where(eq(answers.questionId, q.id));
   }
 
-  const [updated] = await db
-    .update(gameState)
-    .set({
-      currentQuestionId,
-      currentSlide: startingSlide,
-      timerStartedAt: null,
-    })
-    .where(eq(gameState.quizId, quizId))
-    .returning();
+  // Delete all teams
+  await db.delete(teams).where(eq(teams.quizId, quizId));
 
-  // Clear all answers for a fresh start
-  if (currentQuestionId) {
-    await db
-      .delete(answers)
-      .where(eq(answers.questionId, currentQuestionId));
-  }
+  // Delete game state
+  await db.delete(gameState).where(eq(gameState.quizId, quizId));
 
-  broadcast("slide_changed", {
-    quizId,
-    questionId: currentQuestionId,
-    slide: startingSlide,
-  });
-
-  return updated;
+  return { success: true };
 }
 
 export async function nextQuestion(quizId: number) {

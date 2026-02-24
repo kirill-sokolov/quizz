@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useOutletContext } from "react-router-dom";
 import { quizzesApi, gameApi, mediaUpload, getMediaUrl, adminApi } from "../api/client";
 
 const STATUS_LABEL = {
@@ -28,7 +28,9 @@ export default function Home() {
   const [creating, setCreating] = useState(false);
   const [uploadingDemo, setUploadingDemo] = useState(null);
   const [starting, setStarting] = useState(null);
+  const [restarting, setRestarting] = useState(null);
   const [seeding, setSeeding] = useState(false);
+  const { refreshTvCode } = useOutletContext();
 
   const loadQuizzes = async () => {
     setLoading(true);
@@ -97,12 +99,28 @@ export default function Home() {
     }
   };
 
+  const handleRestart = async (quizId) => {
+    if (!window.confirm("Перезапустить квиз? Все ответы и команды будут удалены, вопросы останутся.")) return;
+    setRestarting(quizId);
+    setError(null);
+    try {
+      await gameApi.restart(quizId);
+      await loadQuizzes();
+      refreshTvCode();
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка перезапуска квиза");
+    } finally {
+      setRestarting(null);
+    }
+  };
+
   const handleStart = async (quizId) => {
     setStarting(quizId);
     setError(null);
     try {
       await gameApi.start(quizId);
       await loadQuizzes();
+      refreshTvCode();
     } catch (err) {
       setError(err.message || "Ошибка запуска квиза");
     } finally {
@@ -182,22 +200,15 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
-                {q.status === "finished" || q.status === "archived" ? (
-                  <Link
-                    to={`/admin/game/${q.id}`}
-                    className="px-3 py-2 text-center text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 transition text-sm font-medium"
-                  >
-                    📊 Посмотреть результаты
-                  </Link>
-                ) : (
-                  <div className="flex gap-2">
-                    <Link
-                      to={`/admin/quiz/${q.id}/edit`}
-                      className="flex-1 px-3 py-2 text-center text-amber-600 bg-amber-50 rounded-lg transition text-sm font-medium"
-                    >
-                      Редактировать
-                    </Link>
-                    {q.status === "draft" ? (
+                <div className="flex gap-2">
+                  {q.status === "draft" ? (
+                    <>
+                      <Link
+                        to={`/admin/quiz/${q.id}/edit`}
+                        className="flex-1 px-3 py-2 text-center text-amber-600 bg-amber-50 rounded-lg transition text-sm font-medium"
+                      >
+                        Редактировать
+                      </Link>
                       <button
                         type="button"
                         onClick={() => handleStart(q.id)}
@@ -206,16 +217,35 @@ export default function Home() {
                       >
                         {starting === q.id ? "⏳" : "Начать"}
                       </button>
-                    ) : (
-                      <Link
-                        to={`/admin/game/${q.id}`}
-                        className="flex-1 px-3 py-2 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                    </>
+                  ) : (
+                    <>
+                      {q.status === "active" ? (
+                        <Link
+                          to={`/admin/game/${q.id}`}
+                          className="flex-1 px-3 py-2 text-center bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                        >
+                          Управление
+                        </Link>
+                      ) : (
+                        <Link
+                          to={`/admin/game/${q.id}`}
+                          className="flex-1 px-3 py-2 text-center text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 transition text-sm font-medium"
+                        >
+                          📊 Результаты
+                        </Link>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRestart(q.id)}
+                        disabled={restarting === q.id}
+                        className="flex-1 px-3 py-2 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
                       >
-                        Управление
-                      </Link>
-                    )}
-                  </div>
-                )}
+                        {restarting === q.id ? "⏳" : "Перезапустить"}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -290,14 +320,7 @@ export default function Home() {
                     </td>
                     <td className="py-3 px-4 text-right">
                       <div className="flex gap-2 justify-end">
-                        {q.status === "finished" || q.status === "archived" ? (
-                          <Link
-                            to={`/admin/game/${q.id}`}
-                            className="inline-flex px-3 py-1.5 text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 transition text-sm font-medium"
-                          >
-                            📊 Посмотреть результаты
-                          </Link>
-                        ) : (
+                        {q.status === "draft" ? (
                           <>
                             <Link
                               to={`/admin/quiz/${q.id}/edit`}
@@ -305,23 +328,40 @@ export default function Home() {
                             >
                               Редактировать
                             </Link>
-                            {q.status === "draft" ? (
-                              <button
-                                type="button"
-                                onClick={() => handleStart(q.id)}
-                                disabled={starting === q.id}
-                                className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
-                              >
-                                {starting === q.id ? "⏳" : "Начать"}
-                              </button>
-                            ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleStart(q.id)}
+                              disabled={starting === q.id}
+                              className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
+                            >
+                              {starting === q.id ? "⏳" : "Начать"}
+                            </button>
+                          </>
+                        ) : (
+                          <>
+                            {q.status === "active" ? (
                               <Link
                                 to={`/admin/game/${q.id}`}
                                 className="inline-flex px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition text-sm font-medium"
                               >
                                 Управление
                               </Link>
+                            ) : (
+                              <Link
+                                to={`/admin/game/${q.id}`}
+                                className="inline-flex px-3 py-1.5 text-stone-600 bg-stone-100 rounded-lg hover:bg-stone-200 transition text-sm font-medium"
+                              >
+                                📊 Результаты
+                              </Link>
                             )}
+                            <button
+                              type="button"
+                              onClick={() => handleRestart(q.id)}
+                              disabled={restarting === q.id}
+                              className="inline-flex px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
+                            >
+                              {restarting === q.id ? "⏳" : "Перезапустить"}
+                            </button>
                           </>
                         )}
                       </div>
