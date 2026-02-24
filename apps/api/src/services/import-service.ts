@@ -22,6 +22,7 @@ interface ExtractedImage {
 export interface ImportPreviewItem {
   orderNum: number;
   text: string;
+  questionType: "choice" | "text";
   options: string[];
   correctAnswer: string;
   explanation: string | null;
@@ -209,6 +210,7 @@ export async function importZip(
     return {
       orderNum: i + 1,
       text: q.question ?? "",
+      questionType: "choice" as const,
       options: [opts.A ?? "", opts.B ?? "", opts.C ?? "", opts.D ?? ""],
       correctAnswer: q.correct ?? "A",
       explanation: null,
@@ -328,11 +330,17 @@ async function importHybrid(
     if (!answerUrl) answerUrl = questionUrl;
     if (!questionUrl) questionUrl = timerUrl;
 
+    const questionType = dq.questionType ?? "choice";
+    const correctAnswer = questionType === "text"
+      ? (dq.correctAnswer ?? "")
+      : (ANSWER_LABELS[dq.correctIndex] ?? "A");
+
     return {
       orderNum: i + 1,
       text: dq.title,
+      questionType,
       options: dq.options,
-      correctAnswer: ANSWER_LABELS[dq.correctIndex] ?? "A",
+      correctAnswer,
       explanation: dq.explanation,
       timeLimitSec: 30,
       timerPosition: hybrid.timer_position ?? "center",
@@ -388,6 +396,7 @@ export async function saveImportedQuiz(
         quizId,
         orderNum: nextOrder++,
         text: item.text,
+        questionType: item.questionType ?? "choice",
         options: item.options,
         correctAnswer: item.correctAnswer,
         explanation: item.explanation ?? null,
