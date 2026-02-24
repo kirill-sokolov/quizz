@@ -3,10 +3,14 @@ FROM node:20-slim
 # Install system dependencies for DOCX processing
 # LibreOffice: DOCX → PDF
 # ImageMagick + Ghostscript: PDF → PNG
+# Tesseract: OCR for text recognition
 RUN apt-get update && apt-get install -y \
     libreoffice \
     imagemagick \
     ghostscript \
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    tesseract-ocr-rus \
     && rm -rf /var/lib/apt/lists/*
 
 # Configure ImageMagick to allow PDF processing

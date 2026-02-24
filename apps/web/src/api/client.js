@@ -192,6 +192,25 @@ export const importApi = {
     }
     return res.json();
   },
+  analyzeZipOcr: async (quizId, file, useVision = false) => {
+    const form = new FormData();
+    form.append("file", file);
+    if (useVision) {
+      form.append("useVision", "true");
+    }
+    const res = await fetch(`${API}/quizzes/${quizId}/analyze-zip-ocr`, {
+      method: "POST",
+      credentials: "include",
+      body: form,
+    });
+    if (!res.ok) {
+      const err = new Error(res.statusText || "OCR analysis failed");
+      err.status = res.status;
+      err.body = await res.json().catch(() => ({}));
+      throw err;
+    }
+    return res.json();
+  },
   save: (quizId, data) =>
     request(`/quizzes/${quizId}/import-save`, {
       method: "POST",

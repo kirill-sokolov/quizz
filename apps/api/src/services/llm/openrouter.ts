@@ -78,3 +78,74 @@ export function analyzeWithOpenRouter(modelId: string, displayName: string) {
     return parseJsonResponse(raw);
   };
 }
+
+/**
+ * Vision batch analysis - returns raw array without parsing as ParsedResult
+ */
+export async function analyzeVisionBatch(
+  modelId: string,
+  displayName: string,
+  images: ShrunkImage[],
+  prompt: string
+): Promise<any[]> {
+  if (!config.OPENROUTER_API_KEY) {
+    throw Object.assign(new Error("OPENROUTER_API_KEY is not configured"), { statusCode: 500 });
+  }
+
+  const content: unknown[] = [
+    { type: "text", text: prompt },
+    ...images.map((img) => ({
+      type: "image_url",
+      image_url: { url: `data:${img.mimeType};base64,${img.data}` },
+    })),
+    { type: "text", text: "Верни только JSON массив, без markdown и пояснений." },
+  ];
+
+  const res = await fetch(ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.OPENROUTER_API_KEY}`,
+      "HTTP-Referer": "http://localhost",
+      "X-Title": "WeddingQuiz",
+    },
+    body: JSON.stringify({
+      model: modelId,
+      messages: [{ role: "user", content }],
+      temperature: 0,
+    }),
+  });
+
+  if (!res.ok) {
+    const text = await res.text();
+    throw Object.assign(
+      new Error(`${displayName} HTTP ${res.status}: ${text.slice(0, 200)}`),
+      { statusCode: 502 }
+    );
+  }
+
+  const creditsUsed = res.headers.get("x-openrouter-credits-used");
+  if (creditsUsed) {
+    logCost({
+      timestamp: new Date().toISOString(),
+      provider: "OpenRouter",
+      model: modelId,
+      creditsUsed: parseFloat(creditsUsed),
+      details: `${displayName} batch - ${images.length} images`,
+    });
+  }
+
+  const json = (await res.json()) as { choices: { message: { content: string } }[] };
+  const raw = json.choices[0]?.message?.content ?? "";
+  console.log(`[${displayName}] Batch analysis, credits: ${creditsUsed || "unknown"}`);
+
+  // Parse JSON response - expect array
+  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+  const results = JSON.parse(cleaned);
+
+  if (!Array.isArray(results)) {
+    throw new Error(`Expected array but got ${typeof results}`);
+  }
+
+  return results;
+}

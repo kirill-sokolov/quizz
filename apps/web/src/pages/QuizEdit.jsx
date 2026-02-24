@@ -18,9 +18,13 @@ export default function QuizEdit() {
   const [textModel, setTextModel] = useState("GPT-5 mini");
   const [imageModel, setImageModel] = useState("Gemini 3 Flash");
   const zipInputRef = useRef(null);
+  const ocrZipInputRef = useRef(null);
   const docxInputRef = useRef(null);
   const [docxResult, setDocxResult] = useState(null);
   const [processingDocx, setProcessingDocx] = useState(false);
+  const [ocrResult, setOcrResult] = useState(null);
+  const [processingOcr, setProcessingOcr] = useState(false);
+  const [useVisionOcr, setUseVisionOcr] = useState(true);
   const [editingSettings, setEditingSettings] = useState(false);
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploadingDemo, setUploadingDemo] = useState(false);
@@ -174,6 +178,23 @@ export default function QuizEdit() {
     } finally {
       setProcessingDocx(false);
       if (docxInputRef.current) docxInputRef.current.value = "";
+    }
+  };
+
+  const handleOcrAnalysis = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProcessingOcr(true);
+    setError(null);
+    setOcrResult(null);
+    try {
+      const result = await importApi.analyzeZipOcr(id, file, useVisionOcr);
+      setOcrResult(result);
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка OCR анализа");
+    } finally {
+      setProcessingOcr(false);
+      if (ocrZipInputRef.current) ocrZipInputRef.current.value = "";
     }
   };
 
@@ -331,6 +352,50 @@ export default function QuizEdit() {
       {/* Import section */}
       <div className="mb-6 p-4 bg-stone-50 rounded-xl border border-stone-200 space-y-4">
         <h3 className="text-md font-medium text-stone-700">Импорт из DOCX + ZIP</h3>
+
+        {/* OCR Analysis (experimental) */}
+        <div className="pb-4 border-b border-stone-300">
+          <div className="flex gap-3 items-center flex-wrap">
+            <span className="text-sm text-stone-600 font-medium">🔬 Экспериментально - OCR анализ:</span>
+            <label className="flex items-center gap-2 text-sm text-stone-600">
+              <input
+                type="checkbox"
+                checked={useVisionOcr}
+                onChange={(e) => setUseVisionOcr(e.target.checked)}
+                className="rounded border-stone-300"
+              />
+              Использовать vision модель (распознает картинки вариантов)
+            </label>
+            <input
+              ref={ocrZipInputRef}
+              type="file"
+              accept=".zip"
+              onChange={handleOcrAnalysis}
+              className="hidden"
+            />
+            <button
+              type="button"
+              onClick={() => ocrZipInputRef.current?.click()}
+              disabled={processingOcr}
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium disabled:opacity-50"
+            >
+              {processingOcr ? "Анализ…" : "Проанализировать ZIP"}
+            </button>
+          </div>
+          <p className="text-xs text-stone-500 mt-2">
+            OCR распознает текст. Vision модель дополнительно анализирует слайды с малым количеством текста и описывает варианты-картинки
+          </p>
+          {ocrResult && (
+            <details className="mt-3 bg-white rounded-lg border border-stone-200 p-3">
+              <summary className="cursor-pointer text-sm font-medium text-stone-600 hover:text-stone-800">
+                Результат OCR ({ocrResult.totalImages} изображений)
+              </summary>
+              <pre className="mt-2 text-xs bg-stone-50 p-3 rounded overflow-auto max-h-96">
+                {JSON.stringify(ocrResult, null, 2)}
+              </pre>
+            </details>
+          )}
+        </div>
 
         {/* Step 1: DOCX upload */}
         <div className="flex gap-3 items-center">

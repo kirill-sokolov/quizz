@@ -7,6 +7,7 @@ import {
 } from "../services/import-service.js";
 import { parseDocxText, parseDocxImages } from "../services/llm/index.js";
 import { extractTextFromDocx, convertDocxToImages } from "../services/docx-parser.js";
+import { analyzeZipWithOcr } from "../services/ocr-service.js";
 import { config } from "../config.js";
 import path from "path";
 import { authenticateToken } from "../middleware/auth.js";
@@ -107,6 +108,32 @@ export async function importRoutes(app: FastifyInstance) {
         const docxParsed = await parseDocxText(docxText, selectedModel);
         return reply.code(200).send({ questions: docxParsed.questions });
       }
+    }
+  );
+
+  // Analyze ZIP with OCR (for debugging/hints)
+  app.post<{ Params: { id: string } }>(
+    "/api/quizzes/:id/analyze-zip-ocr",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      let zipBuffer: Buffer | null = null;
+      let useVision = false;
+
+      const parts = req.parts();
+      for await (const part of parts) {
+        if (part.type === "file" && part.fieldname === "file") {
+          zipBuffer = await part.toBuffer();
+        } else if (part.type === "field" && part.fieldname === "useVision") {
+          useVision = String(part.value) === "true";
+        }
+      }
+
+      if (!zipBuffer) {
+        return reply.code(400).send({ error: "No ZIP file uploaded" });
+      }
+
+      const ocrResult = await analyzeZipWithOcr(zipBuffer, useVision);
+      return reply.code(200).send(ocrResult);
     }
   );
 }
