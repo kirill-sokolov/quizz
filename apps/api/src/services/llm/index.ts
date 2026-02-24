@@ -89,7 +89,8 @@ export async function analyzeImagesHybrid(
   const prompt = buildHybridPrompt(
     images.length,
     images.map((i) => i.name),
-    docxQuestions.length
+    docxQuestions.length,
+    docxQuestions.map((q) => ({ title: q.title, correctAnswer: q.correctAnswer ?? "" }))
   );
 
   // Use the same provider logic but with promptOverride

@@ -15,7 +15,7 @@ export default function QuizEdit() {
   const [adding, setAdding] = useState(false);
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
-  const [selectedModel, setSelectedModel] = useState("");
+  const [selectedModel, setSelectedModel] = useState("GPT-4o-mini");
   const zipInputRef = useRef(null);
   const docxInputRef = useRef(null);
   const [docxFile, setDocxFile] = useState(null);
