@@ -16,7 +16,7 @@ export default function QuizEdit() {
   const [importPreview, setImportPreview] = useState(null);
   const [importing, setImporting] = useState(false);
   const [textModel, setTextModel] = useState("GPT-5 mini");
-  const [imageModel, setImageModel] = useState("Kimi K2.5");
+  const [imageModel, setImageModel] = useState("Gemini 3 Flash");
   const zipInputRef = useRef(null);
   const docxInputRef = useRef(null);
   const [docxResult, setDocxResult] = useState(null);
