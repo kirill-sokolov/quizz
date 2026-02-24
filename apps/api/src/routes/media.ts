@@ -19,6 +19,7 @@ export async function mediaRoutes(app: FastifyInstance) {
 
     return reply.code(201).send({
       filename,
+      path: `/api/media/${filename}`,
       url: `/api/media/${filename}`,
     });
   });
