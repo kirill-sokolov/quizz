@@ -511,7 +511,7 @@ export default function Game() {
         {results && results.length > 0 ? (
           <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm mb-4">
             <h2 className="text-lg font-semibold text-stone-800 mb-4">Результаты</h2>
-            <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
+            <div className="space-y-3 overflow-y-auto pr-2">
               {results.map((result, idx) => {
                 const score = Number.isInteger(result.correct) ? result.correct : result.correct.toFixed(1);
                 return (
