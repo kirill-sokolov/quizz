@@ -1,5 +1,32 @@
 # История выполненных задач
 
+## 2026-02-25: Этап 4
+
+### ✅ Этап 4: Пошаговое открытие мест на TV из админки
+**Цель:** На слайде результатов места должны появляться по клику из Web Admin.
+
+**Выполнено:**
+- Добавлено состояние `resultsRevealCount` в `game_state` (миграция + schema)
+- При завершении игры TV получает полный список результатов, но отображает 0 мест
+- Добавлен API endpoint `POST /api/game/reveal-next-result` для открытия следующего места
+- Добавлен WS event `results_revealed` для синхронного обновления всех клиентов
+- Web Admin (Game): добавлена кнопка "Показать следующее место на TV" + прогресс показанных мест
+- Web TV: результаты рендерятся по `revealCount`, порядок открытия: 2 → 3 → ... → 1
+
+**Файлы:**
+- `apps/api/src/db/schema.ts`
+- `apps/api/drizzle/0004_spotty_results_reveal.sql`
+- `apps/api/src/types/slide.ts`
+- `apps/api/src/services/game-service.ts`
+- `apps/api/src/routes/game.ts`
+- `apps/web/src/api/client.js`
+- `apps/web/src/pages/Game.jsx`
+- `apps/web/src/pages/TV.jsx`
+- `apps/web/src/components/TV/TVResults.jsx`
+- `apps/web/src/constants/slides.js`
+
+---
+
 ## 2026-02-25: Этапы 1-3 + Дополнительные улучшения
 
 ### ✅ Этап 1: Удаление OCR

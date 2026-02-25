@@ -7,6 +7,7 @@ export const SLIDE_TYPES = [
   "question",
   "timer",
   "answer",
+  "results",
 ] as const;
 
 export type SlideType = (typeof SLIDE_TYPES)[number];

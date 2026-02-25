@@ -153,6 +153,7 @@ export default function Game() {
   const [currentResults, setCurrentResults] = useState(null);
   const [loadingResults, setLoadingResults] = useState(false);
   const [showUnanswered, setShowUnanswered] = useState(false);
+  const [revealingResult, setRevealingResult] = useState(false);
   const {
     quiz,
     state,
@@ -212,6 +213,11 @@ export default function Game() {
             break;
           case "quiz_finished":
             load();
+            break;
+          case "results_revealed":
+            if (Array.isArray(data.results)) {
+              setState((prev) => (prev ? { ...prev, currentSlide: "results", resultsRevealCount: data.resultsRevealCount || 0 } : prev));
+            }
             break;
           default:
             break;
@@ -288,6 +294,17 @@ export default function Game() {
     setSelectedTeam(null);
     setTeamDetails(null);
     setShowUnanswered(false);
+  };
+
+
+  const handleRevealNextResult = async () => {
+    setRevealingResult(true);
+    try {
+      const result = await gameApi.revealNextResult(quizId);
+      if (result?.state) setState(result.state);
+    } finally {
+      setRevealingResult(false);
+    }
   };
 
   const handleShowResults = async () => {
@@ -517,6 +534,24 @@ export default function Game() {
             <p className="text-center text-stone-600">
               {quizArchived ? "Квиз архивирован." : "Квиз завершён."}
             </p>
+          </div>
+        )}
+
+        {!quizArchived && results && results.length > 0 && (
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-stone-700">
+                Показано мест на TV: <strong>{Math.min(state?.resultsRevealCount || 0, results.length)}</strong> / {results.length}
+              </p>
+              <button
+                type="button"
+                onClick={handleRevealNextResult}
+                disabled={revealingResult || (state?.resultsRevealCount || 0) >= results.length}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {revealingResult ? "Показываем..." : "Показать следующее место на TV"}
+              </button>
+            </div>
           </div>
         )}
 

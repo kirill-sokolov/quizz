@@ -50,6 +50,7 @@ export async function startGame(quizId: number) {
         currentSlide: "question",
         timerStartedAt: null,
         registrationOpen: false,
+        resultsRevealCount: 0,
       })
       .where(eq(gameState.quizId, quizId))
       .returning();
@@ -62,6 +63,7 @@ export async function startGame(quizId: number) {
         currentQuestionId: null,
         currentSlide: "question",
         registrationOpen: false,
+        resultsRevealCount: 0,
       })
       .returning();
   }
@@ -134,6 +136,7 @@ export async function beginGame(quizId: number) {
       currentQuestionId,
       currentSlide: startingSlide,
       timerStartedAt: null,
+      resultsRevealCount: 0,
     })
     .where(eq(gameState.quizId, quizId))
     .returning();
@@ -233,6 +236,7 @@ export async function nextQuestion(quizId: number) {
       currentQuestionId: nextQ.id,
       currentSlide: startingSlide,
       timerStartedAt: null,
+      resultsRevealCount: 0,
     })
     .where(eq(gameState.quizId, quizId))
     .returning();
@@ -250,12 +254,18 @@ export async function setSlide(
   quizId: number,
   slide: SlideType
 ) {
+  const patch: { currentSlide: SlideType; timerStartedAt: Date | null; resultsRevealCount?: number } = {
+    currentSlide: slide,
+    timerStartedAt: slide === "timer" ? new Date() : null,
+  };
+
+  if (slide !== "results") {
+    patch.resultsRevealCount = 0;
+  }
+
   const [updated] = await db
     .update(gameState)
-    .set({
-      currentSlide: slide,
-      timerStartedAt: slide === "timer" ? new Date() : null,
-    })
+    .set(patch)
     .where(eq(gameState.quizId, quizId))
     .returning();
 
@@ -441,7 +451,7 @@ export async function getTeamDetails(quizId: number, teamId: number) {
   };
 }
 
-export async function getResults(quizId: number) {
+export async function getResults(quizId: number, revealCount?: number) {
   const allQuestions = await db
     .select()
     .from(questions)
@@ -486,7 +496,44 @@ export async function getResults(quizId: number) {
     }))
     .sort((a, b) => b.correct - a.correct || b.total - a.total);
 
+  if (typeof revealCount === "number") {
+    return results.slice(0, Math.max(0, revealCount));
+  }
+
   return results;
+}
+
+
+export async function revealNextResult(quizId: number) {
+  const [state] = await db
+    .select()
+    .from(gameState)
+    .where(eq(gameState.quizId, quizId));
+
+  if (!state || state.status !== "finished") {
+    throw new Error("Game is not finished");
+  }
+
+  const fullResults = await getResults(quizId);
+  const nextCount = Math.min(fullResults.length, (state.resultsRevealCount ?? 0) + 1);
+
+  const [updated] = await db
+    .update(gameState)
+    .set({ currentSlide: "results", resultsRevealCount: nextCount })
+    .where(eq(gameState.quizId, quizId))
+    .returning();
+
+  broadcast("results_revealed", {
+    quizId,
+    resultsRevealCount: nextCount,
+    results: fullResults,
+  });
+
+  return {
+    state: updated,
+    results: fullResults,
+    fullResultsCount: fullResults.length,
+  };
 }
 
 export async function archiveQuiz(quizId: number) {
@@ -508,12 +555,12 @@ export async function finishGame(quizId: number) {
 
   await db
     .update(gameState)
-    .set({ status: "finished" })
+    .set({ status: "finished", currentSlide: "results", resultsRevealCount: 0 })
     .where(eq(gameState.quizId, quizId));
 
   const results = await getResults(quizId);
 
-  broadcast("quiz_finished", { quizId, results });
+  broadcast("quiz_finished", { quizId, results, resultsRevealCount: 0 });
 
   // Автоудаление тестовых ботов при завершении квиза
   const botService = getBotService();

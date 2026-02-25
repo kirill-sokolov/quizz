@@ -130,6 +130,11 @@ export const gameApi = {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
+  revealNextResult: (quizId) =>
+    request("/game/reveal-next-result", {
+      method: "POST",
+      body: JSON.stringify({ quizId: Number(quizId) }),
+    }),
   getResults: (quizId) => request(`/game/results/${quizId}`),
   getTeamDetails: (quizId, teamId) => request(`/game/results/${quizId}/${teamId}`),
 };

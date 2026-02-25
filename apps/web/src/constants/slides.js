@@ -8,6 +8,7 @@ export const SLIDE_TYPES = {
   QUESTION: "question",
   TIMER: "timer",
   ANSWER: "answer",
+  RESULTS: "results",
 };
 
 /**
@@ -58,6 +59,7 @@ export const SLIDE_LABELS = {
   [SLIDE_TYPES.QUESTION]: "Слайд: вопрос",
   [SLIDE_TYPES.TIMER]: "Слайд: таймер",
   [SLIDE_TYPES.ANSWER]: "Слайд: ответ",
+  [SLIDE_TYPES.RESULTS]: "Слайд: результаты",
 };
 
 /**
@@ -69,4 +71,5 @@ export const TV_SLIDE_LABELS = {
   [SLIDE_TYPES.QUESTION]: "Вопрос",
   [SLIDE_TYPES.TIMER]: "Таймер",
   [SLIDE_TYPES.ANSWER]: "Ответ",
+  [SLIDE_TYPES.RESULTS]: "Результаты",
 };
