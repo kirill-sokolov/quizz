@@ -13,6 +13,7 @@
 | title | text NOT NULL | Название квиза |
 | status | text NOT NULL | Статус: `draft`, `active`, `finished`, `archived` |
 | joinCode | text UNIQUE | Код для подключения к квизу |
+| displayedOnTv | boolean NOT NULL DEFAULT false | Флаг: показывать ли этот квиз на ТВ (только один может быть true) |
 | demoImageUrl | text | URL демо-слайда (показывается на /tv до начала) |
 | rulesImageUrl | text | URL слайда с правилами |
 | createdAt | timestamp | Дата создания |
