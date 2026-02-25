@@ -29,6 +29,7 @@ export default function Home() {
   const [uploadingDemo, setUploadingDemo] = useState(null);
   const [starting, setStarting] = useState(null);
   const [restarting, setRestarting] = useState(null);
+  const [deleting, setDeleting] = useState(null);
   const [seeding, setSeeding] = useState(false);
   const { refreshTvCode } = useOutletContext();
 
@@ -128,6 +129,20 @@ export default function Home() {
     }
   };
 
+  const handleDelete = async (quizId) => {
+    if (!window.confirm("Удалить квиз? Это действие нельзя отменить.")) return;
+    setDeleting(quizId);
+    setError(null);
+    try {
+      await quizzesApi.delete(quizId);
+      await loadQuizzes();
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка удаления квиза");
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6 gap-3">
@@ -217,6 +232,15 @@ export default function Home() {
                       >
                         {starting === q.id ? "⏳" : "Начать"}
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(q.id)}
+                        disabled={deleting === q.id}
+                        className="px-3 py-2 text-center bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium disabled:opacity-50"
+                        title="Удалить квиз"
+                      >
+                        🗑️
+                      </button>
                     </>
                   ) : (
                     <>
@@ -242,6 +266,15 @@ export default function Home() {
                         className="flex-1 px-3 py-2 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
                       >
                         {restarting === q.id ? "⏳" : "Перезапустить"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDelete(q.id)}
+                        disabled={deleting === q.id}
+                        className="px-3 py-2 text-center bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium disabled:opacity-50"
+                        title="Удалить квиз"
+                      >
+                        🗑️
                       </button>
                     </>
                   )}
@@ -336,6 +369,15 @@ export default function Home() {
                             >
                               {starting === q.id ? "⏳" : "Начать"}
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(q.id)}
+                              disabled={deleting === q.id}
+                              className="inline-flex px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium disabled:opacity-50"
+                              title="Удалить квиз"
+                            >
+                              🗑️
+                            </button>
                           </>
                         ) : (
                           <>
@@ -361,6 +403,15 @@ export default function Home() {
                               className="inline-flex px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
                             >
                               {restarting === q.id ? "⏳" : "Перезапустить"}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDelete(q.id)}
+                              disabled={deleting === q.id}
+                              className="inline-flex px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition text-sm font-medium disabled:opacity-50"
+                              title="Удалить квиз"
+                            >
+                              🗑️
                             </button>
                           </>
                         )}

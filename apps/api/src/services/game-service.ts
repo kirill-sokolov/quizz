@@ -117,7 +117,10 @@ export async function beginGame(quizId: number) {
       .from(slides)
       .where(eq(slides.questionId, currentQuestionId));
 
-    const hasVideoWarning = questionSlides.some(s => s.type === "video_warning");
+    // Only use video_warning if it has actual content
+    const hasVideoWarning = questionSlides.some(s =>
+      s.type === "video_warning" && (s.imageUrl || s.videoUrl)
+    );
     if (hasVideoWarning) {
       startingSlide = "video_warning";
     }
@@ -215,7 +218,10 @@ export async function nextQuestion(quizId: number) {
     .from(slides)
     .where(eq(slides.questionId, nextQ.id));
 
-  const hasVideoWarning = questionSlides.some(s => s.type === "video_warning");
+  // Only use video_warning if it has actual content
+  const hasVideoWarning = questionSlides.some(s =>
+    s.type === "video_warning" && (s.imageUrl || s.videoUrl)
+  );
   if (hasVideoWarning) {
     startingSlide = "video_warning";
   }

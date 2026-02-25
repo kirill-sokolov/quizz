@@ -513,12 +513,20 @@ export async function saveImportedQuiz(
       })
       .returning();
 
-    // Save all slide types
+    // Save slides (only those with content)
     for (const type of SLIDE_TYPES) {
+      const imageUrl = item.slides[type as keyof typeof item.slides] ?? null;
+
+      // Skip video_warning and video_intro if they have no image
+      // (always create question/timer/answer even if null, they're required)
+      if ((type === "video_warning" || type === "video_intro") && !imageUrl) {
+        continue;
+      }
+
       await db.insert(slides).values({
         questionId: question.id,
         type,
-        imageUrl: item.slides[type as keyof typeof item.slides] ?? null,
+        imageUrl,
       });
     }
   }

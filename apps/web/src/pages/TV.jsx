@@ -256,6 +256,10 @@ export default function TV() {
   const slide = state?.currentSlide || SLIDE_TYPES.QUESTION;
 
   console.log("TV render - state:", state, "teams:", teams.length, "quiz:", quiz?.title);
+  console.log("TV render - currentQuestion:", currentQuestion);
+  if (currentQuestion?.slides) {
+    console.log("TV render - question slides:", currentQuestion.slides);
+  }
 
   return (
     <div className="tv-viewport" onClick={toggle}>

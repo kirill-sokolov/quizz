@@ -14,9 +14,14 @@ const SLIDE_LABELS = TV_SLIDE_LABELS;
 
 function getSlideOrder(question) {
   if (!question?.slides) return BASE_SLIDE_TYPES;
-  const types = question.slides.map(s => s.type);
-  const hasVideoWarning = types.includes(SLIDE_TYPES.VIDEO_WARNING);
-  const hasVideoIntro = types.includes(SLIDE_TYPES.VIDEO_INTRO);
+
+  // Only include video slides if they have actual content
+  const hasVideoWarning = question.slides.some(
+    s => s.type === SLIDE_TYPES.VIDEO_WARNING && (s.imageUrl || s.videoUrl)
+  );
+  const hasVideoIntro = question.slides.some(
+    s => s.type === SLIDE_TYPES.VIDEO_INTRO && (s.imageUrl || s.videoUrl)
+  );
 
   const order = [];
   if (hasVideoWarning) order.push(SLIDE_TYPES.VIDEO_WARNING);
