@@ -437,7 +437,7 @@ export async function getTeamDetails(quizId: number, teamId: number) {
     if (d.questionType === "text") {
       totalScore += d.awardedScore ?? 0;
     } else {
-      totalScore += d.isCorrect ? 1 : 0;
+      totalScore += d.isCorrect ? d.weight : 0;
     }
   }
   const totalQuestions = allQuestions.length;
@@ -482,7 +482,7 @@ export async function getResults(quizId: number, revealCount?: number) {
         stats.correct += a.awardedScore ?? 0;
       } else {
         if (a.answerText === q.correctAnswer) {
-          stats.correct++;
+          stats.correct += q.weight;
         }
       }
     }

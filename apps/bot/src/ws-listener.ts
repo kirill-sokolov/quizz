@@ -13,14 +13,26 @@ export function startWsListener(bot: Bot) {
   const wsUrl = config.API_URL.replace(/^http/, "ws") + "/ws";
   console.log("WS connecting to:", wsUrl);
 
+  let current: WebSocket | null = null;
+
   function connect() {
+    // Terminate any existing connection to prevent duplicates
+    if (current) {
+      current.removeAllListeners();
+      current.terminate();
+      current = null;
+    }
+
     const ws = new WebSocket(wsUrl);
+    current = ws;
 
     ws.on("open", () => {
       console.log("WS connected to API");
     });
 
     ws.on("message", async (raw) => {
+      // Ignore messages from stale connections
+      if (ws !== current) return;
       try {
         const msg = JSON.parse(raw.toString());
         await handleEvent(bot, msg.event, msg.data);
@@ -30,6 +42,8 @@ export function startWsListener(bot: Bot) {
     });
 
     ws.on("close", () => {
+      if (ws !== current) return;
+      current = null;
       console.log("WS disconnected, reconnecting in 3s...");
       setTimeout(connect, 3000);
     });
@@ -112,6 +126,15 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
       }
     }
 
+    const correctAnswerCount = (question.correctAnswer || "")
+      .split(",")
+      .map((s: string) => s.trim())
+      .filter(Boolean).length;
+    const answerHint =
+      correctAnswerCount > 1
+        ? `✏️ Перечисли ${correctAnswerCount} ответа через запятую.`
+        : "✏️ Напиши ответ текстом.";
+
     const timerText = isTextQuestion
       ? [
           "⏱ Время пошло!",
@@ -120,7 +143,7 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
           "",
           question.text,
           "",
-          "✏️ Напиши ответ текстом.",
+          answerHint,
         ].join("\n")
       : [
           "⏱ Время пошло!",
