@@ -9,9 +9,5 @@ function getSlideByType(slides, type) {
 export default function TVQuestion({ question, currentIndex, totalQuestions, slides }) {
   const slide = getSlideByType(slides, SLIDE_TYPES.QUESTION);
 
-  // Debug logging
-  console.log("[TVQuestion] question:", question?.id, "slides:", slides);
-  console.log("[TVQuestion] found slide:", slide);
-
   return <TVSlideBg imageUrl={slide?.imageUrl} videoUrl={slide?.videoUrl} />;
 }

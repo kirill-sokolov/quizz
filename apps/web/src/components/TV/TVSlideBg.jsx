@@ -7,9 +7,6 @@ export default function TVSlideBg({ imageUrl, videoUrl, videoLayout, children })
   const videoSrc = videoUrl ? getMediaUrl(videoUrl) : null;
   const videoRef = useRef(null);
 
-  // Debug logging
-  console.log("[TVSlideBg] imageUrl:", imageUrl, "→ imgSrc:", imgSrc);
-
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !videoSrc) return;
