@@ -135,7 +135,22 @@ export default function TVResults({ results, revealCount = results.length }) {
       <div className={`${singleColumnSpacing} w-full max-w-6xl flex-shrink-0`}>
         {results.map((r, i) => {
           const isVisible = visibleSet.has(i);
-          if (!isVisible) return null;
+          if (!isVisible) {
+            if (i === 0) {
+              return (
+                <div
+                  key={r.teamId}
+                  className={`flex items-center gap-6 ${singleColumnPadding} border-2 border-dashed border-amber-400/40 rounded-3xl ${singleNameSize} font-medium`}
+                >
+                  <span className={`w-24 ${singleMedalSize} text-center flex-shrink-0 opacity-40`}>
+                    🥇
+                  </span>
+                  <span className="flex-1 opacity-30 tracking-widest">• • •</span>
+                </div>
+              );
+            }
+            return null;
+          }
           return (
             <div
               key={r.teamId}
