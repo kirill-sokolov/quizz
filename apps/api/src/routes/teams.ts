@@ -1,6 +1,6 @@
 import { FastifyInstance } from "fastify";
 import { db } from "../db/index.js";
-import { teams } from "../db/schema.js";
+import { teams, gameState } from "../db/schema.js";
 import { eq, and } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 import { authenticateToken } from "../middleware/auth.js";
@@ -20,6 +20,14 @@ export async function teamsRoutes(app: FastifyInstance) {
       const quizId = Number(req.params.id);
       const showAll = req.query.all === "true";
 
+      // Получить настройки показа ботов на TV
+      const [state] = await db
+        .select()
+        .from(gameState)
+        .where(eq(gameState.quizId, quizId));
+
+      const showBotsOnTv = state?.showBotsOnTv ?? true;
+
       const rows = showAll
         ? await db.select().from(teams).where(eq(teams.quizId, quizId))
         : await db
@@ -27,7 +35,12 @@ export async function teamsRoutes(app: FastifyInstance) {
             .from(teams)
             .where(and(eq(teams.quizId, quizId), eq(teams.isKicked, false)));
 
-      return rows.map(serializeTeam);
+      // Фильтровать ботов если showBotsOnTv = false
+      const filtered = showBotsOnTv
+        ? rows
+        : rows.filter((t) => !t.isBot);
+
+      return filtered.map(serializeTeam);
     }
   );
 

@@ -454,6 +454,60 @@ Set-Cookie: `auth_token=...`
 
 ---
 
+## Тестовые агенты (боты)
+
+### POST `/quizzes/:id/test-bots`
+Создать тестовых ботов для квиза.
+
+**Request:**
+```json
+{
+  "count": 5  // 1-20
+}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "bots": [
+    { "id": 1, "teamId": 10, "name": "🤖 Бот 1", "quizId": 1 },
+    { "id": 2, "teamId": 11, "name": "🤖 Бот 2", "quizId": 1 }
+  ],
+  "count": 5
+}
+```
+
+### DELETE `/quizzes/:id/test-bots`
+Удалить всех тестовых ботов квиза.
+
+**Response:**
+```json
+{
+  "ok": true
+}
+```
+
+### POST `/game/:id/toggle-bots-visibility`
+Переключить показ ботов на TV.
+
+**Request:**
+```json
+{
+  "showBotsOnTv": false
+}
+```
+
+**Response:**
+```json
+{
+  "ok": true,
+  "showBotsOnTv": false
+}
+```
+
+---
+
 ## WebSocket
 
 См. [WEBSOCKET.md](./WEBSOCKET.md)

@@ -9,6 +9,7 @@ import {
   getWsUrl,
 } from "../api/client";
 import { SLIDE_TYPES, BASE_SLIDE_TYPES, FULL_SLIDE_TYPES, TV_SLIDE_LABELS } from "../constants/slides";
+import TestBotsPanel from "../components/Admin/TestBotsPanel";
 
 const SLIDE_LABELS = TV_SLIDE_LABELS;
 
@@ -451,6 +452,14 @@ export default function Game() {
               ))}
             </div>
           )}
+
+          {/* Тестовые боты */}
+          <TestBotsPanel
+            quizId={quiz.id}
+            teams={teams}
+            gameState={state}
+            onUpdate={load}
+          />
         </div>
 
         <div className="text-center">

@@ -11,6 +11,7 @@ import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 import type { SlideType } from "../types/slide.js";
 import { evaluateTextAnswers } from "./llm/evaluate-text-answer.js";
+import { getBotService } from "../index.js";
 
 export function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -314,6 +315,21 @@ export async function setSlide(
     slide,
   });
 
+  // Тестовые боты отвечают при переключении на слайд "timer"
+  if (slide === "timer" && updated.currentQuestionId) {
+    const botService = getBotService();
+    if (botService) {
+      const [question] = await db
+        .select()
+        .from(questions)
+        .where(eq(questions.id, updated.currentQuestionId));
+
+      if (question) {
+        await botService.handleQuestion(quizId, question);
+      }
+    }
+  }
+
   return updated;
 }
 
@@ -545,6 +561,12 @@ export async function finishGame(quizId: number) {
   const results = await getResults(quizId);
 
   broadcast("quiz_finished", { quizId, results, resultsRevealCount: 0 });
+
+  // Автоудаление тестовых ботов при завершении квиза
+  const botService = getBotService();
+  if (botService) {
+    await botService.onQuizFinished(quizId);
+  }
 
   return results;
 }

@@ -16,10 +16,17 @@ import { gameRoutes } from "./routes/game.js";
 import { mediaRoutes } from "./routes/media.js";
 import { importRoutes } from "./routes/import.js";
 import { adminRoutes } from "./routes/admin.js";
+import { testAgentsRoutes } from "./routes/test-agents.js";
+import { BotAgentService } from "./test-agents/index.js";
+import { broadcast } from "./ws/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = Fastify({ logger: true });
+
+// Экспорт для доступа из других модулей (тестовые боты)
+let botServiceInstance: BotAgentService | null = null;
+export const getBotService = () => botServiceInstance;
 
 async function main() {
   if (!config.DATABASE_URL) {
@@ -36,6 +43,12 @@ async function main() {
   await app.register(multipart, { limits: { fileSize: 50 * 1024 * 1024 } });
 
   await app.register(wsPlugin);
+
+  // Создаём сервис тестовых ботов (изолированный модуль)
+  const wsServer = { broadcast };
+  const botService = new BotAgentService(wsServer);
+  botServiceInstance = botService;
+
   await app.register(authRoutes);
   await app.register(quizzesRoutes);
   await app.register(questionsRoutes);
@@ -45,6 +58,7 @@ async function main() {
   await app.register(mediaRoutes);
   await app.register(importRoutes);
   await app.register(adminRoutes);
+  await app.register(async (app) => testAgentsRoutes(app, botService));
 
   app.get("/health", async () => ({ status: "ok" }));
 

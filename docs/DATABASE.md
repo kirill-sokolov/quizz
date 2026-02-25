@@ -57,6 +57,7 @@
 | name | text NOT NULL | Название команды |
 | chatId | bigint UNIQUE | Telegram chat ID капитана |
 | isKicked | boolean DEFAULT false | Выгнана ли команда |
+| isBot | boolean DEFAULT false | Тестовый бот (для симуляции команд) |
 | registeredAt | timestamp | Дата регистрации |
 
 #### `answers`
@@ -84,6 +85,7 @@
 | currentQuestionId | integer REFERENCES questions(id) | Текущий вопрос |
 | currentSlide | text | Текущий слайд: `video_warning`, `video_intro`, `question`, `timer`, `answer` |
 | timerStartedAt | timestamp | Время запуска таймера |
+| showBotsOnTv | boolean DEFAULT true | Показывать ли тестовых ботов на TV |
 
 ## Индексы
 
