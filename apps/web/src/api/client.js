@@ -50,6 +50,7 @@ export const quizzesApi = {
   update: (id, data) =>
     request(`/quizzes/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
   delete: (id) => request(`/quizzes/${id}`, { method: "DELETE" }),
+  displayOnTv: (id) => request(`/quizzes/${id}/display-on-tv`, { method: "POST" }),
 };
 
 export const questionsApi = {
@@ -217,8 +218,14 @@ export async function mediaUpload(file) {
 }
 
 export const adminApi = {
+  // Добавить демо-квиз (безопасно, не удаляет существующие)
   reseed: () =>
     request("/admin/seed", {
+      method: "POST",
+    }),
+  // ⚠️ Полный сброс БД (удаляет ВСЕ квизы)
+  fullReset: () =>
+    request("/admin/reset", {
       method: "POST",
     }),
 };

@@ -34,7 +34,11 @@ const QUESTIONS = [
   },
 ];
 
-export async function runSeed() {
+/**
+ * Полный сброс БД: удаляет ВСЕ квизы, команды, ответы и создаёт демо-квиз
+ * ⚠️ ОПАСНО: удаляет все данные!
+ */
+export async function runFullReset() {
   await db.delete(answers);
   await db.delete(gameState);
   await db.delete(slides);
@@ -49,6 +53,33 @@ export async function runSeed() {
     password: hashedPassword,
   });
 
+  return await createDemoQuiz();
+}
+
+/**
+ * Безопасный seed: добавляет демо-квиз БЕЗ удаления существующих
+ */
+export async function runSeed() {
+  // Создаём админа только если его ещё нет
+  const existingAdmin = await db.query.admins.findFirst({
+    where: (admins, { eq }) => eq(admins.username, "admin"),
+  });
+
+  if (!existingAdmin) {
+    const hashedPassword = await bcrypt.hash("admin", 10);
+    await db.insert(admins).values({
+      username: "admin",
+      password: hashedPassword,
+    });
+  }
+
+  return await createDemoQuiz();
+}
+
+/**
+ * Создаёт демо-квиз с тестовыми вопросами
+ */
+async function createDemoQuiz() {
   const joinCode = generateJoinCode();
   const [quiz] = await db
     .insert(quizzes)

@@ -21,6 +21,7 @@ export const quizzes = pgTable("quizzes", {
     .notNull()
     .default("draft"),
   joinCode: text("join_code").unique(),
+  displayedOnTv: boolean("displayed_on_tv").notNull().default(false),
   demoImageUrl: text("demo_image_url"),
   rulesImageUrl: text("rules_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),

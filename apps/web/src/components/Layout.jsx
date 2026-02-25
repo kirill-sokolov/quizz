@@ -12,10 +12,15 @@ export default function Layout() {
     quizzesApi
       .list()
       .then((quizzes) => {
-        const quiz = quizzes
+        // Приоритет: квиз с displayedOnTv = true
+        const displayedQuiz = quizzes.find((q) => q.displayedOnTv && q.status !== "archived");
+
+        // Фоллбек: первый неархивированный квиз
+        const fallbackQuiz = quizzes
           .filter((q) => q.status !== "archived")
           .find((q) => q.status === "draft" || q.status === "active" || q.status === "finished");
 
+        const quiz = displayedQuiz || fallbackQuiz;
         setTvQuizCode(quiz?.joinCode || null);
       })
       .catch((err) => {

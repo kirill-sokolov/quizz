@@ -1,0 +1,1 @@
+ALTER TABLE "quizzes" ADD COLUMN "displayed_on_tv" boolean DEFAULT false NOT NULL;

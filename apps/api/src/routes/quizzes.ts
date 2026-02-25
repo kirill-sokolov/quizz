@@ -96,4 +96,35 @@ export async function quizzesRoutes(app: FastifyInstance) {
     if (!quiz) return reply.code(404).send({ error: "Quiz not found" });
     return { ok: true };
   });
+
+  // Вывести квиз на ТВ (сбрасывает флаг у других квизов)
+  app.post<{ Params: { id: string } }>(
+    "/api/quizzes/:id/display-on-tv",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      const quizId = Number(req.params.id);
+
+      // Проверяем что квиз существует
+      const [quiz] = await db
+        .select()
+        .from(quizzes)
+        .where(eq(quizzes.id, quizId));
+      if (!quiz) return reply.code(404).send({ error: "Quiz not found" });
+
+      // Сбрасываем флаг у всех остальных квизов
+      await db
+        .update(quizzes)
+        .set({ displayedOnTv: false })
+        .where(ne(quizzes.id, quizId));
+
+      // Устанавливаем флаг для выбранного квиза
+      const [updatedQuiz] = await db
+        .update(quizzes)
+        .set({ displayedOnTv: true })
+        .where(eq(quizzes.id, quizId))
+        .returning();
+
+      return { ok: true, quiz: updatedQuiz };
+    }
+  );
 }

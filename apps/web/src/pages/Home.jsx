@@ -30,7 +30,9 @@ export default function Home() {
   const [starting, setStarting] = useState(null);
   const [restarting, setRestarting] = useState(null);
   const [deleting, setDeleting] = useState(null);
+  const [displaying, setDisplaying] = useState(null);
   const [seeding, setSeeding] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const { refreshTvCode } = useOutletContext();
 
   const loadQuizzes = async () => {
@@ -84,8 +86,9 @@ export default function Home() {
     }
   };
 
+  // Добавить демо-квиз (безопасно, не удаляет существующие)
   const handleReseed = async () => {
-    const confirmed = window.confirm("Это удалит текущие квизы, команды и прогресс. Пересоздать demo-данные из seed?");
+    const confirmed = window.confirm("Добавить новый демо-квиз? Существующие квизы останутся.");
     if (!confirmed) return;
 
     setSeeding(true);
@@ -94,9 +97,43 @@ export default function Home() {
       await adminApi.reseed();
       await loadQuizzes();
     } catch (err) {
-      setError(err.body?.error || err.message || "Ошибка запуска seed");
+      setError(err.body?.error || err.message || "Ошибка добавления демо-квиза");
     } finally {
       setSeeding(false);
+    }
+  };
+
+  // ⚠️ Полный сброс БД (удаляет ВСЕ квизы)
+  const handleFullReset = async () => {
+    const confirmed = window.confirm(
+      "⚠️ ВНИМАНИЕ! Это удалит ВСЕ квизы, команды и прогресс без возможности восстановления.\n\nПродолжить?"
+    );
+    if (!confirmed) return;
+
+    setResetting(true);
+    setError(null);
+    try {
+      await adminApi.fullReset();
+      await loadQuizzes();
+      refreshTvCode();
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка полного сброса");
+    } finally {
+      setResetting(false);
+    }
+  };
+
+  const handleDisplayOnTv = async (quizId) => {
+    setDisplaying(quizId);
+    setError(null);
+    try {
+      await quizzesApi.displayOnTv(quizId);
+      await loadQuizzes();
+      refreshTvCode();
+    } catch (err) {
+      setError(err.body?.error || err.message || "Ошибка вывода на экран");
+    } finally {
+      setDisplaying(null);
     }
   };
 
@@ -224,14 +261,25 @@ export default function Home() {
                       >
                         Редактировать
                       </Link>
-                      <button
-                        type="button"
-                        onClick={() => handleStart(q.id)}
-                        disabled={starting === q.id}
-                        className="flex-1 px-3 py-2 text-center bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
-                      >
-                        {starting === q.id ? "⏳" : "Начать"}
-                      </button>
+                      {q.displayedOnTv ? (
+                        <button
+                          type="button"
+                          onClick={() => handleStart(q.id)}
+                          disabled={starting === q.id}
+                          className="flex-1 px-3 py-2 text-center bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
+                        >
+                          {starting === q.id ? "⏳" : "▶️ Начать"}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleDisplayOnTv(q.id)}
+                          disabled={displaying === q.id}
+                          className="flex-1 px-3 py-2 text-center bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
+                        >
+                          {displaying === q.id ? "⏳" : "📺 Вывести на экран"}
+                        </button>
+                      )}
                       <button
                         type="button"
                         onClick={() => handleDelete(q.id)}
@@ -361,14 +409,25 @@ export default function Home() {
                             >
                               Редактировать
                             </Link>
-                            <button
-                              type="button"
-                              onClick={() => handleStart(q.id)}
-                              disabled={starting === q.id}
-                              className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
-                            >
-                              {starting === q.id ? "⏳" : "Начать"}
-                            </button>
+                            {q.displayedOnTv ? (
+                              <button
+                                type="button"
+                                onClick={() => handleStart(q.id)}
+                                disabled={starting === q.id}
+                                className="inline-flex px-3 py-1.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition text-sm font-medium disabled:opacity-50"
+                              >
+                                {starting === q.id ? "⏳" : "▶️ Начать"}
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => handleDisplayOnTv(q.id)}
+                                disabled={displaying === q.id}
+                                className="inline-flex px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition text-sm font-medium disabled:opacity-50"
+                              >
+                                {displaying === q.id ? "⏳" : "📺 Вывести на экран"}
+                              </button>
+                            )}
                             <button
                               type="button"
                               onClick={() => handleDelete(q.id)}
@@ -423,16 +482,29 @@ export default function Home() {
             </table>
           </div>
 
-          {/* Блок с кнопкой пересоздания */}
-          <div className="hidden md:block mt-4 bg-stone-200 rounded-lg p-4">
-            <button
-              type="button"
-              onClick={handleReseed}
-              disabled={seeding}
-              className="px-4 py-2 bg-white text-stone-700 rounded-lg hover:bg-stone-50 transition font-medium disabled:opacity-50 border border-stone-200"
-            >
-              {seeding ? "⏳ Пересоздаём..." : "Пересоздать из seed"}
-            </button>
+          {/* Блок с кнопками управления данными */}
+          <div className="hidden md:block mt-4 bg-stone-200 rounded-lg p-4 space-y-2">
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={handleReseed}
+                disabled={seeding || resetting}
+                className="flex-1 px-4 py-2 bg-white text-stone-700 rounded-lg hover:bg-stone-50 transition font-medium disabled:opacity-50 border border-stone-200"
+              >
+                {seeding ? "⏳ Добавляем..." : "➕ Добавить демо-квиз"}
+              </button>
+              <button
+                type="button"
+                onClick={handleFullReset}
+                disabled={seeding || resetting}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium disabled:opacity-50"
+              >
+                {resetting ? "⏳ Сбрасываем..." : "⚠️ Полный сброс БД"}
+              </button>
+            </div>
+            <p className="text-xs text-stone-600">
+              Демо-квиз: добавит новый квиз • Полный сброс: удалит ВСЁ
+            </p>
           </div>
         </>
       )}
