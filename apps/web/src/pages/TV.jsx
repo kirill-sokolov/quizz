@@ -66,6 +66,7 @@ export default function TV() {
   const [questions, setQuestions] = useState([]);
   const [teams, setTeams] = useState([]);
   const [results, setResults] = useState(null);
+  const [resultsRevealCount, setResultsRevealCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const wsRef = useRef(null);
@@ -87,8 +88,10 @@ export default function TV() {
       if (stateData?.status === "finished") {
         const resultsData = await gameApi.getResults(id);
         setResults(resultsData);
+        setResultsRevealCount(stateData.resultsRevealCount || 0);
       } else {
         setResults(null);
+        setResultsRevealCount(0);
       }
     } catch (e) {
       setError(e.message);
@@ -178,7 +181,13 @@ export default function TV() {
               break;
             case "quiz_finished":
               setResults(data.results ?? []);
-              setState((prev) => (prev ? { ...prev, status: "finished" } : null));
+              setResultsRevealCount(data.resultsRevealCount || 0);
+              setState((prev) => (prev ? { ...prev, status: "finished", currentSlide: "results", resultsRevealCount: data.resultsRevealCount || 0 } : null));
+              break;
+            case "results_revealed":
+              setResults(data.results ?? []);
+              setResultsRevealCount(data.resultsRevealCount || 0);
+              setState((prev) => (prev ? { ...prev, currentSlide: "results", resultsRevealCount: data.resultsRevealCount || 0 } : null));
               break;
             case "quiz_archived":
               console.log("quiz_archived → reloading quiz");
@@ -264,7 +273,7 @@ export default function TV() {
         style={{ ...screenStyle, cursor: "none" }}
       >
       {state?.status === "finished" && quiz?.status !== "archived" && results !== null ? (
-        <TVResults results={results} />
+        <TVResults results={results} revealCount={resultsRevealCount} />
       ) : state?.status === "playing" && currentQuestion ? (
         <>
           {slide === SLIDE_TYPES.VIDEO_WARNING && (

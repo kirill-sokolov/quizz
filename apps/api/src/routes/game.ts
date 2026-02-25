@@ -14,6 +14,7 @@ import {
   getResults,
   getTeamDetails,
   restartQuiz,
+  revealNextResult,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
 import type { SlideType } from "../types/slide.js";
@@ -126,6 +127,16 @@ export async function gameRoutes(app: FastifyInstance) {
     { preHandler: authenticateToken },
     async (req, reply) => {
       const result = await archiveQuiz(req.body.quizId);
+      return result;
+    }
+  );
+
+
+  app.post<{ Body: { quizId: number } }>(
+    "/api/game/reveal-next-result",
+    { preHandler: authenticateToken },
+    async (req, reply) => {
+      const result = await revealNextResult(req.body.quizId);
       return result;
     }
   );
