@@ -25,7 +25,7 @@
 - **Drizzle ORM** — работа с БД
 - **PostgreSQL** — основная БД
 - **Redis** (опционально) — кеш, сессии
-- **node-telegram-bot-api** — Telegram Bot API
+- **grammy** — Telegram Bot API (отдельный сервис `apps/bot/`, long polling)
 - **OpenRouter API** — LLM для импорта и оценки текстовых ответов
 
 ### Frontend
@@ -48,8 +48,13 @@ wedding-quiz/
 │   │   │   ├── db/           # Drizzle schema, миграции
 │   │   │   ├── routes/       # HTTP endpoints
 │   │   │   ├── services/     # Бизнес-логика
-│   │   │   ├── bot/          # Telegram bot
-│   │   │   └── server.ts     # Entry point
+│   │   │   └── test-agents/  # Тестовые боты
+│   │   └── Dockerfile
+│   ├── bot/          # Telegram Bot (grammy, long polling)
+│   │   ├── src/
+│   │   │   ├── handlers/     # start, captain
+│   │   │   ├── ws-listener.ts
+│   │   │   └── api-client.ts
 │   │   └── Dockerfile
 │   └── web/          # Frontend (React + Vite)
 │       ├── src/
@@ -71,7 +76,7 @@ wedding-quiz/
 
 ### Real-time синхронизация
 - WebSocket для мгновенных обновлений TV и Admin
-- События: `game_lobby`, `registration_opened`, `team_registered`, `slide_changed`, `quiz_finished`
+- События: `game_lobby`, `registration_opened`, `team_registered`, `slide_changed`, `quiz_finished`, `results_revealed`, `remind`, `quiz_archived`
 
 ### Импорт квизов
 - DOCX (текст) + ZIP (слайды) → LLM парсит → preview → сохранение
