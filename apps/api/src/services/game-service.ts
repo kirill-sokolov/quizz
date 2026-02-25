@@ -544,6 +544,12 @@ export async function archiveQuiz(quizId: number) {
 
   broadcast("quiz_archived", { quizId });
 
+  // Удаление тестовых ботов при архивации
+  const botService = getBotService();
+  if (botService) {
+    await botService.onQuizFinished(quizId);
+  }
+
   return { success: true };
 }
 
@@ -562,11 +568,8 @@ export async function finishGame(quizId: number) {
 
   broadcast("quiz_finished", { quizId, results, resultsRevealCount: 0 });
 
-  // Автоудаление тестовых ботов при завершении квиза
-  const botService = getBotService();
-  if (botService) {
-    await botService.onQuizFinished(quizId);
-  }
+  // NOTE: Боты НЕ удаляются здесь, чтобы результаты оставались доступны.
+  // Удаление происходит при архивации (archiveQuiz) или рестарте (restartQuiz).
 
   return results;
 }
