@@ -488,11 +488,30 @@ export default function Game() {
           </h1>
         </div>
 
+        {/* Контролы открытия мест - sticky */}
+        {!quizArchived && results && results.length > 0 && (
+          <div className="sticky top-0 z-10 bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm text-stone-700">
+                Показано мест на TV: <strong>{Math.min(state?.resultsRevealCount || 0, results.length)}</strong> / {results.length}
+              </p>
+              <button
+                type="button"
+                onClick={handleRevealNextResult}
+                disabled={revealingResult || (state?.resultsRevealCount || 0) >= results.length}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+              >
+                {revealingResult ? "Показываем..." : "Показать следующее место на TV"}
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Результаты */}
         {results && results.length > 0 ? (
           <div className="bg-white rounded-xl border border-stone-200 p-6 shadow-sm mb-4">
             <h2 className="text-lg font-semibold text-stone-800 mb-4">Результаты</h2>
-            <div className="space-y-3">
+            <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-2">
               {results.map((result, idx) => {
                 const score = Number.isInteger(result.correct) ? result.correct : result.correct.toFixed(1);
                 return (
@@ -534,24 +553,6 @@ export default function Game() {
             <p className="text-center text-stone-600">
               {quizArchived ? "Квиз архивирован." : "Квиз завершён."}
             </p>
-          </div>
-        )}
-
-        {!quizArchived && results && results.length > 0 && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm text-stone-700">
-                Показано мест на TV: <strong>{Math.min(state?.resultsRevealCount || 0, results.length)}</strong> / {results.length}
-              </p>
-              <button
-                type="button"
-                onClick={handleRevealNextResult}
-                disabled={revealingResult || (state?.resultsRevealCount || 0) >= results.length}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {revealingResult ? "Показываем..." : "Показать следующее место на TV"}
-              </button>
-            </div>
           </div>
         )}
 
