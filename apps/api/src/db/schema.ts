@@ -68,6 +68,7 @@ export const teams = pgTable("teams", {
   name: text("name").notNull(),
   telegramChatId: bigint("telegram_chat_id", { mode: "bigint" }),
   isKicked: boolean("is_kicked").notNull().default(false),
+  isBot: boolean("is_bot").notNull().default(false),
   registeredAt: timestamp("registered_at").defaultNow().notNull(),
 });
 
@@ -110,6 +111,9 @@ export const gameState = pgTable(
     registrationOpen: boolean("registration_open")
       .notNull()
       .default(false),
+    showBotsOnTv: boolean("show_bots_on_tv")
+      .notNull()
+      .default(true),
   },
   (t) => [unique().on(t.quizId)]
 );

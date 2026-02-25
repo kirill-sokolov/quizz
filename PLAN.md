@@ -109,6 +109,154 @@
 
 ---
 
+## 🤖 Тестовые агенты (боты) — Полное удаление
+
+Тестовые боты реализованы как изолированный модуль для лёгкого удаления.
+Если функция больше не нужна, выполните следующие шаги:
+
+### Шаг 1: Удалить backend файлы
+
+```bash
+# 1. Удалить папку с модулем тестовых агентов
+rm -rf apps/api/src/test-agents/
+
+# 2. Удалить файл роутов
+rm apps/api/src/routes/test-agents.ts
+```
+
+### Шаг 2: Удалить frontend файлы
+
+```bash
+# Удалить компонент панели тестовых ботов
+rm apps/web/src/components/Admin/TestBotsPanel.jsx
+```
+
+### Шаг 3: Убрать импорты и интеграцию
+
+#### `apps/api/src/index.ts`
+
+Удалить строки:
+```typescript
+import { testAgentsRoutes } from "./routes/test-agents.js";
+import { BotAgentService } from "./test-agents/index.js";
+import { broadcast } from "./ws/index.js";
+
+// И удалить:
+let botServiceInstance: BotAgentService | null = null;
+export const getBotService = () => botServiceInstance;
+
+// И удалить:
+const wsServer = { broadcast };
+const botService = new BotAgentService(wsServer);
+botServiceInstance = botService;
+
+// И удалить:
+await app.register(async (app) => testAgentsRoutes(app, botService));
+```
+
+#### `apps/api/src/services/game-service.ts`
+
+Удалить строку:
+```typescript
+import { getBotService } from "../index.js";
+```
+
+Удалить блок кода (после `broadcast("slide_changed", ...)`):
+```typescript
+// Тестовые боты отвечают при переключении на слайд "timer"
+if (slide === "timer" && updated.currentQuestionId) {
+  const botService = getBotService();
+  if (botService) {
+    const [question] = await db
+      .select()
+      .from(questions)
+      .where(eq(questions.id, updated.currentQuestionId));
+
+    if (question) {
+      await botService.handleQuestion(quizId, question);
+    }
+  }
+}
+```
+
+Удалить блок в функции `finishGame()`:
+```typescript
+// Автоудаление тестовых ботов при завершении квиза
+const botService = getBotService();
+if (botService) {
+  await botService.onQuizFinished(quizId);
+}
+```
+
+#### `apps/api/src/routes/teams.ts`
+
+Убрать импорт `gameState`:
+```typescript
+import { teams, gameState } from "../db/schema.js";
+// Оставить только:
+import { teams } from "../db/schema.js";
+```
+
+Удалить код фильтрации ботов в `GET /api/quizzes/:id/teams`:
+```typescript
+// Удалить:
+const [state] = await db
+  .select()
+  .from(gameState)
+  .where(eq(gameState.quizId, quizId));
+
+const showBotsOnTv = state?.showBotsOnTv ?? true;
+
+// И изменить:
+const filtered = showBotsOnTv
+  ? rows
+  : rows.filter((t) => !t.isBot);
+
+return filtered.map(serializeTeam);
+
+// На:
+return rows.map(serializeTeam);
+```
+
+#### `apps/web/src/pages/Game.jsx`
+
+Удалить импорт:
+```typescript
+import TestBotsPanel from "../components/Admin/TestBotsPanel";
+```
+
+Удалить использование компонента:
+```jsx
+{/* Тестовые боты */}
+<TestBotsPanel
+  quizId={quiz.id}
+  teams={teams}
+  gameState={state}
+  onUpdate={loadQuizData}
+/>
+```
+
+### Шаг 4: Удалить из базы данных (опционально)
+
+Если хотите полностью убрать поля из БД:
+
+```sql
+-- Удалить поля, связанные с ботами
+ALTER TABLE teams DROP COLUMN IF EXISTS is_bot;
+ALTER TABLE game_state DROP COLUMN IF EXISTS show_bots_on_tv;
+```
+
+**Примечание:** Можно оставить поля в БД — они не будут использоваться и не причинят вреда.
+
+### Шаг 5: Перезапустить сервисы
+
+```bash
+docker-compose restart api
+docker-compose restart web
+```
+
+---
+
 ## Опционально в будущем
 
 - Web Admin: вести на телефоне должно быть удобно (проверить и поправить дизайн)
