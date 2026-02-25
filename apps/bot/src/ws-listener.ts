@@ -64,70 +64,9 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
   if (registered.length === 0) return;
 
   if (data.slide === "question" && data.questionId) {
-    // Detect game start: first question we see for this quiz
-    const prevQId = lastQuestionId.get(data.quizId);
-    if (prevQId == null) {
-      // First question — send game start message
-      for (const user of registered) {
-        try {
-          await bot.api.sendMessage(user.chatId, "🎮 Квиз начался! Ожидайте вопросы.");
-        } catch (err) {
-          console.error(`Failed to send game start to ${user.chatId}:`, err);
-        }
-      }
-    }
+    // On question slide bot should stay silent.
+    // We only track current question id and wait for timer slide.
     lastQuestionId.set(data.quizId, data.questionId);
-
-    // Fetch question data
-    let question;
-    try {
-      const state = await api.getGameState(data.quizId);
-      question = state.question;
-    } catch {
-      return;
-    }
-    if (!question) return;
-
-    const isTextQuestion = question.questionType === "text";
-
-    let text: string;
-    if (isTextQuestion) {
-      text = [
-        `❓ Вопрос`,
-        "",
-        question.text,
-        "",
-        "✏️ Напишите ответ текстом.",
-      ].join("\n");
-    } else {
-      const options = question.options || [];
-      const optionLines = options
-        .map((opt: string, i: number) => `${LABELS[i]}) ${opt}`)
-        .join("\n");
-      text = [
-        `❓ Вопрос`,
-        "",
-        question.text,
-        "",
-        optionLines,
-      ].join("\n");
-    }
-
-    // Send question WITHOUT buttons, set awaiting_answer state
-    for (const user of registered) {
-      setState(user.chatId, {
-        step: "awaiting_answer",
-        quizId: user.quizId,
-        teamId: user.teamId,
-        questionId: data.questionId,
-        questionType: question.questionType || "choice",
-      });
-      try {
-        await bot.api.sendMessage(user.chatId, text);
-      } catch (err) {
-        console.error(`Failed to send question to ${user.chatId}:`, err);
-      }
-    }
   } else if (data.slide === "timer") {
     // Fetch question data to build answer buttons
     let question;
@@ -174,8 +113,26 @@ async function onSlideChanged(bot: Bot, data: { quizId: number; questionId: numb
     }
 
     const timerText = isTextQuestion
-      ? "⏱ Время пошло! Напиши ответ текстом."
-      : "⏱ Время пошло! Отправь ответ.";
+      ? [
+          "⏱ Время пошло!",
+          "",
+          "❓ Вопрос",
+          "",
+          question.text,
+          "",
+          "✏️ Напиши ответ текстом.",
+        ].join("\n")
+      : [
+          "⏱ Время пошло!",
+          "",
+          "❓ Вопрос",
+          "",
+          question.text,
+          "",
+          options.map((opt: string, i: number) => `${LABELS[i]}) ${opt}`).join("\n"),
+          "",
+          "Выбери вариант кнопками ниже.",
+        ].join("\n");
 
     // Send "timer started" message with buttons IMMEDIATELY
     for (const user of registered) {
