@@ -643,12 +643,20 @@ export default function Game() {
                                   </span>
                                 </div>
                                 {isTextQ ? (
-                                  <div>
-                                    <span className="text-stone-600">Оценка: </span>
-                                    <span className="font-semibold text-amber-700">
-                                      {score} / {detail.weight}
-                                    </span>
-                                  </div>
+                                  <>
+                                    <div>
+                                      <span className="text-stone-600">Оценка: </span>
+                                      <span className="font-semibold text-amber-700">
+                                        {score} / {detail.weight}
+                                      </span>
+                                    </div>
+                                    <div>
+                                      <span className="text-stone-600">Правильный ответ: </span>
+                                      <span className="font-semibold text-green-700">
+                                        {detail.correctAnswer}
+                                      </span>
+                                    </div>
+                                  </>
                                 ) : (
                                   !detail.isCorrect && (
                                     <div>
