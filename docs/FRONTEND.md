@@ -305,12 +305,18 @@ export const importApi = { ... };
 ## Компоненты Drag & Drop (slides/)
 
 ### SlideStrip
-Горизонтальная лента слайдов для ImportPreview:
-- Props: `slides: Array<{type, imageUrl}>`, `onReorder(newSlides)`, `onDelete(idx)`
-- Базовые слайды — статичные thumbnails
-- Экстра-слайды — draggable; кнопка ✕ в углу для удаления
-- При перетаскивании показывает 60px drop-зоны между каждой парой слайдов
+Горизонтальная лента слайдов для ImportPreview — два пространства:
+- Props:
+  - `orderedSlides: Array<{type, imageUrl}>` — базовые + явно вставленные экстры (сохраняются)
+  - `unusedExtras: Array<{type, imageUrl}>` — пул неиспользованных экстр (показываются отдельно, при сохранении выбрасываются)
+  - `onReorder(newOrderedSlides)` — перестановка уже вставленных экстр внутри ленты
+  - `onPlaceExtra(poolIdx, insertAt)` — перенос экстра-слайда из пула в ленту
+  - `onDeletePlaced(slideIdx)` — удалить вставленный экстра-слайд из ленты
+- Основная лента: базовые слайды статичны, вставленные экстры — draggable с кнопкой ✕
+- Пул экстр: отображается под лентой с подсказкой; при перетаскивании слайд уходит в ленту и исчезает из пула
+- При перетаскивании показывает 60px drop-зоны между слайдами в основной ленте
 - Использует `@dnd-kit/core`: `useDraggable` + `useDroppable` + `DragOverlay`
+- IDs: `strip-{idx}` для слайдов ленты, `pool-{idx}` для слайдов пула, `gap-{idx}` для drop-зон
 
 ### SlideDndList
 Вертикальный список слайдов с drag handles для QuestionForm:

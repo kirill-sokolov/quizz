@@ -1,11 +1,14 @@
 /**
- * SlideStrip — horizontal filmstrip with drag & drop for extra slides.
- * Base slides (question/timer/answer/video_*) are static.
- * Extra slides can be dragged to any position via 60px gap drop zones.
+ * SlideStrip — horizontal filmstrip with two zones:
+ *   1. Main strip: base slides (question/timer/answer/video_*) + explicitly placed extras
+ *   2. Extras pool: unplaced extras to drag into the strip
  *
  * Props:
- *   slides: Array<{ type: string, imageUrl: string | null }>
- *   onReorder: (newSlides) => void
+ *   orderedSlides: Array<{ type, imageUrl }> — base + placed extras (saved)
+ *   unusedExtras:  Array<{ type, imageUrl }> — pool of unplaced extras (discarded on save)
+ *   onReorder:     (newOrderedSlides) => void — reorder placed extras within strip
+ *   onPlaceExtra:  (poolIdx, insertAt) => void — move extra from pool into strip
+ *   onDeletePlaced:(slideIdx) => void — remove placed extra from strip
  */
 import { useState } from "react";
 import {
@@ -22,9 +25,7 @@ import { SLIDE_LABELS } from "../../constants/slides";
 
 function DropGap({ id, isDragging }) {
   const { setNodeRef, isOver } = useDroppable({ id });
-  if (!isDragging) {
-    return <div className="w-1 shrink-0" />;
-  }
+  if (!isDragging) return <div className="w-1 shrink-0" />;
   return (
     <div
       ref={setNodeRef}
@@ -37,9 +38,9 @@ function DropGap({ id, isDragging }) {
   );
 }
 
-function SlideThumb({ id, slide, isExtra, onDelete }) {
+function SlideThumb({ id, slide, isExtra, isDraggable, onDelete }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
-    useDraggable({ id, disabled: !isExtra });
+    useDraggable({ id, disabled: !isDraggable });
 
   const style = transform
     ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
@@ -54,9 +55,9 @@ function SlideThumb({ id, slide, isExtra, onDelete }) {
       ref={setNodeRef}
       style={style}
       className={`shrink-0 w-28 flex flex-col items-center gap-0.5 select-none
-        ${isExtra ? "cursor-grab active:cursor-grabbing" : ""}
+        ${isDraggable ? "cursor-grab active:cursor-grabbing" : ""}
         ${isDragging ? "opacity-40" : ""}`}
-      {...(isExtra ? { ...listeners, ...attributes } : {})}
+      {...(isDraggable ? { ...listeners, ...attributes } : {})}
     >
       <p className="text-xs text-stone-400 truncate max-w-full text-center px-1 leading-tight">
         {label}
@@ -81,7 +82,7 @@ function SlideThumb({ id, slide, isExtra, onDelete }) {
             Нет
           </div>
         )}
-        {isExtra && onDelete && (
+        {onDelete && (
           <button
             type="button"
             onPointerDown={(e) => e.stopPropagation()}
@@ -93,32 +94,54 @@ function SlideThumb({ id, slide, isExtra, onDelete }) {
           </button>
         )}
       </div>
-      {isExtra && (
+      {isDraggable && (
         <p className="text-[10px] text-blue-400 leading-tight">↔ тянуть</p>
       )}
     </div>
   );
 }
 
-export default function SlideStrip({ slides, onReorder, onDelete }) {
+export default function SlideStrip({
+  orderedSlides,
+  unusedExtras = [],
+  onReorder,
+  onPlaceExtra,
+  onDeletePlaced,
+}) {
   const [activeId, setActiveId] = useState(null);
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
   const isDragging = activeId !== null;
-  const activeSlide = isDragging ? slides[parseInt(activeId)] : null;
+
+  let activeSlide = null;
+  if (activeId?.startsWith("pool-")) {
+    activeSlide = unusedExtras[parseInt(activeId.replace("pool-", ""))];
+  } else if (activeId?.startsWith("strip-")) {
+    activeSlide = orderedSlides[parseInt(activeId.replace("strip-", ""))];
+  }
 
   const handleDragEnd = ({ active, over }) => {
     setActiveId(null);
     if (!over) return;
-    const oldIdx = parseInt(active.id);
-    let insertAt = parseInt(over.id.replace("gap-", ""));
-    const newSlides = [...slides];
-    const [moved] = newSlides.splice(oldIdx, 1);
-    if (oldIdx < insertAt) insertAt--;
-    newSlides.splice(insertAt, 0, moved);
-    onReorder(newSlides);
+
+    const insertAt = parseInt(over.id.replace("gap-", ""));
+
+    if (active.id.startsWith("pool-")) {
+      // Move from pool into the main strip
+      const poolIdx = parseInt(active.id.replace("pool-", ""));
+      onPlaceExtra(poolIdx, insertAt);
+    } else if (active.id.startsWith("strip-")) {
+      // Reorder placed extra within the strip
+      const oldIdx = parseInt(active.id.replace("strip-", ""));
+      let at = insertAt;
+      const newSlides = [...orderedSlides];
+      const [moved] = newSlides.splice(oldIdx, 1);
+      if (oldIdx < at) at--;
+      newSlides.splice(at, 0, moved);
+      onReorder(newSlides);
+    }
   };
 
   return (
@@ -128,23 +151,49 @@ export default function SlideStrip({ slides, onReorder, onDelete }) {
       onDragEnd={handleDragEnd}
       onDragCancel={() => setActiveId(null)}
     >
+      {/* Main strip: base slides + placed extras */}
       <div className="flex items-end overflow-x-auto pb-2 gap-0">
-        {slides.flatMap((slide, idx) => [
+        {orderedSlides.flatMap((slide, idx) => [
           <DropGap key={`gap-${idx}`} id={`gap-${idx}`} isDragging={isDragging} />,
           <SlideThumb
-            key={`slide-${idx}`}
-            id={String(idx)}
+            key={`strip-${idx}`}
+            id={`strip-${idx}`}
             slide={slide}
             isExtra={slide.type === "extra"}
-            onDelete={slide.type === "extra" && onDelete ? () => onDelete(idx) : undefined}
+            isDraggable={slide.type === "extra"}
+            onDelete={
+              slide.type === "extra" && onDeletePlaced
+                ? () => onDeletePlaced(idx)
+                : undefined
+            }
           />,
         ])}
         <DropGap
-          key={`gap-${slides.length}`}
-          id={`gap-${slides.length}`}
+          key={`gap-${orderedSlides.length}`}
+          id={`gap-${orderedSlides.length}`}
           isDragging={isDragging}
         />
       </div>
+
+      {/* Extras pool: unplaced extras (draggable into the strip above) */}
+      {unusedExtras.length > 0 && (
+        <div className="mt-2 pt-2 border-t border-stone-100">
+          <p className="text-xs text-stone-400 mb-1">
+            Экстра-слайды — перетащи нужный в ленту выше, остальные при сохранении удалятся:
+          </p>
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {unusedExtras.map((slide, idx) => (
+              <SlideThumb
+                key={`pool-${idx}`}
+                id={`pool-${idx}`}
+                slide={slide}
+                isExtra={true}
+                isDraggable={true}
+              />
+            ))}
+          </div>
+        </div>
+      )}
 
       <DragOverlay>
         {activeSlide ? (

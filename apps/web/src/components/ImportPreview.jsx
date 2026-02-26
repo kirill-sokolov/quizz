@@ -2,7 +2,7 @@ import { useState } from "react";
 import { importApi, getMediaUrl } from "../api/client";
 import SlideStrip from "./slides/SlideStrip";
 
-// Build a unified ordered slide array from the LLM preview format
+// Build base slide sequence (no extras — they go into the pool)
 function buildOrderedSlides(item) {
   const result = [];
   const baseTypes = ["video_warning", "video_intro", "question", "timer", "answer"];
@@ -11,10 +11,12 @@ function buildOrderedSlides(item) {
     if ((type === "video_warning" || type === "video_intro") && !url) continue;
     result.push({ type, imageUrl: url });
   }
-  for (const url of item.extraSlides ?? []) {
-    result.push({ type: "extra", imageUrl: url });
-  }
   return result;
+}
+
+// Build the extras pool (shown separately, discarded on save if not placed)
+function buildUnusedExtras(item) {
+  return (item.extraSlides ?? []).map((url) => ({ type: "extra", imageUrl: url }));
 }
 
 const ANSWER_LABELS = ["A", "B", "C", "D"];
@@ -32,7 +34,11 @@ const TIMER_POSITIONS = [
 
 export default function ImportPreview({ quizId, data: initial, onDone, onCancel }) {
   const [items, setItems] = useState(() =>
-    initial.questions.map((q) => ({ ...q, orderedSlides: buildOrderedSlides(q) }))
+    initial.questions.map((q) => ({
+      ...q,
+      orderedSlides: buildOrderedSlides(q),
+      unusedExtras: buildUnusedExtras(q),
+    }))
   );
   const [demoImageUrl, setDemoImageUrl] = useState(initial.demoImageUrl || null);
   const [rulesImageUrl, setRulesImageUrl] = useState(initial.rulesImageUrl || null);
@@ -63,6 +69,19 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
   const reorderSlides = (qIndex, newSlides) => {
     setItems((prev) =>
       prev.map((item, i) => (i === qIndex ? { ...item, orderedSlides: newSlides } : item))
+    );
+  };
+
+  const placeExtra = (qIndex, poolIdx, insertAt) => {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== qIndex) return item;
+        const extra = item.unusedExtras[poolIdx];
+        const newOrderedSlides = [...item.orderedSlides];
+        newOrderedSlides.splice(insertAt, 0, extra);
+        const newUnusedExtras = item.unusedExtras.filter((_, ei) => ei !== poolIdx);
+        return { ...item, orderedSlides: newOrderedSlides, unusedExtras: newUnusedExtras };
+      })
     );
   };
 
@@ -278,16 +297,16 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                   </div>
                 )}
 
-                {/* Slide sequence — drag extra slides to reorder */}
+                {/* Slide sequence + extras pool */}
                 {item.orderedSlides && item.orderedSlides.length > 0 && (
                   <div className="mt-2">
-                    <p className="text-xs text-stone-500 mb-1">
-                      Слайды{item.orderedSlides.some((s) => s.type === "extra") ? " (экстра-слайды можно перетащить)" : ""}:
-                    </p>
+                    <p className="text-xs text-stone-500 mb-1">Слайды:</p>
                     <SlideStrip
-                      slides={item.orderedSlides}
+                      orderedSlides={item.orderedSlides}
+                      unusedExtras={item.unusedExtras ?? []}
                       onReorder={(newSlides) => reorderSlides(qi, newSlides)}
-                      onDelete={(slideIdx) => deleteSlide(qi, slideIdx)}
+                      onPlaceExtra={(poolIdx, insertAt) => placeExtra(qi, poolIdx, insertAt)}
+                      onDeletePlaced={(slideIdx) => deleteSlide(qi, slideIdx)}
                     />
                   </div>
                 )}
