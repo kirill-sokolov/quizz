@@ -1,5 +1,44 @@
 # История выполненных задач
 
+## 2026-02-27: Этап 9 — Улучшение seed Demo quiz
+
+### ✅ Demo quiz «Демо квиз (edge cases)» покрывает все острые углы
+
+**Quiz-level:**
+- `demoImageUrl` → `seed/demo.png`
+- `thanksImageUrl` → `seed/thanks.png`
+- `finalImageUrl` → `seed/final.png` (добавлено — теперь доступен полный флоу results → thanks → final → archive)
+
+**Q1** — choice + video, weight=1, timerPosition="center"
+- Слайды: `video_warning` → `video_intro` → `question` → `timer` → `answer`
+- `videoLayout` на `video_intro`: `{ top: 21.3, left: 25.1, width: 49.9, height: 52.7 }`
+- Тест: видео-слайды, позиционирование видео, базовый флоу
+
+**Q2** — text, weight=1, timerPosition="top-right"
+- «Назовите столицы: Франции, Германии, Японии, Австралии.»
+- `correctAnswer`: "Париж, Берлин, Токио, Канберра"
+- Слайды: `question` → `timer` → `answer`
+- Тест: текстовый ответ (LLM-оценка), нестандартная позиция таймера
+
+**Q3** — text, weight=1, timerPosition="bottom-left"
+- «В каких странах обручальное кольцо носят на правой руке? (назовите 2 страны)»
+- `correctAnswer`: "Россия, Германия"
+- Слайды: `question` → `timer` → `answer` → **`extra (video-answer.png + video.mp4, videoLayout)`**
+- `videoLayout` на extra: `{ top: 21.3, left: 25.1, width: 49.9, height: 41 }`
+- Тест: текстовый ответ с несколькими значениями, видео-extra после answer, другая позиция таймера
+
+**Q4** — choice, weight=1, timerPosition="center"
+- «Сколько лепестков у классической розы, подаренной на свадьбу?»
+- Слайды: `question` → **`extra (joke1.png)`** → `timer` → `answer` → **`extra (1a.png)`** → **`extra (1b.png)`**
+- Тест: extra-слайд между вопросом и таймером, 2 extra после answer, навигация «Экстра N/M»
+
+**Поддержка `videoLayout` в `extraAfterQuestion` и `extraSlides`** — добавлена в цикл создания слайдов.
+
+**Файлы:**
+- `apps/api/src/services/seed-service.ts`
+
+---
+
 ## 2026-02-26: Фикс — последовательные кнопки после раскрытия результатов
 
 ### ✅ Пост-игровой флоу: results → thanks → final → archive
