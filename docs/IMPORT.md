@@ -174,52 +174,34 @@ quiz-slides.zip
 - LLM видит правильный ответ → может найти слайд answer по выделенному тексту
 - LLM определяет позицию таймера на слайде (по визуальному анализу)
 - LLM определяет все 4 специальных слайда: demo, rules, thanks, final
-- extraSlides (таймеры, юмор, анимации) возвращаются в массиве extraSlides для каждого вопроса
+- `extraSlides` (таймеры, юмор, анимации) возвращаются в массиве `extraSlides[]` для каждого вопроса; в ImportPreview пользователь может перетащить их в нужную позицию
 
 ---
 
 ## Сохранение в БД
 
 ### Логика (saveImportedQuiz)
+
+Приоритет при сохранении слайдов:
+1. Если `item.orderedSlides` задан (пользователь изменил порядок в preview) → использовать его
+2. Иначе — собрать слайды из `item.slides{}` + `item.extraSlides[]` (fallback)
+
 ```typescript
-// 1. Обновить URL картинок квиза (если LLM определил)
-const updates = {};
-if (demoImageUrl !== undefined) updates.demoImageUrl = demoImageUrl;
-if (rulesImageUrl !== undefined) updates.rulesImageUrl = rulesImageUrl;
-if (thanksImageUrl !== undefined) updates.thanksImageUrl = thanksImageUrl;
-if (finalImageUrl !== undefined) updates.finalImageUrl = finalImageUrl;
-if (Object.keys(updates).length > 0) {
-  await db.update(quizzes).set(updates).where(eq(quizzes.id, quizId));
-}
-
-// 2. Создать вопросы и их слайды
-for (const item of preview.questions) {
-  const question = await db.insert(questions).values({
-    quizId,
-    orderNum: nextOrder++,
-    text: item.text,
-    questionType: item.questionType,
-    options: item.options,
-    correctAnswer: item.correctAnswer,
-    explanation: item.explanation,
-    timeLimitSec: item.timeLimitSec,
-    timerPosition: item.timerPosition,
-    weight: item.weight || 1,
-  });
-
-  for (const type of SLIDE_TYPES) {
-    const imageUrl = item.slides[type];
-
-    // Пропустить пустые video_warning/video_intro
-    if ((type === "video_warning" || type === "video_intro") && !imageUrl) {
-      continue;
-    }
-
-    await db.insert(slides).values({
-      questionId: question.id,
-      type,
-      imageUrl,
-    });
+if (item.orderedSlides?.length > 0) {
+  // Порядок определён пользователем через drag & drop в preview
+  for (const [idx, s] of item.orderedSlides.entries()) {
+    if ((s.type === "video_warning" || s.type === "video_intro") && !s.imageUrl) continue;
+    await db.insert(slides).values({ questionId, type: s.type, imageUrl: s.imageUrl, sortOrder: idx });
+  }
+} else {
+  // Fallback: базовые слайды по порядку + extras в конце
+  let sortOrder = 0;
+  for (const type of ["video_warning", "video_intro", "question", "timer", "answer"]) {
+    if ((type === "video_warning" || type === "video_intro") && !imageUrl) continue;
+    await db.insert(slides).values({ questionId, type, imageUrl, sortOrder: sortOrder++ });
+  }
+  for (const extraUrl of item.extraSlides ?? []) {
+    await db.insert(slides).values({ questionId, type: "extra", imageUrl: extraUrl, sortOrder: sortOrder++ });
   }
 }
 ```
@@ -228,6 +210,8 @@ for (const item of preview.questions) {
 - Пустые `video_warning` и `video_intro` не создаются
 - `question`, `timer`, `answer` создаются всегда (обязательные)
 - `demo`, `rules`, `thanks`, `final` сохраняются в таблицу `quizzes` (не в `slides`)
+- Экстра-слайды (`extra`) — опциональные, позиция определяется `sort_order`
+- Пользователь может перетащить экстра-слайды в нужную позицию в ImportPreview (слой `orderedSlides`)
 
 ---
 
@@ -263,14 +247,6 @@ for (const item of preview.questions) {
 ### Пропуск пустых слайдов
 - `video_warning` и `video_intro` создаются только если есть imageUrl/videoUrl
 - При старте вопроса система автоматически пропускает пустые слайды
-
----
-
-## TODO (PLAN.md)
-
-### Этап 8
-- Поддержка дополнительных слайдов между вопросами (шутки, анимации)
-- Поддержка mp4 видео
 
 ---
 

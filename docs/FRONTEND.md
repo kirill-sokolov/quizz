@@ -18,8 +18,11 @@ apps/web/src/
 │   ├── Game.jsx        # /admin/game/:id — управление игрой (ведущий)
 │   └── TV.jsx          # /tv/:code — экран для зрителей
 ├── components/
-│   ├── QuestionForm.jsx      # Форма редактирования вопроса
-│   ├── ImportPreview.jsx     # Preview импорта DOCX+ZIP
+│   ├── QuestionForm.jsx      # Форма редактирования вопроса (с extras + drag&drop)
+│   ├── ImportPreview.jsx     # Preview импорта DOCX+ZIP (с orderedSlides + drag&drop)
+│   ├── slides/               # Drag & drop компоненты для слайдов
+│   │   ├── SlideStrip.jsx    # Горизонтальная лента слайдов (для ImportPreview)
+│   │   └── SlideDndList.jsx  # Вертикальный список с drag handles (для QuestionForm)
 │   └── TV/                   # Компоненты TV экрана
 │       ├── TVDemo.jsx        # Demo слайд
 │       ├── TVRules.jsx       # Правила
@@ -27,6 +30,7 @@ apps/web/src/
 │       ├── TVQuestion.jsx    # Слайд вопроса
 │       ├── TVTimer.jsx       # Слайд таймера
 │       ├── TVAnswer.jsx      # Слайд ответа
+│       ├── TVExtraSlide.jsx  # Экстра-слайд (полноэкранная картинка/видео)
 │       ├── TVResults.jsx     # Итоговая таблица
 │       ├── TVVideoWarning.jsx
 │       ├── TVVideoIntro.jsx
@@ -108,7 +112,9 @@ apps/web/src/
 - **Форма вопроса** (QuestionForm):
   - Текст вопроса, тип (choice/text), варианты, правильный ответ, пояснение
   - Время, позиция таймера, вес
-  - Слайды (question, timer, answer, video_warning, video_intro)
+  - Слайды: ordered list (question, timer, answer, video_warning, video_intro + extras)
+  - Кнопка "+ Экстра-слайд" между каждыми двумя слайдами
+  - Экстра-слайды: drag handle ⠿ для перестановки (via `SlideDndList`), кнопка удаления, upload image/video
 
 ### Game (`/admin/game/:id`)
 Управление игрой (для ведущего):
@@ -187,6 +193,13 @@ apps/web/src/
 ### TVAnswer
 Слайд ответа:
 - Фоновая картинка слайда "answer"
+
+### TVExtraSlide
+Экстра-слайд (произвольный контент между основными слайдами вопроса):
+- Полноэкранная картинка (`imageUrl`) — `object-cover`
+- Опционально видео (`videoUrl`) поверх картинки (autoPlay, loop)
+- Используется для шуток, мемов, фото, анимаций
+- TV определяет нужный экстра-слайд по `state.currentSlideId`
 
 ### TVVideoWarning
 Предупреждение о видео-вопросе.
@@ -289,10 +302,23 @@ export const importApi = { ... };
 
 ---
 
-## TODO (из PLAN.md)
+## Компоненты Drag & Drop (slides/)
 
-### Этап 8
-- Дополнительные слайды между вопросами (шутки) с поддержкой mp4
+### SlideStrip
+Горизонтальная лента слайдов для ImportPreview:
+- Props: `slides: Array<{type, imageUrl}>`, `onReorder(newSlides)`, `onDelete(idx)`
+- Базовые слайды — статичные thumbnails
+- Экстра-слайды — draggable; кнопка ✕ в углу для удаления
+- При перетаскивании показывает 60px drop-зоны между каждой парой слайдов
+- Использует `@dnd-kit/core`: `useDraggable` + `useDroppable` + `DragOverlay`
+
+### SlideDndList
+Вертикальный список слайдов с drag handles для QuestionForm:
+- Props: `slides`, `onReorder(newSlides)`, `renderItem(slide, idx) → ReactNode`
+- Базовые слайды: `disabled: true` — нельзя двигать
+- Экстра-слайды: иконка ⠿ слева как drag handle
+- Контент слайда передаётся через render prop — старый код не изменяется
+- Использует `@dnd-kit/sortable`: `SortableContext` + `useSortable`
 
 ---
 

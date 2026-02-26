@@ -1,5 +1,55 @@
 # История выполненных задач
 
+## 2026-02-26: Drag & drop для экстра-слайдов
+
+### ✅ Перетаскивание слайдов в ImportPreview и QuestionForm
+
+**Новые компоненты (независимые, не захломляют старый код):**
+
+- `apps/web/src/components/slides/SlideStrip.jsx` — горизонтальная лента слайдов для ImportPreview:
+  - Все слайды вопроса показываются thumbnails в ряд
+  - Базовые слайды (question/timer/answer/video_*) — статичные
+  - Экстра-слайды — draggable (cursor: grab), кнопка ✕ для удаления
+  - При перетаскивании между каждыми двумя слайдами появляются **60px drop-зоны** (синяя подсветка при наведении)
+  - DragOverlay — ghost-копия перетаскиваемого слайда
+  - Props: `slides`, `onReorder`, `onDelete`
+
+- `apps/web/src/components/slides/SlideDndList.jsx` — вертикальный список с drag handles для QuestionForm:
+  - Обёртка для слайдов через render prop `renderItem(slide, idx)`
+  - Базовые слайды: `disabled: true`, нельзя двигать
+  - Экстра-слайды: иконка ⠿ слева как drag handle
+  - Props: `slides`, `onReorder`, `renderItem`
+
+**Изменения в существующих компонентах (минимальные):**
+
+- `ImportPreview.jsx`:
+  - `buildOrderedSlides(item)` — конвертирует `slides{} + extraSlides[]` → упорядоченный массив при инициализации
+  - Состояние `items` теперь включает `orderedSlides`
+  - Блоки "Slide previews" и "Extra slides" заменены на `<SlideStrip>`
+  - `onDelete` удаляет слайд из `orderedSlides`
+  - `orderedSlides` передаётся в backend при сохранении
+
+- `QuestionForm.jsx`: слайды обёрнуты в `<SlideDndList>` через render prop, код слайдов не изменился
+
+**Backend (`import-service.ts`):**
+- `ImportPreviewItem` расширен: `orderedSlides?: Array<{type, imageUrl}>`
+- `saveImportedQuiz`: если `orderedSlides` есть → сохраняет слайды в этом порядке; иначе fallback на старый формат
+
+**Зависимости:**
+- `@dnd-kit/core ^6.3.1`
+- `@dnd-kit/sortable ^8.0.0`
+- `@dnd-kit/utilities ^3.2.2`
+
+**Файлы:**
+- `apps/web/src/components/slides/SlideStrip.jsx` (новый)
+- `apps/web/src/components/slides/SlideDndList.jsx` (новый)
+- `apps/web/src/components/ImportPreview.jsx`
+- `apps/web/src/components/QuestionForm.jsx`
+- `apps/api/src/services/import-service.ts`
+- `apps/web/package.json`
+
+---
+
 ## 2026-02-26: Этап 8 — Экстра-слайды внутри вопросов
 
 ### ✅ Extra Slides (тип `extra`, `sort_order` навигация)
