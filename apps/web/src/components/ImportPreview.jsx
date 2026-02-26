@@ -1,6 +1,21 @@
 import { useState } from "react";
 import { importApi, getMediaUrl } from "../api/client";
-import { ALL_SLIDE_TYPES, SLIDE_LABELS } from "../constants/slides";
+import SlideStrip from "./slides/SlideStrip";
+
+// Build a unified ordered slide array from the LLM preview format
+function buildOrderedSlides(item) {
+  const result = [];
+  const baseTypes = ["video_warning", "video_intro", "question", "timer", "answer"];
+  for (const type of baseTypes) {
+    const url = item.slides?.[type] ?? null;
+    if ((type === "video_warning" || type === "video_intro") && !url) continue;
+    result.push({ type, imageUrl: url });
+  }
+  for (const url of item.extraSlides ?? []) {
+    result.push({ type: "extra", imageUrl: url });
+  }
+  return result;
+}
 
 const ANSWER_LABELS = ["A", "B", "C", "D"];
 const TIMER_POSITIONS = [
@@ -16,7 +31,9 @@ const TIMER_POSITIONS = [
 ];
 
 export default function ImportPreview({ quizId, data: initial, onDone, onCancel }) {
-  const [items, setItems] = useState(initial.questions);
+  const [items, setItems] = useState(() =>
+    initial.questions.map((q) => ({ ...q, orderedSlides: buildOrderedSlides(q) }))
+  );
   const [demoImageUrl, setDemoImageUrl] = useState(initial.demoImageUrl || null);
   const [rulesImageUrl, setRulesImageUrl] = useState(initial.rulesImageUrl || null);
   const [thanksImageUrl, setThanksImageUrl] = useState(initial.thanksImageUrl || null);
@@ -41,6 +58,23 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
 
   const removeQuestion = (index) => {
     setItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const reorderSlides = (qIndex, newSlides) => {
+    setItems((prev) =>
+      prev.map((item, i) => (i === qIndex ? { ...item, orderedSlides: newSlides } : item))
+    );
+  };
+
+  const deleteSlide = (qIndex, slideIdx) => {
+    setItems((prev) =>
+      prev.map((item, i) => {
+        if (i !== qIndex) return item;
+        const next = [...item.orderedSlides];
+        next.splice(slideIdx, 1);
+        return { ...item, orderedSlides: next };
+      })
+    );
   };
 
   const handleSave = async () => {
@@ -244,60 +278,17 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                   </div>
                 )}
 
-                {/* Slide previews */}
-                <div className="flex gap-3 flex-wrap">
-                  {ALL_SLIDE_TYPES.map((type) => {
-                    const url = item.slides[type];
-                    return (
-                      <div key={type} className="text-center">
-                        <p className="text-xs text-stone-400 mb-1">{SLIDE_LABELS[type]}</p>
-                        {url ? (
-                          <img
-                            src={getMediaUrl(url)}
-                            alt={type}
-                            className="w-28 h-20 object-cover rounded border border-stone-200"
-                          />
-                        ) : (
-                          <div className="w-28 h-20 bg-stone-100 rounded border border-stone-200 flex items-center justify-center text-xs text-stone-400">
-                            Нет
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Extra slides (humor, etc.) */}
-                {item.extraSlides && item.extraSlides.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-stone-200">
-                    <p className="text-xs text-stone-500 mb-2">Экстра-слайды ({item.extraSlides.length}):</p>
-                    <div className="flex gap-3 flex-wrap">
-                      {item.extraSlides.map((url, ei) => (
-                        <div key={ei} className="text-center relative">
-                          <p className="text-xs text-blue-500 mb-1">Экстра {ei + 1}</p>
-                          <img
-                            src={getMediaUrl(url)}
-                            alt={`Extra ${ei + 1}`}
-                            className="w-28 h-20 object-cover rounded border border-blue-200"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setItems(prev => prev.map((item2, i2) => {
-                                if (i2 !== qi) return item2;
-                                const extras = [...(item2.extraSlides || [])];
-                                extras.splice(ei, 1);
-                                return { ...item2, extraSlides: extras };
-                              }));
-                            }}
-                            className="absolute top-4 right-0 text-red-500 hover:text-red-700 text-xs bg-white rounded-full px-1"
-                            title="Удалить экстра-слайд"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                {/* Slide sequence — drag extra slides to reorder */}
+                {item.orderedSlides && item.orderedSlides.length > 0 && (
+                  <div className="mt-2">
+                    <p className="text-xs text-stone-500 mb-1">
+                      Слайды{item.orderedSlides.some((s) => s.type === "extra") ? " (экстра-слайды можно перетащить)" : ""}:
+                    </p>
+                    <SlideStrip
+                      slides={item.orderedSlides}
+                      onReorder={(newSlides) => reorderSlides(qi, newSlides)}
+                      onDelete={(slideIdx) => deleteSlide(qi, slideIdx)}
+                    />
                   </div>
                 )}
               </div>

@@ -35,6 +35,8 @@ export interface ImportPreviewItem {
     answer: string | null;
   };
   extraSlides?: string[];
+  /** Ordered slide sequence from the preview (set by frontend after reordering). */
+  orderedSlides?: Array<{ type: string; imageUrl: string | null }>;
 }
 
 export interface ImportPreviewResult {
@@ -305,32 +307,39 @@ export async function saveImportedQuiz(
       .returning();
 
     // Save slides with sort_order
-    let sortOrder = 0;
-    const baseTypes = ["video_warning", "video_intro", "question", "timer", "answer"] as const;
-    for (const type of baseTypes) {
-      const imageUrl = item.slides[type as keyof typeof item.slides] ?? null;
-
-      // Skip video_warning and video_intro if they have no image
-      if ((type === "video_warning" || type === "video_intro") && !imageUrl) {
-        continue;
+    if (item.orderedSlides && item.orderedSlides.length > 0) {
+      // Use the ordered sequence provided by the frontend (after user drag-and-drop)
+      for (const [idx, s] of item.orderedSlides.entries()) {
+        if ((s.type === "video_warning" || s.type === "video_intro") && !s.imageUrl) continue;
+        await db.insert(slides).values({
+          questionId: question.id,
+          type: s.type as any,
+          imageUrl: s.imageUrl ?? null,
+          sortOrder: idx,
+        });
       }
-
-      await db.insert(slides).values({
-        questionId: question.id,
-        type,
-        imageUrl,
-        sortOrder: sortOrder++,
-      });
-    }
-
-    // Save extra slides (placed after answer)
-    for (const extraUrl of item.extraSlides ?? []) {
-      await db.insert(slides).values({
-        questionId: question.id,
-        type: "extra",
-        imageUrl: extraUrl,
-        sortOrder: sortOrder++,
-      });
+    } else {
+      // Fallback: build from old format (slides object + extraSlides array)
+      let sortOrder = 0;
+      const baseTypes = ["video_warning", "video_intro", "question", "timer", "answer"] as const;
+      for (const type of baseTypes) {
+        const imageUrl = item.slides[type as keyof typeof item.slides] ?? null;
+        if ((type === "video_warning" || type === "video_intro") && !imageUrl) continue;
+        await db.insert(slides).values({
+          questionId: question.id,
+          type,
+          imageUrl,
+          sortOrder: sortOrder++,
+        });
+      }
+      for (const extraUrl of item.extraSlides ?? []) {
+        await db.insert(slides).values({
+          questionId: question.id,
+          type: "extra",
+          imageUrl: extraUrl,
+          sortOrder: sortOrder++,
+        });
+      }
     }
   }
 

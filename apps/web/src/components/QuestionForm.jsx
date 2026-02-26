@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getMediaUrl } from "../api/client";
 import { SLIDE_TYPES, BASE_SLIDE_TYPES, FULL_SLIDE_TYPES, VIDEO_SLIDE_TYPES, SLIDE_LABELS } from "../constants/slides";
 import VideoLayoutEditor from "./VideoLayoutEditor";
+import SlideDndList from "./slides/SlideDndList";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"];
 
@@ -387,14 +388,15 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
           </label>
         </div>
         <label className="block text-sm font-medium text-stone-600 mb-2">Слайды (картинки и видео)</label>
-        <div className="space-y-2">
-          {slides.map((slide, idx) => {
+        <SlideDndList
+          slides={slides}
+          onReorder={(newSlides) => setSlides(newSlides.map((s, i) => ({ ...s, sortOrder: i })))}
+          renderItem={(slide, idx) => {
             const isExtra = slide.type === SLIDE_TYPES.EXTRA;
             const canHaveVideo = slide.type === SLIDE_TYPES.VIDEO_INTRO || slide.type === SLIDE_TYPES.ANSWER || isExtra;
-            const isBase = BASE_TYPES.has(slide.type);
 
             return (
-              <div key={`${slide.type}-${idx}`}>
+              <div>
                 <div className={`p-3 rounded-lg border ${isExtra ? "bg-blue-50 border-blue-200" : "bg-stone-50 border-stone-200"}`}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="font-medium text-stone-700">
@@ -505,8 +507,8 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
                 </div>
               </div>
             );
-          })}
-        </div>
+          }}
+        />
       </div>
 
       <div className="flex gap-2 pt-2">
