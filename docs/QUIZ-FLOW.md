@@ -153,18 +153,24 @@ video_warning → video_intro → question → timer → answer
    - WebSocket: slide_changed
    - Бот автоматически отправляет вопрос всем командам
 
-3. Команды отвечают: /answer B
-   - POST /bot/submit-answer
+3. Команды отвечают через Telegram
+   - POST /answers
+   - Валидация: choice → буква A–H; text → макс 500 символов, первые N вариантов
    - Сохраняется в answers
-   - Команда видит ✅ "Ответ принят!"
+   - WebSocket: answer_submitted → Admin обновляет список ответов
+   - Для text-вопросов: LLM оценка запускается **сразу в фоне** (fire-and-forget)
+     - После оценки: awardedScore записывается в БД, WebSocket: answer_scored
+     - Admin видит балл без ожидания слайда "answer"
+   - Команда получает в Telegram: "Ответ принят ✅"
 
-4. Ведущий в админке видит кто ответил
+4. Ведущий в админке видит кто ответил и их баллы (для text-вопросов)
    - Может отправить напоминание (POST /game/remind)
 
 5. Переход на слайд "answer":
    - POST /game/set-slide {slide: "answer"}
-   - Если вопрос text-типа → автоматически запускается LLM оценка
+   - Для text-вопросов: LLM оценивает только те ответы, у которых awardedScore = null (ещё не оценены)
    - TV показывает правильный ответ
+   - Капитаны получают результат в Telegram
 ```
 
 ### 6. Следующий вопрос
@@ -215,10 +221,12 @@ video_warning → video_intro → question → timer → answer
 - Проверяется автоматически при сохранении ответа
 
 ### Text вопросы
-- Оцениваются LLM (POST /llm/evaluate-text-answers)
-- Оценка от 0.0 до 1.0
-- Итоговый балл = `score * question.weight`
-- Запускается автоматически при переходе на слайд "answer"
+- Оцениваются через LLM (OpenRouter, модель `google/gemini-3-flash-preview`)
+- LLM возвращает `matched` (целое число угаданных ответов)
+- Балл считается на сервере точно: `(matched / correctAnswers.length) * weight`
+- Итоговый балл округляется до 2 знаков (0.75, не 0.8)
+- **Оценка запускается сразу** при получении ответа (fire-and-forget), не ждёт слайда "answer"
+- При переходе на слайд "answer" повторно оцениваются только ответы без балла (`awardedScore = null`)
 - Ведущий может изменить оценку вручную (PATCH /answers/:id/score)
 
 ---
