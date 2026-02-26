@@ -203,13 +203,17 @@ video_warning → video_intro → question → extra → timer → extra → ans
    - resultsRevealCount увеличивается на 1
    - Порядок: 2→3→…→N→1
 
-3. Когда все места открыты (resultsRevealCount >= results.length):
-   - Появляется кнопка "Показать «Спасибо»" (если quiz.thanksImageUrl заполнен)
+3. Когда все места открыты (resultsRevealCount >= results.length), кнопки появляются последовательно — одна за одной, нельзя пропустить шаг:
+   - **Шаг A** (если quiz.thanksImageUrl заполнен): кнопка "Показать «Спасибо»"
      - POST /game/set-slide { slide: "thanks" }
      - TV показывает слайд «Спасибо»
-   - Появляется кнопка "Показать финальный слайд" (если quiz.finalImageUrl заполнен)
+     - После нажатия появляется Шаг B или Шаг C
+   - **Шаг B** (если quiz.finalImageUrl заполнен И currentSlide === "thanks" или нет спасибо): кнопка "Показать финальный слайд"
      - POST /game/set-slide { slide: "final" }
      - TV показывает финальный слайд (перед выключением)
+     - После нажатия появляется Шаг C
+   - **Шаг C** (всегда последний): кнопка "Архивировать квиз"
+     - Показывается когда: currentSlide === "final", или нет finalImageUrl и (нет thanksImageUrl или currentSlide === "thanks")
 
 4. Результаты (GET /game/results/:id):
    - Команды отсортированы по totalScore
