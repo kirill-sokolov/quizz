@@ -115,7 +115,9 @@ quiz-slides.zip
 ├── 07.jpg    # Вопрос 2 (video_intro)
 ├── 08.jpg    # Вопрос 2 (question)
 ├── 09.jpg    # Вопрос 2 (timer)
-└── 10.jpg    # Вопрос 2 (answer)
+├── 10.jpg    # Вопрос 2 (answer)
+├── 11.jpg    # Thanks слайд (опционально)
+└── 12.jpg    # Final слайд (опционально)
 ```
 
 ### Парсинг
@@ -147,7 +149,9 @@ quiz-slides.zip
     }
   ],
   "demoSlide": 0,
-  "rulesSlide": 1
+  "rulesSlide": 1,
+  "thanksSlide": 10,
+  "finalSlide": 11
 }
 ```
 6. Смержить с DOCX данными → preview
@@ -171,15 +175,19 @@ ${questionHints.map(q => `${i+1}. "${q.title}" → правильный отве
 • «timer» — тот же вопрос или пустой слайд (если есть отдельный слайд таймера)
 • «video_warning» — предупреждение о видео ("Видео вопрос"), ПЕРЕД question
 • «video_intro» — видео-слайд, после video_warning
-• «demo» — заглушка до начала квиза
+
+СПЕЦИАЛЬНЫЕ слайды квиза (не вопросов):
+• «demo» — заглушка до начала квиза (обычно первый слайд)
 • «rules» — правила квиза
+• «thanks» — слайд «Спасибо» / «Paldies» / «Thank you» — обычно в конце
+• «final» — финальный закрывающий слайд — последний перед выключением TV
 
 МУСОРНЫЕ слайды (игнорируй):
 • Промежуточные слайды с шутками/анимациями
-• Слайды благодарности/спонсоров
+• Слайды спонсоров
 
 Задача:
-1. Найди demo и rules слайды (если есть)
+1. Найди специальные слайды: demo, rules, thanks, final (если есть)
 2. Для каждого вопроса из DOCX найди слайды: question, answer, timer
 3. Если перед вопросом есть video_warning/video_intro — добавь их
 
@@ -198,7 +206,9 @@ ${questionHints.map(q => `${i+1}. "${q.title}" → правильный отве
     }
   ],
   "demoSlide": 0,
-  "rulesSlide": 1
+  "rulesSlide": 1,
+  "thanksSlide": null,
+  "finalSlide": null
 }
 ```
 
@@ -206,6 +216,7 @@ ${questionHints.map(q => `${i+1}. "${q.title}" → правильный отве
 - LLM видит текст вопросов из DOCX → легче сопоставить слайды
 - LLM видит правильный ответ → может найти слайд answer по выделенному тексту
 - LLM определяет позицию таймера на слайде (по визуальному анализу)
+- LLM определяет все 4 специальных слайда: demo, rules, thanks, final
 
 ---
 
@@ -213,8 +224,18 @@ ${questionHints.map(q => `${i+1}. "${q.title}" → правильный отве
 
 ### Логика (saveImportedQuiz)
 ```typescript
+// 1. Обновить URL картинок квиза (если LLM определил)
+const updates = {};
+if (demoImageUrl !== undefined) updates.demoImageUrl = demoImageUrl;
+if (rulesImageUrl !== undefined) updates.rulesImageUrl = rulesImageUrl;
+if (thanksImageUrl !== undefined) updates.thanksImageUrl = thanksImageUrl;
+if (finalImageUrl !== undefined) updates.finalImageUrl = finalImageUrl;
+if (Object.keys(updates).length > 0) {
+  await db.update(quizzes).set(updates).where(eq(quizzes.id, quizId));
+}
+
+// 2. Создать вопросы и их слайды
 for (const item of preview.questions) {
-  // 1. Создать вопрос
   const question = await db.insert(questions).values({
     quizId,
     orderNum: nextOrder++,
@@ -228,7 +249,6 @@ for (const item of preview.questions) {
     weight: item.weight || 1,
   });
 
-  // 2. Создать слайды (только с контентом)
   for (const type of SLIDE_TYPES) {
     const imageUrl = item.slides[type];
 
@@ -249,6 +269,7 @@ for (const item of preview.questions) {
 **Важно**:
 - Пустые `video_warning` и `video_intro` не создаются
 - `question`, `timer`, `answer` создаются всегда (обязательные)
+- `demo`, `rules`, `thanks`, `final` сохраняются в таблицу `quizzes` (не в `slides`)
 
 ---
 

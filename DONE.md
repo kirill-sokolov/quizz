@@ -1,34 +1,44 @@
 # История выполненных задач
 
-## 2026-02-26: Этап 7 — Слайды «Спасибо» и доп. слайд после результатов
+## 2026-02-26: Этап 7 — Слайды «Спасибо» и финальный слайд после результатов
 
-### ✅ Новые слайды `thanks` и `after_thanks`
+### ✅ Новые слайды `thanks` и `final`
 
 **Выполнено:**
-- **БД**: добавлены колонки `thanks_image_url` и `after_thanks_image_url` в таблицу `quizzes`; `SLIDE_TYPES` расширен значениями `"thanks"` и `"after_thanks"` в `schema.ts` и `types/slide.ts`
-- **Миграция**: `apps/api/drizzle/0006_thanks_slides.sql`
-- **Backend `setSlide()`**: не сбрасывает `resultsRevealCount` при переходе на `thanks` / `after_thanks` (аналогично `results`)
-- **Backend routes**: PATCH `/api/quizzes/:id` принимает `thanksImageUrl?` и `afterThanksImageUrl?`
-- **Frontend constants**: добавлены `THANKS` и `AFTER_THANKS` в `SLIDE_TYPES`, `SLIDE_LABELS`, `TV_SLIDE_LABELS`
-- **TV**: новый компонент `TVThanks.jsx` — полноэкранная картинка; `TV.jsx` рендерит его для слайдов `thanks`/`after_thanks` в состоянии `finished`
-- **Админка**: после раскрытия всех мест появляются кнопки «Показать «Спасибо»» и «Показать доп. слайд» (только если картинки загружены)
-- **QuizEdit**: новые поля загрузки thanks/after_thanks — превью + кнопка; статус в read-only режиме
+- **БД**: добавлены колонки `thanks_image_url` и `final_image_url` в таблицу `quizzes`; `SLIDE_TYPES` расширен значениями `"thanks"` и `"final"` в `schema.ts` и `types/slide.ts`
+- **Миграция**: `apps/api/drizzle/0006_thanks_slides.sql` (применена напрямую через psql, т.к. drizzle migrations table была пуста)
+- **Backend `setSlide()`**: не сбрасывает `resultsRevealCount` при переходе на `thanks` / `final` (аналогично `results`)
+- **Backend routes**: PATCH `/api/quizzes/:id` принимает `thanksImageUrl?` и `finalImageUrl?`
+- **Frontend constants**: добавлены `THANKS` и `FINAL` в `SLIDE_TYPES`, `SLIDE_LABELS`, `TV_SLIDE_LABELS`
+- **TV**: `TV.jsx` использует `<TVDemo>` для слайдов `thanks` и `final` в состоянии `finished` (компонент TVThanks не создавался — удалён как избыточный, переиспользуется TVDemo)
+- **Админка**: после раскрытия всех мест появляются кнопки «🙏 Показать «Спасибо» на TV» и «🎬 Показать финальный слайд на TV» (только если картинки загружены)
+- **QuizEdit**: поля загрузки thanks/final — превью + кнопка; статус в read-only режиме; **демо-слайд** также добавлен в настройки (раньше был только в Home.jsx); после импорта настройки перезагружаются автоматически (`loadQuiz()` вызывается из `onDone`)
 - **Seed**: демо-квиз получает `thanksImageUrl: "/api/media/seed/demo.jpg"`
+
+### ✅ Обновлён LLM import pipeline
+
+- **`types.ts`**: `ParsedResult` и `HybridParsedResult` получили `thanksSlide?` и `finalSlide?`; `buildHybridPrompt()` описывает слайды thanks/final в разделе «СПЕЦИАЛЬНЫЕ слайды»; JSON пример включает оба поля
+- **`import-service.ts`**: `ImportPreviewResult` расширен `thanksImageUrl?` / `finalImageUrl?`; все три функции импорта (`importZip`, `importHybridWithParsed`, `importHybrid`) возвращают новые поля; `saveImportedQuiz` сохраняет все 4 специальных URL в таблицу `quizzes`
+- **`routes/import.ts`**: import-save route передаёт `thanksImageUrl`, `finalImageUrl` в `saveImportedQuiz`
+- **`ImportPreview.jsx`**: превью показывает 4 специальных слайда (demo, rules, thanks, final)
 
 **Файлы:**
 - `apps/api/src/db/schema.ts`
 - `apps/api/src/types/slide.ts`
 - `apps/api/src/services/game-service.ts`
 - `apps/api/src/routes/quizzes.ts`
+- `apps/api/src/routes/import.ts`
+- `apps/api/src/services/import-service.ts`
+- `apps/api/src/services/llm/types.ts`
 - `apps/api/src/services/seed-service.ts`
 - `apps/api/drizzle/0006_thanks_slides.sql`
 - `apps/api/drizzle/meta/_journal.json`
 - `apps/web/src/constants/slides.js`
-- `apps/web/src/components/TV/TVThanks.jsx` (новый)
 - `apps/web/src/pages/TV.jsx`
 - `apps/web/src/pages/Game.jsx`
 - `apps/web/src/pages/QuizEdit.jsx`
-- `docs/DATABASE.md`, `docs/QUIZ-FLOW.md`, `docs/FRONTEND.md`
+- `apps/web/src/components/ImportPreview.jsx`
+- `docs/DATABASE.md`, `docs/QUIZ-FLOW.md`, `docs/FRONTEND.md`, `docs/IMPORT.md`
 
 ---
 
