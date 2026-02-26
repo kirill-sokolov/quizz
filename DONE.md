@@ -1,5 +1,37 @@
 # История выполненных задач
 
+## 2026-02-26: Этап 7 — Слайды «Спасибо» и доп. слайд после результатов
+
+### ✅ Новые слайды `thanks` и `after_thanks`
+
+**Выполнено:**
+- **БД**: добавлены колонки `thanks_image_url` и `after_thanks_image_url` в таблицу `quizzes`; `SLIDE_TYPES` расширен значениями `"thanks"` и `"after_thanks"` в `schema.ts` и `types/slide.ts`
+- **Миграция**: `apps/api/drizzle/0006_thanks_slides.sql`
+- **Backend `setSlide()`**: не сбрасывает `resultsRevealCount` при переходе на `thanks` / `after_thanks` (аналогично `results`)
+- **Backend routes**: PATCH `/api/quizzes/:id` принимает `thanksImageUrl?` и `afterThanksImageUrl?`
+- **Frontend constants**: добавлены `THANKS` и `AFTER_THANKS` в `SLIDE_TYPES`, `SLIDE_LABELS`, `TV_SLIDE_LABELS`
+- **TV**: новый компонент `TVThanks.jsx` — полноэкранная картинка; `TV.jsx` рендерит его для слайдов `thanks`/`after_thanks` в состоянии `finished`
+- **Админка**: после раскрытия всех мест появляются кнопки «Показать «Спасибо»» и «Показать доп. слайд» (только если картинки загружены)
+- **QuizEdit**: новые поля загрузки thanks/after_thanks — превью + кнопка; статус в read-only режиме
+- **Seed**: демо-квиз получает `thanksImageUrl: "/api/media/seed/demo.jpg"`
+
+**Файлы:**
+- `apps/api/src/db/schema.ts`
+- `apps/api/src/types/slide.ts`
+- `apps/api/src/services/game-service.ts`
+- `apps/api/src/routes/quizzes.ts`
+- `apps/api/src/services/seed-service.ts`
+- `apps/api/drizzle/0006_thanks_slides.sql`
+- `apps/api/drizzle/meta/_journal.json`
+- `apps/web/src/constants/slides.js`
+- `apps/web/src/components/TV/TVThanks.jsx` (новый)
+- `apps/web/src/pages/TV.jsx`
+- `apps/web/src/pages/Game.jsx`
+- `apps/web/src/pages/QuizEdit.jsx`
+- `docs/DATABASE.md`, `docs/QUIZ-FLOW.md`, `docs/FRONTEND.md`
+
+---
+
 ## 2026-02-26: Этап 6 + фиксы
 
 ### ✅ Улучшение оценки текстовых ответов из Telegram бота

@@ -559,6 +559,38 @@ export default function Game() {
           </div>
         )}
 
+        {/* Кнопки спасибо/финальный — только когда все места открыты */}
+        {!quizArchived && results && (state?.resultsRevealCount || 0) >= results.length && results.length > 0 && (
+          <div className="flex gap-3 justify-center mb-4">
+            {quiz?.thanksImageUrl && (
+              <button
+                type="button"
+                onClick={() => handleSetSlide(SLIDE_TYPES.THANKS)}
+                className={`px-5 py-2 rounded-lg font-medium transition ${
+                  state?.currentSlide === SLIDE_TYPES.THANKS
+                    ? "bg-green-600 text-white"
+                    : "bg-green-100 text-green-800 hover:bg-green-200"
+                }`}
+              >
+                🙏 Показать «Спасибо» на TV
+              </button>
+            )}
+            {quiz?.finalImageUrl && (
+              <button
+                type="button"
+                onClick={() => handleSetSlide(SLIDE_TYPES.FINAL)}
+                className={`px-5 py-2 rounded-lg font-medium transition ${
+                  state?.currentSlide === SLIDE_TYPES.FINAL
+                    ? "bg-purple-600 text-white"
+                    : "bg-purple-100 text-purple-800 hover:bg-purple-200"
+                }`}
+              >
+                🎬 Показать финальный слайд на TV
+              </button>
+            )}
+          </div>
+        )}
+
         {/* Кнопка архивировать только для завершенных */}
         {!quizArchived && (
           <div className="text-center">

@@ -23,6 +23,8 @@ export interface ParsedResult {
   questions: ParsedQuizQuestion[];
   demoSlide?: number | null;
   rulesSlide?: number | null;
+  thanksSlide?: number | null;
+  finalSlide?: number | null;
 }
 
 // ─── Hybrid mode (DOCX + ZIP) ──────────────────────────────────────────────
@@ -43,6 +45,8 @@ export interface HybridParsedResult {
   questions: HybridParsedQuestion[];
   demoSlide?: number | null;
   rulesSlide?: number | null;
+  thanksSlide?: number | null;
+  finalSlide?: number | null;
   extraSlides?: number[];
 }
 
@@ -61,12 +65,14 @@ export function buildPrompt(n: number, names: string[]): string {
 • «answer»  — тот же вопрос, но ОДИН вариант выделен как правильный (другой цвет, обводка, галочка, стрелка и т.п.).
 
 ВАЖНО: В архиве также могут быть дополнительные слайды, не относящиеся к вопросам:
-• Слайд-заставка / демо (титульный слайд с названием квиза, без вопросов)
-• Слайд с правилами игры
-Эти слайды нужно распознать и вернуть отдельно (demoSlide, rulesSlide).
+• Слайд-заставка / демо (титульный слайд с названием квиза, без вопросов) → demoSlide
+• Слайд с правилами игры → rulesSlide
+• Слайд «Спасибо» / «Paldies» / «Thank you» (показывается после результатов) → thanksSlide
+• Финальный закрывающий слайд (показывается последним перед выключением TV) → finalSlide
+Эти слайды нужно распознать и вернуть отдельно.
 
 Алгоритм:
-1. Найди слайд-заставку и слайд с правилами (если есть).
+1. Найди слайды-заставку, правила, спасибо и финальный (если есть).
 2. Определи, сколько УНИКАЛЬНЫХ вопросов (не слайдов) присутствует.
 3. Сгруппируй слайды — похожие по содержанию и дизайну относятся к одному вопросу.
 4. Для каждой группы: назначь тип каждому слайду и извлеки текст вопроса, варианты, правильный ответ.
@@ -75,6 +81,8 @@ export function buildPrompt(n: number, names: string[]): string {
 {
   "demoSlide": 0,
   "rulesSlide": 1,
+  "thanksSlide": null,
+  "finalSlide": null,
   "questions": [
     {
       "question": "Текст вопроса",
@@ -93,7 +101,7 @@ export function buildPrompt(n: number, names: string[]): string {
 }
 
 Правила:
-- "demoSlide" и "rulesSlide" — индексы слайдов-заставки и правил (null если нет).
+- "demoSlide", "rulesSlide", "thanksSlide", "finalSlide" — индексы соответствующих слайдов (null если нет).
 - "video_warning" и "video_intro" — опциональные слайды перед вопросом (null если нет).
 - Если слайда "timer" или "answer" нет в группе — ставь null (система использует слайд "question" вместо них).
 - "correct" — одна буква: A, B, C или D.
@@ -130,7 +138,9 @@ ${questionHints.map((q, i) => `  ${i + 1}. "${q.title}" → правильный
 
 СПЕЦИАЛЬНЫЕ слайды (вернуть отдельно):
 • Слайд-заставка / демо (титульный слайд с названием квиза) → demoSlide
-• Слайд с правилами игры → rulesSlide. Это слайд с заголовком "Правила" / "Rules" / "Noteikumi" и описанием правил квиза. НЕ путай с вопросами — если на слайде есть варианты A/B/C/D или текст совпадает с вопросом из DOCX, это НЕ правила. Если правил нет — ставь null.
+• Слайд с правилами игры → rulesSlide. Заголовок "Правила" / "Rules" / "Noteikumi" и т.п. НЕ путай с вопросами — если есть варианты A/B/C/D или текст совпадает с вопросом из DOCX, это НЕ правила. Если правил нет — ставь null.
+• Слайд «Спасибо» / «Paldies» / «Thank you» / «Pateicamies» (показывается после объявления результатов) → thanksSlide. Если нет — null.
+• Финальный закрывающий слайд (последний слайд, показывается перед выключением TV, обычно идёт после «Спасибо») → finalSlide. Если нет — null.
 
 Алгоритм:
 1. Файлы идут ПО ПОРЯДКУ — слайды одного вопроса следуют друг за другом.
@@ -143,6 +153,8 @@ ${questionHints.map((q, i) => `  ${i + 1}. "${q.title}" → правильный
 {
   "demoSlide": 0,
   "rulesSlide": 1,
+  "thanksSlide": null,
+  "finalSlide": null,
   "questions": [
     {
       "slides": {
@@ -159,7 +171,7 @@ ${questionHints.map((q, i) => `  ${i + 1}. "${q.title}" → правильный
 }
 
 Правила:
-- "demoSlide" и "rulesSlide" — индексы слайдов-заставки и правил (null если нет).
+- "demoSlide", "rulesSlide", "thanksSlide", "finalSlide" — индексы соответствующих слайдов (null если нет).
 - "video_warning" — слайд-предупреждение БЕЗ текста вопроса, перед вопросом (null если нет).
 - "video_intro" — видео-слайд после video_warning, перед вопросом (null если нет).
 - "timer" — всегда null (система сама наложит таймер на слайд question).

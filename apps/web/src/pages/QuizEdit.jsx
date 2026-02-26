@@ -25,6 +25,8 @@ export default function QuizEdit() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [uploadingDemo, setUploadingDemo] = useState(false);
   const [uploadingRules, setUploadingRules] = useState(false);
+  const [uploadingThanks, setUploadingThanks] = useState(false);
+  const [uploadingFinal, setUploadingFinal] = useState(false);
 
   const loadQuiz = async () => {
     try {
@@ -160,6 +162,36 @@ export default function QuizEdit() {
     }
   };
 
+  const handleUploadThanks = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingThanks(true);
+    try {
+      const result = await mediaUpload(file);
+      await handleSaveSettings({ thanksImageUrl: result.path });
+    } catch (err) {
+      setError(err.message || "Ошибка загрузки thanks");
+    } finally {
+      setUploadingThanks(false);
+      e.target.value = "";
+    }
+  };
+
+  const handleUploadFinal = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingFinal(true);
+    try {
+      const result = await mediaUpload(file);
+      await handleSaveSettings({ finalImageUrl: result.path });
+    } catch (err) {
+      setError(err.message || "Ошибка загрузки финального слайда");
+    } finally {
+      setUploadingFinal(false);
+      e.target.value = "";
+    }
+  };
+
   const handleDocxUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -291,6 +323,56 @@ export default function QuizEdit() {
               </div>
             </div>
 
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Слайд «Спасибо» (показывается после раскрытия результатов)
+              </label>
+              <div className="flex items-center gap-3">
+                {quiz.thanksImageUrl && (
+                  <img
+                    src={getMediaUrl(quiz.thanksImageUrl)}
+                    alt="Thanks"
+                    className="w-24 h-16 object-cover rounded border"
+                  />
+                )}
+                <label className="cursor-pointer px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm font-medium transition">
+                  {uploadingThanks ? "Загрузка..." : quiz.thanksImageUrl ? "Заменить" : "Загрузить"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadThanks}
+                    disabled={uploadingThanks}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
+                Финальный слайд (после «Спасибо», перед выключением TV)
+              </label>
+              <div className="flex items-center gap-3">
+                {quiz.finalImageUrl && (
+                  <img
+                    src={getMediaUrl(quiz.finalImageUrl)}
+                    alt="After Thanks"
+                    className="w-24 h-16 object-cover rounded border"
+                  />
+                )}
+                <label className="cursor-pointer px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm font-medium transition">
+                  {uploadingFinal ? "Загрузка..." : quiz.finalImageUrl ? "Заменить" : "Загрузить"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadFinal}
+                    disabled={uploadingFinal}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
             <div className="flex gap-2 pt-2">
               <button
                 type="button"
@@ -309,6 +391,22 @@ export default function QuizEdit() {
                 <span className="text-green-600">✓ Загружены</span>
               ) : (
                 <span className="text-stone-400">Не загружены</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Спасибо:</span>
+              {quiz.thanksImageUrl ? (
+                <span className="text-green-600">✓ Загружен</span>
+              ) : (
+                <span className="text-stone-400">Не загружен</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Финальный слайд:</span>
+              {quiz.finalImageUrl ? (
+                <span className="text-green-600">✓ Загружен</span>
+              ) : (
+                <span className="text-stone-400">Не загружен</span>
               )}
             </div>
           </div>

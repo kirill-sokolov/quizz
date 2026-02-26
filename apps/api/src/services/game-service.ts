@@ -259,7 +259,7 @@ export async function setSlide(
     timerStartedAt: slide === "timer" ? new Date() : null,
   };
 
-  if (slide !== "results") {
+  if (slide !== "results" && slide !== "thanks" && slide !== "final") {
     patch.resultsRevealCount = 0;
   }
 

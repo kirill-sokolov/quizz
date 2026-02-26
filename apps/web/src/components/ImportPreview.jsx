@@ -19,6 +19,8 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
   const [items, setItems] = useState(initial.questions);
   const [demoImageUrl, setDemoImageUrl] = useState(initial.demoImageUrl || null);
   const [rulesImageUrl, setRulesImageUrl] = useState(initial.rulesImageUrl || null);
+  const [thanksImageUrl, setThanksImageUrl] = useState(initial.thanksImageUrl || null);
+  const [finalImageUrl, setFinalImageUrl] = useState(initial.finalImageUrl || null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -50,6 +52,8 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
         questions: items,
         demoImageUrl,
         rulesImageUrl,
+        thanksImageUrl,
+        finalImageUrl,
       });
       onDone();
     } catch (e) {
@@ -88,8 +92,8 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
 
       {error && <p className="text-red-600 text-sm">{error}</p>}
 
-      {/* Demo and Rules slides */}
-      {(demoImageUrl || rulesImageUrl) && (
+      {/* Demo, Rules, Thanks, Final slides */}
+      {(demoImageUrl || rulesImageUrl || thanksImageUrl || finalImageUrl) && (
         <div className="bg-stone-50 rounded-xl border border-stone-200 p-4 space-y-3">
           <h4 className="font-medium text-stone-700">Дополнительные слайды</h4>
           <div className="grid grid-cols-2 gap-4">
@@ -109,6 +113,26 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                 <img
                   src={getMediaUrl(rulesImageUrl)}
                   alt="Rules"
+                  className="w-full h-32 object-cover rounded border border-stone-200"
+                />
+              </div>
+            )}
+            {thanksImageUrl && (
+              <div>
+                <label className="block text-sm text-stone-600 mb-2">Спасибо</label>
+                <img
+                  src={getMediaUrl(thanksImageUrl)}
+                  alt="Thanks"
+                  className="w-full h-32 object-cover rounded border border-stone-200"
+                />
+              </div>
+            )}
+            {finalImageUrl && (
+              <div>
+                <label className="block text-sm text-stone-600 mb-2">Финальный</label>
+                <img
+                  src={getMediaUrl(finalImageUrl)}
+                  alt="Final"
                   className="w-full h-32 object-cover rounded border border-stone-200"
                 />
               </div>

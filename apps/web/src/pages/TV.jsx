@@ -273,7 +273,13 @@ export default function TV() {
         style={{ ...screenStyle, cursor: "none" }}
       >
       {state?.status === "finished" && quiz?.status !== "archived" && results !== null ? (
-        <TVResults results={results} revealCount={resultsRevealCount} />
+        state?.currentSlide === SLIDE_TYPES.THANKS ? (
+          <TVDemo imageUrl={quiz?.thanksImageUrl} />
+        ) : state?.currentSlide === SLIDE_TYPES.FINAL ? (
+          <TVDemo imageUrl={quiz?.finalImageUrl} />
+        ) : (
+          <TVResults results={results} revealCount={resultsRevealCount} />
+        )
       ) : state?.status === "playing" && currentQuestion ? (
         <>
           {slide === SLIDE_TYPES.VIDEO_WARNING && (

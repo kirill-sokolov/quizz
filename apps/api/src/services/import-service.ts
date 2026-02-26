@@ -42,6 +42,8 @@ export interface ImportPreviewResult {
   questions: ImportPreviewItem[];
   demoImageUrl?: string | null;
   rulesImageUrl?: string | null;
+  thanksImageUrl?: string | null;
+  finalImageUrl?: string | null;
 }
 
 const IMAGE_EXTS = new Set([".png", ".jpg", ".jpeg", ".webp"]);
@@ -237,6 +239,8 @@ export async function importZip(
     questions,
     demoImageUrl: getUrl(llmResult.demoSlide ?? null),
     rulesImageUrl: getUrl(llmResult.rulesSlide ?? null),
+    thanksImageUrl: getUrl(llmResult.thanksSlide ?? null),
+    finalImageUrl: getUrl(llmResult.finalSlide ?? null),
   };
 }
 
@@ -337,6 +341,8 @@ async function importHybridWithParsed(
     questions,
     demoImageUrl: getUrl(hybridResult.demoSlide ?? null),
     rulesImageUrl: getUrl(hybridResult.rulesSlide ?? null),
+    thanksImageUrl: getUrl(hybridResult.thanksSlide ?? null),
+    finalImageUrl: getUrl(hybridResult.finalSlide ?? null),
   };
 }
 
@@ -466,6 +472,8 @@ async function importHybrid(
     questions,
     demoImageUrl: getUrl(hybridResult.demoSlide ?? null),
     rulesImageUrl: getUrl(hybridResult.rulesSlide ?? null),
+    thanksImageUrl: getUrl(hybridResult.thanksSlide ?? null),
+    finalImageUrl: getUrl(hybridResult.finalSlide ?? null),
   };
 }
 
@@ -475,17 +483,17 @@ export async function saveImportedQuiz(
   quizId: number,
   data: ImportPreviewResult
 ): Promise<{ created: number }> {
-  const { questions: items, demoImageUrl, rulesImageUrl } = data;
+  const { questions: items, demoImageUrl, rulesImageUrl, thanksImageUrl, finalImageUrl } = data;
 
-  // Update quiz with demo and rules images if provided
-  if (demoImageUrl !== undefined || rulesImageUrl !== undefined) {
-    const updates: Record<string, string | null> = {};
-    if (demoImageUrl !== undefined) updates.demoImageUrl = demoImageUrl;
-    if (rulesImageUrl !== undefined) updates.rulesImageUrl = rulesImageUrl;
+  // Update quiz with special slide images if provided
+  const updates: Record<string, string | null> = {};
+  if (demoImageUrl !== undefined) updates.demoImageUrl = demoImageUrl;
+  if (rulesImageUrl !== undefined) updates.rulesImageUrl = rulesImageUrl;
+  if (thanksImageUrl !== undefined) updates.thanksImageUrl = thanksImageUrl;
+  if (finalImageUrl !== undefined) updates.finalImageUrl = finalImageUrl;
 
-    if (Object.keys(updates).length > 0) {
-      await db.update(quizzes).set(updates).where(eq(quizzes.id, quizId));
-    }
+  if (Object.keys(updates).length > 0) {
+    await db.update(quizzes).set(updates).where(eq(quizzes.id, quizId));
   }
 
   const existing = await db

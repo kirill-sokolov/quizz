@@ -12,7 +12,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 // Типы слайдов - определены здесь для использования drizzle-kit
-const SLIDE_TYPES = ["video_warning", "video_intro", "question", "timer", "answer", "results"] as const;
+const SLIDE_TYPES = ["video_warning", "video_intro", "question", "timer", "answer", "results", "thanks", "final"] as const;
 
 export const quizzes = pgTable("quizzes", {
   id: serial("id").primaryKey(),
@@ -24,6 +24,8 @@ export const quizzes = pgTable("quizzes", {
   displayedOnTv: boolean("displayed_on_tv").notNull().default(false),
   demoImageUrl: text("demo_image_url"),
   rulesImageUrl: text("rules_image_url"),
+  thanksImageUrl: text("thanks_image_url"),
+  finalImageUrl: text("final_image_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 

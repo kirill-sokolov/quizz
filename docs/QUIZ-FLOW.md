@@ -189,9 +189,21 @@ video_warning → video_intro → question → timer → answer
    - game_state.status = finished
    - Рассчитываются результаты
    - WebSocket: quiz_finished
-   - TV показывает итоговую таблицу
+   - TV показывает итоговую таблицу (currentSlide = "results")
 
-2. Результаты (GET /game/results/:id):
+2. Ведущий раскрывает места по одному: POST /game/reveal-next-result
+   - resultsRevealCount увеличивается на 1
+   - Порядок: 2→3→…→N→1
+
+3. Когда все места открыты (resultsRevealCount >= results.length):
+   - Появляется кнопка "Показать «Спасибо»" (если quiz.thanksImageUrl заполнен)
+     - POST /game/set-slide { slide: "thanks" }
+     - TV показывает слайд «Спасибо»
+   - Появляется кнопка "Показать финальный слайд" (если quiz.finalImageUrl заполнен)
+     - POST /game/set-slide { slide: "final" }
+     - TV показывает финальный слайд (перед выключением)
+
+4. Результаты (GET /game/results/:id):
    - Команды отсортированы по totalScore
    - Для каждой команды: correctAnswers, totalAnswers, totalScore
 ```

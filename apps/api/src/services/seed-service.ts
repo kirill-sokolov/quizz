@@ -89,6 +89,7 @@ async function createDemoQuiz() {
       joinCode,
       demoImageUrl: "/api/media/seed/demo.jpg",
       rulesImageUrl: "/api/media/seed/rules.png",
+      thanksImageUrl: "/api/media/seed/demo.jpg",
     })
     .returning();
 

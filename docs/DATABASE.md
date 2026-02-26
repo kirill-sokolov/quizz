@@ -16,6 +16,8 @@
 | displayedOnTv | boolean NOT NULL DEFAULT false | Флаг: показывать ли этот квиз на ТВ (только один может быть true) |
 | demoImageUrl | text | URL демо-слайда (показывается на /tv до начала) |
 | rulesImageUrl | text | URL слайда с правилами |
+| thanksImageUrl | text | URL слайда «Спасибо» (показывается после результатов) |
+| finalImageUrl | text | URL финального закрывающего слайда (перед выключением TV) |
 | createdAt | timestamp | Дата создания |
 
 #### `questions`
@@ -83,7 +85,7 @@
 | status | text NOT NULL | Статус: `lobby`, `playing`, `finished` |
 | registrationOpen | boolean DEFAULT false | Открыта ли регистрация |
 | currentQuestionId | integer REFERENCES questions(id) | Текущий вопрос |
-| currentSlide | text | Текущий слайд: `video_warning`, `video_intro`, `question`, `timer`, `answer` |
+| currentSlide | text | Текущий слайд: `video_warning`, `video_intro`, `question`, `timer`, `answer`, `results`, `thanks`, `after_thanks` |
 | timerStartedAt | timestamp | Время запуска таймера |
 | showBotsOnTv | boolean DEFAULT true | Показывать ли тестовых ботов на TV |
 
@@ -126,6 +128,9 @@ npm run db:migrate
 - `question` — слайд с вопросом
 - `timer` — слайд с таймером
 - `answer` — слайд с правильным ответом
+- `results` — итоговые результаты
+- `thanks` — слайд «Спасибо» (опционально, если нет картинки — кнопка не появляется)
+- `final` — финальный закрывающий слайд (опционально, перед выключением TV)
 
 ### Game State Status
 - `lobby` — лобби (до начала игры)

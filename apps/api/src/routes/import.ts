@@ -62,13 +62,13 @@ export async function importRoutes(app: FastifyInstance) {
     { preHandler: authenticateToken },
     async (req, reply) => {
     const quizId = Number(req.params.id);
-    const { questions, demoImageUrl, rulesImageUrl } = req.body;
+    const { questions, demoImageUrl, rulesImageUrl, thanksImageUrl, finalImageUrl } = req.body;
 
     if (!Array.isArray(questions) || questions.length === 0) {
       return reply.code(400).send({ error: "No questions provided" });
     }
 
-    const result = await saveImportedQuiz(quizId, { questions, demoImageUrl, rulesImageUrl });
+    const result = await saveImportedQuiz(quizId, { questions, demoImageUrl, rulesImageUrl, thanksImageUrl, finalImageUrl });
     return reply.code(201).send(result);
   });
 
