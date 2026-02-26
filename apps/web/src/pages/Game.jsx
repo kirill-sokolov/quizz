@@ -358,6 +358,22 @@ export default function Game() {
   const gameFinished = state?.status === "finished";
   const quizArchived = quiz?.status === "archived";
 
+  // Sequential post-game action: results → thanks? → final? → archive
+  const allRevealed = results && results.length > 0 && (state?.resultsRevealCount || 0) >= results.length;
+  const postGameSlide = state?.currentSlide;
+  let nextAction = null;
+  if (allRevealed && !quizArchived) {
+    if (postGameSlide === SLIDE_TYPES.FINAL) {
+      nextAction = "archive";
+    } else if (postGameSlide === SLIDE_TYPES.THANKS) {
+      nextAction = quiz?.finalImageUrl ? "final" : "archive";
+    } else {
+      if (quiz?.thanksImageUrl) nextAction = "thanks";
+      else if (quiz?.finalImageUrl) nextAction = "final";
+      else nextAction = "archive";
+    }
+  }
+
   const handleBegin = async () => {
     await gameApi.begin(quizId);
     await load();
@@ -497,21 +513,49 @@ export default function Game() {
           </h1>
         </div>
 
-        {/* Контролы открытия мест - sticky */}
+        {/* Контролы открытия мест / следующее действие - sticky */}
         {!quizArchived && results && results.length > 0 && (
-          <div className="sticky top-0 z-10 bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4 shadow-sm">
+          <div className={`sticky top-0 z-10 rounded-xl p-4 mb-4 shadow-sm border ${
+            allRevealed ? "bg-stone-50 border-stone-200" : "bg-blue-50 border-blue-200"
+          }`}>
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm text-stone-700">
                 Показано мест на TV: <strong>{Math.min(state?.resultsRevealCount || 0, results.length)}</strong> / {results.length}
               </p>
-              <button
-                type="button"
-                onClick={handleRevealNextResult}
-                disabled={revealingResult || (state?.resultsRevealCount || 0) >= results.length}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
-              >
-                {revealingResult ? "Показываем..." : "Показать следующее место на TV"}
-              </button>
+              {!allRevealed ? (
+                <button
+                  type="button"
+                  onClick={handleRevealNextResult}
+                  disabled={revealingResult}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition disabled:opacity-50"
+                >
+                  {revealingResult ? "Показываем..." : "Показать следующее место на TV"}
+                </button>
+              ) : nextAction === "thanks" ? (
+                <button
+                  type="button"
+                  onClick={() => handleSetSlide(SLIDE_TYPES.THANKS)}
+                  className="px-5 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium"
+                >
+                  🙏 Показать «Спасибо» на TV
+                </button>
+              ) : nextAction === "final" ? (
+                <button
+                  type="button"
+                  onClick={() => handleSetSlide(SLIDE_TYPES.FINAL)}
+                  className="px-5 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium"
+                >
+                  🎬 Показать финальный слайд на TV
+                </button>
+              ) : nextAction === "archive" ? (
+                <button
+                  type="button"
+                  onClick={handleArchive}
+                  className="px-5 py-2 bg-stone-600 text-white rounded-lg hover:bg-stone-700 transition font-medium"
+                >
+                  📦 Архивировать квиз
+                </button>
+              ) : null}
             </div>
           </div>
         )}
@@ -565,50 +609,6 @@ export default function Game() {
           </div>
         )}
 
-        {/* Кнопки спасибо/финальный — только когда все места открыты */}
-        {!quizArchived && results && (state?.resultsRevealCount || 0) >= results.length && results.length > 0 && (
-          <div className="flex gap-3 justify-center mb-4">
-            {quiz?.thanksImageUrl && (
-              <button
-                type="button"
-                onClick={() => handleSetSlide(SLIDE_TYPES.THANKS)}
-                className={`px-5 py-2 rounded-lg font-medium transition ${
-                  state?.currentSlide === SLIDE_TYPES.THANKS
-                    ? "bg-green-600 text-white"
-                    : "bg-green-100 text-green-800 hover:bg-green-200"
-                }`}
-              >
-                🙏 Показать «Спасибо» на TV
-              </button>
-            )}
-            {quiz?.finalImageUrl && (
-              <button
-                type="button"
-                onClick={() => handleSetSlide(SLIDE_TYPES.FINAL)}
-                className={`px-5 py-2 rounded-lg font-medium transition ${
-                  state?.currentSlide === SLIDE_TYPES.FINAL
-                    ? "bg-purple-600 text-white"
-                    : "bg-purple-100 text-purple-800 hover:bg-purple-200"
-                }`}
-              >
-                🎬 Показать финальный слайд на TV
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Кнопка архивировать только для завершенных */}
-        {!quizArchived && (
-          <div className="text-center">
-            <button
-              type="button"
-              onClick={handleArchive}
-              className="px-6 py-2 border border-stone-300 rounded-lg hover:bg-stone-100 transition text-stone-700 font-medium"
-            >
-              📦 Архивировать квиз
-            </button>
-          </div>
-        )}
 
         {/* Модальное окно с детальными результатами */}
         {selectedTeam && (
