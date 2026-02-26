@@ -174,7 +174,7 @@ export const importApi = {
     }
     return res.json();
   },
-  uploadZip: async (quizId, file, selectedModel = null, docxFile = null, docxQuestions = null) => {
+  uploadZip: async (quizId, file, selectedModel = null, docxQuestions = null) => {
     const form = new FormData();
     form.append("file", file);
     if (selectedModel) {
@@ -182,8 +182,6 @@ export const importApi = {
     }
     if (docxQuestions) {
       form.append("docxQuestions", JSON.stringify(docxQuestions));
-    } else if (docxFile) {
-      form.append("docx", docxFile);
     }
     const res = await fetch(`${API}/quizzes/${quizId}/import-zip`, {
       method: "POST",

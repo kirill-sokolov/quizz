@@ -2,7 +2,6 @@ import { config } from "../../config.js";
 import { analyzeWithOpenRouter, OPENROUTER_MODELS } from "./openrouter.js";
 import {
   type ShrunkImage,
-  type ParsedResult,
   type HybridParsedResult,
   type DocxParsedResult,
   type DocxParsedQuestion,
@@ -13,11 +12,11 @@ import {
   parseDocxImageJsonResponse,
 } from "./types.js";
 
-export type { ShrunkImage, ParsedResult, HybridParsedResult, DocxParsedResult, DocxParsedQuestion };
+export type { ShrunkImage, HybridParsedResult, DocxParsedResult, DocxParsedQuestion };
 
 type Provider = {
   name: string;
-  fn: (images: ShrunkImage[], promptOverride?: string) => Promise<ParsedResult>;
+  fn: (images: ShrunkImage[], prompt: string) => Promise<any>;
 };
 
 const ALL_PROVIDERS: Provider[] = OPENROUTER_MODELS.map((m) => ({
@@ -36,34 +35,6 @@ function getProvider(name: string): Provider {
   return provider;
 }
 
-export async function analyzeImages(
-  images: ShrunkImage[],
-  selectedModel?: string | null
-): Promise<ParsedResult> {
-  if (selectedModel) {
-    const provider = getProvider(selectedModel);
-    console.log(`[LLM] using selected model: ${selectedModel}`);
-    return await provider.fn(images);
-  }
-
-  for (const { name, fn } of ALL_PROVIDERS) {
-    if (!config.OPENROUTER_API_KEY) {
-      console.log(`[LLM] ${name}: no key, skip`);
-      continue;
-    }
-    try {
-      const result = await fn(images);
-      console.log(`[LLM] success via ${name}`);
-      return result;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`[LLM] ${name} failed: ${msg.slice(0, 200)}`);
-    }
-  }
-
-  throw Object.assign(new Error("All LLM providers failed"), { statusCode: 502 });
-}
-
 // ─── Hybrid mode: DOCX text + LLM for slide grouping ──────────────────────
 
 export async function analyzeImagesHybrid(
@@ -79,8 +50,7 @@ export async function analyzeImagesHybrid(
   );
 
   const runWithPrompt = async (fn: Provider["fn"]) => {
-    const raw = await fn(images, prompt);
-    return raw as unknown as HybridParsedResult;
+    return (await fn(images, prompt)) as HybridParsedResult;
   };
 
   if (selectedModel) {

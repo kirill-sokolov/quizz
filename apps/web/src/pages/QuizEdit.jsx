@@ -219,7 +219,6 @@ export default function QuizEdit() {
         id,
         file,
         imageModel,
-        null,
         docxResult?.questions || null
       );
       setImportPreview(result);

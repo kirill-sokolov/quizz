@@ -4,29 +4,6 @@ export interface ShrunkImage {
   name: string;      // original filename for prompt context
 }
 
-export interface ParsedQuizQuestion {
-  question: string;
-  options: { A: string; B: string; C: string; D: string };
-  correct: string;
-  time_limit_sec: number;
-  timer_position?: string;
-  slides: {
-    video_warning: number | null;
-    video_intro: number | null;
-    question: number | null;
-    timer: number | null;
-    answer: number | null;
-  };
-}
-
-export interface ParsedResult {
-  questions: ParsedQuizQuestion[];
-  demoSlide?: number | null;
-  rulesSlide?: number | null;
-  thanksSlide?: number | null;
-  finalSlide?: number | null;
-}
-
 // ─── Hybrid mode (DOCX + ZIP) ──────────────────────────────────────────────
 
 export interface HybridParsedQuestion {
@@ -50,65 +27,6 @@ export interface HybridParsedResult {
   extraSlides?: number[];
 }
 
-export function buildPrompt(n: number, names: string[]): string {
-  return `
-Ты анализируешь ${n} изображений — слайды из квиза-презентации.
-Имена файлов (в порядке, с 0): ${names.map((name, i) => `[${i}] ${name}`).join(", ")}.
-
-КЛЮЧЕВОЕ ПРАВИЛО: несколько слайдов могут относиться к ОДНОМУ вопросу.
-Слайды одного вопроса похожи визуально — одинаковый фон, одинаковый текст вопроса — но различаются деталями:
-
-• «video_warning» — предупреждение о видео (если вопрос с видео). Идёт перед всеми остальными слайдами.
-• «video_intro» — видео-вступление (опционально). Идёт после video_warning, перед вопросом.
-• «question» — слайд с текстом вопроса и 4 вариантами ответов (A, B, C, D). Все варианты оформлены одинаково.
-• «timer»   — тот же вопрос + заметный таймер/часы/обратный отсчёт.
-• «answer»  — тот же вопрос, но ОДИН вариант выделен как правильный (другой цвет, обводка, галочка, стрелка и т.п.).
-
-ВАЖНО: В архиве также могут быть дополнительные слайды, не относящиеся к вопросам:
-• Слайд-заставка / демо (титульный слайд с названием квиза, без вопросов) → demoSlide
-• Слайд с правилами игры → rulesSlide
-• Слайд «Спасибо» / «Paldies» / «Thank you» (показывается после результатов) → thanksSlide
-• Финальный закрывающий слайд (показывается последним перед выключением TV) → finalSlide
-Эти слайды нужно распознать и вернуть отдельно.
-
-Алгоритм:
-1. Найди слайды-заставку, правила, спасибо и финальный (если есть).
-2. Определи, сколько УНИКАЛЬНЫХ вопросов (не слайдов) присутствует.
-3. Сгруппируй слайды — похожие по содержанию и дизайну относятся к одному вопросу.
-4. Для каждой группы: назначь тип каждому слайду и извлеки текст вопроса, варианты, правильный ответ.
-
-Верни строго JSON (без markdown, без пояснений):
-{
-  "demoSlide": 0,
-  "rulesSlide": 1,
-  "thanksSlide": null,
-  "finalSlide": null,
-  "questions": [
-    {
-      "question": "Текст вопроса",
-      "options": { "A": "...", "B": "...", "C": "...", "D": "..." },
-      "correct": "B",
-      "time_limit_sec": 30,
-      "slides": {
-        "video_warning": 2,
-        "video_intro": null,
-        "question": 3,
-        "timer": null,
-        "answer": 4
-      }
-    }
-  ]
-}
-
-Правила:
-- "demoSlide", "rulesSlide", "thanksSlide", "finalSlide" — индексы соответствующих слайдов (null если нет).
-- "video_warning" и "video_intro" — опциональные слайды перед вопросом (null если нет).
-- Если слайда "timer" или "answer" нет в группе — ставь null (система использует слайд "question" вместо них).
-- "correct" — одна буква: A, B, C или D.
-- "time_limit_sec" — число секунд из слайда (30 если не указано).
-- Каждый индекс используй не более одного раза.
-`.trim();
-}
 
 export function buildHybridPrompt(n: number, names: string[], questionCount: number, questionHints?: { title: string; correctAnswer: string }[]): string {
   return `
@@ -327,14 +245,3 @@ export function parseDocxImageJsonResponse(raw: string): DocxParsedResult {
   }
 }
 
-export function parseJsonResponse(raw: string): ParsedResult {
-  const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
-  try {
-    return JSON.parse(cleaned) as ParsedResult;
-  } catch {
-    throw Object.assign(
-      new Error(`LLM вернул неверный JSON: ${raw.slice(0, 300)}`),
-      { statusCode: 502 }
-    );
-  }
-}

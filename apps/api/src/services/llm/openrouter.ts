@@ -1,5 +1,5 @@
 import { config } from "../../config.js";
-import { type ShrunkImage, type ParsedResult, buildPrompt, parseJsonResponse } from "./types.js";
+import { type ShrunkImage } from "./types.js";
 import { logCost } from "./cost-logger.js";
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
@@ -23,13 +23,13 @@ export const OPENROUTER_MODELS = [...TEXT_MODELS, ...IMAGE_MODELS];
 export type OpenRouterModelName = (typeof OPENROUTER_MODELS)[number]["name"];
 
 export function analyzeWithOpenRouter(modelId: string, displayName: string) {
-  return async function (images: ShrunkImage[], promptOverride?: string): Promise<ParsedResult> {
+  return async function (images: ShrunkImage[], prompt: string): Promise<any> {
     if (!config.OPENROUTER_API_KEY) {
       throw Object.assign(new Error("OPENROUTER_API_KEY is not configured"), { statusCode: 500 });
     }
 
     const content: unknown[] = [
-      { type: "text", text: promptOverride ?? buildPrompt(images.length, images.map((i) => i.name)) },
+      { type: "text", text: prompt },
       ...images.map((img) => ({
         type: "image_url",
         image_url: { url: `data:${img.mimeType};base64,${img.data}` },
@@ -75,7 +75,12 @@ export function analyzeWithOpenRouter(modelId: string, displayName: string) {
     const raw = json.choices[0]?.message?.content ?? "";
     console.log(`[${displayName}] model: ${modelId}, credits: ${creditsUsed || "unknown"}`);
     console.log(`[${displayName} raw response]`, raw.slice(0, 500));
-    return parseJsonResponse(raw);
+    const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
+    try {
+      return JSON.parse(cleaned);
+    } catch {
+      throw Object.assign(new Error(`LLM вернул неверный JSON: ${raw.slice(0, 300)}`), { statusCode: 502 });
+    }
   };
 }
 

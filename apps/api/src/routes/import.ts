@@ -12,16 +12,14 @@ import path from "path";
 import { authenticateToken } from "../middleware/auth.js";
 
 export async function importRoutes(app: FastifyInstance) {
-  // Upload ZIP (+ optional DOCX or pre-parsed questions), parse with LLM, return preview
+  // Upload ZIP + pre-parsed DOCX questions, parse slides with LLM, return preview
   app.post<{ Params: { id: string } }>(
     "/api/quizzes/:id/import-zip",
     { preHandler: authenticateToken },
     async (req, reply) => {
       const quizId = Number(req.params.id);
 
-      // Parse multipart form data
       let zipBuffer: Buffer | null = null;
-      let docxBuffer: Buffer | null = null;
       let selectedModel: string | null = null;
       let docxQuestions: string | null = null;
 
@@ -29,8 +27,6 @@ export async function importRoutes(app: FastifyInstance) {
       for await (const part of parts) {
         if (part.type === "file" && part.fieldname === "file") {
           zipBuffer = await part.toBuffer();
-        } else if (part.type === "file" && part.fieldname === "docx") {
-          docxBuffer = await part.toBuffer();
         } else if (part.type === "field" && part.fieldname === "model") {
           selectedModel = String(part.value) || null;
         } else if (part.type === "field" && part.fieldname === "docxQuestions") {
@@ -39,15 +35,17 @@ export async function importRoutes(app: FastifyInstance) {
       }
 
       if (!zipBuffer) {
-        return reply.code(400).send({ error: "No file uploaded" });
+        return reply.code(400).send({ error: "No ZIP file uploaded" });
+      }
+      if (!docxQuestions) {
+        return reply.code(400).send({ error: "Необходимо сначала загрузить DOCX с вопросами" });
       }
 
       const preview = await importZip(
         quizId,
         zipBuffer,
         selectedModel,
-        docxBuffer,
-        docxQuestions ? JSON.parse(docxQuestions) : null
+        JSON.parse(docxQuestions)
       );
       return preview;
     }
