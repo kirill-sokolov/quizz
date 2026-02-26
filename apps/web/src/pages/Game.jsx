@@ -205,6 +205,9 @@ export default function Game() {
           case "answer_submitted":
             refreshAnswers();
             break;
+          case "answer_scored":
+            refreshAnswers();
+            break;
           case "team_registered":
             refreshTeams();
             break;
@@ -844,7 +847,7 @@ export default function Game() {
                       </button>
                     )}
                   </div>
-                  {isTextQ && isOnAnswerSlide && teamAnswer && (() => {
+                  {isTextQ && teamAnswer && (() => {
                     const correctAnswersCount = currentQuestion.correctAnswer
                       .split(',')
                       .map(s => s.trim())

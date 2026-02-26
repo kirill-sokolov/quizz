@@ -4,6 +4,7 @@ import { answers, teams, questions } from "../db/schema.js";
 import { eq } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 import { authenticateToken } from "../middleware/auth.js";
+import { evaluateTextAnswers } from "../services/llm/evaluate-text-answer.js";
 
 export async function answersRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>(
@@ -92,6 +93,40 @@ export async function answersRoutes(app: FastifyInstance) {
         teamId,
         answerId: answer.id,
       });
+
+      // For text questions: evaluate immediately in background, don't block the response
+      if (question.questionType === "text") {
+        const correctAnswers = question.correctAnswer
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+
+        (async () => {
+          try {
+            const [result] = await evaluateTextAnswers(
+              correctAnswers,
+              [{ teamId, answerText }],
+              question.weight
+            );
+            if (result !== undefined) {
+              await db
+                .update(answers)
+                .set({ awardedScore: result.score })
+                .where(eq(answers.id, answer.id));
+
+              broadcast("answer_scored", {
+                quizId: question.quizId,
+                questionId,
+                teamId,
+                answerId: answer.id,
+                awardedScore: result.score,
+              });
+            }
+          } catch (err) {
+            console.error("[answer scored] LLM evaluation failed:", err);
+          }
+        })();
+      }
 
       return reply.code(201).send(answer);
     } catch (err: any) {

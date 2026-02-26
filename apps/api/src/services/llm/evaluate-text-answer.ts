@@ -30,29 +30,24 @@ function buildEvalPrompt(
 Правильные ответы (всего ${correctAnswers.length}):
 ${correctAnswers.map((a, i) => `${i + 1}. ${a}`).join("\n")}
 
-Максимальный балл за вопрос: ${weight}
-
 Ответы команд:
 ${JSON.stringify(teamsJson, null, 2)}
 
-Задача: для каждой команды определи, сколько правильных ответов она назвала.
+Задача: для каждой команды определи, сколько правильных ответов она назвала (целое число от 0 до ${correctAnswers.length}).
 Учитывай синонимы, опечатки, разный порядок слов — если смысл совпадает, засчитай.
 Одну и ту же правильную позицию засчитай не более одного раза.
 Если команда перечислила несколько вариантов через запятую — считай только первые ${correctAnswers.length} (по порядку).
 
-Балл = (количество_угаданных / ${correctAnswers.length}) * ${weight}
-Округли до 1 знака после запятой.
-
 Верни строго JSON (без markdown, без пояснений):
 {
   "results": [
-    { "teamId": 123, "matched": 2, "score": 1.5 }
+    { "teamId": 123, "matched": 2 }
   ]
 }
 `.trim();
 }
 
-function parseEvalResponse(raw: string): { results: Array<{ teamId: number; score: number }> } {
+function parseEvalResponse(raw: string): { results: Array<{ teamId: number; matched: number }> } {
   const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   return JSON.parse(cleaned);
 }
@@ -101,10 +96,12 @@ async function evaluateWithOpenRouter(
   console.log("[evaluateTextAnswers] raw:", raw.slice(0, 300));
 
   const parsed = parseEvalResponse(raw);
-  return parsed.results.map((r) => ({
-    teamId: r.teamId,
-    score: Math.round(r.score * 10) / 10,
-  }));
+  const total = correctAnswers.length;
+  return parsed.results.map((r) => {
+    const matched = Math.max(0, Math.min(r.matched, total));
+    const score = Math.round((matched / total) * weight * 100) / 100;
+    return { teamId: r.teamId, score };
+  });
 }
 
 export async function evaluateTextAnswers(
