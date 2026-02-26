@@ -7,6 +7,7 @@ export const SLIDE_TYPES = [
   "question",
   "timer",
   "answer",
+  "extra",
   "results",
   "thanks",
   "final",

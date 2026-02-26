@@ -44,10 +44,11 @@
 |------|-----|----------|
 | id | serial PRIMARY KEY | ID слайда |
 | questionId | integer REFERENCES questions(id) | Ссылка на вопрос |
-| type | text NOT NULL | Тип слайда: `video_warning`, `video_intro`, `question`, `timer`, `answer` |
+| type | text NOT NULL | Тип слайда: `video_warning`, `video_intro`, `question`, `timer`, `answer`, `extra` |
 | imageUrl | text | URL картинки слайда |
 | videoUrl | text | URL видео (для video_intro или наложения) |
 | videoLayout | jsonb | Позиция видео: `{top, left, width, height}` в % |
+| sortOrder | integer NOT NULL DEFAULT 0 | Порядок слайда внутри вопроса (определяет навигацию ◀▶) |
 
 #### `teams`
 Команды (капитаны).
@@ -85,7 +86,8 @@
 | status | text NOT NULL | Статус: `lobby`, `playing`, `finished` |
 | registrationOpen | boolean DEFAULT false | Открыта ли регистрация |
 | currentQuestionId | integer REFERENCES questions(id) | Текущий вопрос |
-| currentSlide | text | Текущий слайд: `video_warning`, `video_intro`, `question`, `timer`, `answer`, `results`, `thanks`, `after_thanks` |
+| currentSlide | text | Текущий слайд: `video_warning`, `video_intro`, `question`, `timer`, `answer`, `extra`, `results`, `thanks`, `final` |
+| currentSlideId | integer REFERENCES slides(id) | ID конкретного слайда (для точной навигации, null для post-game slides) |
 | timerStartedAt | timestamp | Время запуска таймера |
 | showBotsOnTv | boolean DEFAULT true | Показывать ли тестовых ботов на TV |
 
@@ -128,6 +130,7 @@ npm run db:migrate
 - `question` — слайд с вопросом
 - `timer` — слайд с таймером
 - `answer` — слайд с правильным ответом
+- `extra` — дополнительный/шуточный слайд (в любой позиции внутри вопроса, определяется `sort_order`)
 - `results` — итоговые результаты
 - `thanks` — слайд «Спасибо» (опционально, если нет картинки — кнопка не появляется)
 - `final` — финальный закрывающий слайд (опционально, перед выключением TV)

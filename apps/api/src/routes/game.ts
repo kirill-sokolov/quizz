@@ -17,7 +17,6 @@ import {
   revealNextResult,
 } from "../services/game-service.js";
 import { authenticateToken } from "../middleware/auth.js";
-import type { SlideType } from "../types/slide.js";
 
 export async function gameRoutes(app: FastifyInstance) {
   app.get<{ Params: { quizId: string } }>(
@@ -84,11 +83,12 @@ export async function gameRoutes(app: FastifyInstance) {
     }
   );
 
-  app.post<{ Body: { quizId: number; slide: SlideType } }>(
+  app.post<{ Body: { quizId: number; slideId?: number; slide?: string } }>(
     "/api/game/set-slide",
     { preHandler: authenticateToken },
     async (req, reply) => {
-      const state = await setSlide(req.body.quizId, req.body.slide);
+      const { quizId, slideId, slide } = req.body;
+      const state = await setSlide(quizId, { slideId, slide });
       return state;
     }
   );

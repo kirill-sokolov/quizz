@@ -116,12 +116,14 @@ async function createDemoQuiz() {
     const videoUrl = q.videoUrl ? `/api/media/${q.videoUrl}` : null;
 
     const slidesToInsert: any[] = [];
+    let sortOrder = 0;
 
     if (videoWarningImg) {
       slidesToInsert.push({
         questionId: question.id,
         type: "video_warning" as const,
         imageUrl: videoWarningImg,
+        sortOrder: sortOrder++,
       });
     }
     if (videoIntroImg || videoUrl) {
@@ -130,13 +132,14 @@ async function createDemoQuiz() {
         type: "video_intro" as const,
         imageUrl: videoIntroImg,
         videoUrl,
+        sortOrder: sortOrder++,
       });
     }
 
     slidesToInsert.push(
-      { questionId: question.id, type: "question" as const, imageUrl: qImg },
-      { questionId: question.id, type: "timer" as const, imageUrl: qImg },
-      { questionId: question.id, type: "answer" as const, imageUrl: aImg }
+      { questionId: question.id, type: "question" as const, imageUrl: qImg, sortOrder: sortOrder++ },
+      { questionId: question.id, type: "timer" as const, imageUrl: qImg, sortOrder: sortOrder++ },
+      { questionId: question.id, type: "answer" as const, imageUrl: aImg, sortOrder: sortOrder++ }
     );
 
     await db.insert(slides).values(slidesToInsert);

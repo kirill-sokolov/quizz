@@ -243,8 +243,14 @@ export default function Game() {
     await load();
   };
 
-  const handleSetSlide = async (slide) => {
-    await gameApi.setSlide(quizId, slide);
+  const handleSetSlide = async (slideOrString) => {
+    if (typeof slideOrString === "string") {
+      // Post-game slides: results/thanks/final passed as string
+      await gameApi.setSlide(quizId, { slide: slideOrString });
+    } else {
+      // In-game slides: slide object with id
+      await gameApi.setSlide(quizId, { slideId: slideOrString.id });
+    }
     const newState = await gameApi.getState(quizId);
     setState(newState);
   };
@@ -725,16 +731,41 @@ export default function Game() {
   }
 
   const currentSlide = state.currentSlide || SLIDE_TYPES.QUESTION;
-  const slideOrder = getSlideOrder(currentQuestion);
-  const slideIndex = slideOrder.indexOf(currentSlide);
-  const canPrevSlide = slideIndex > 0;
+
+  // Order-based slide navigation using sort_order from backend
+  const slideSequence = currentQuestion?.slides ?? [];
+
+  // Find current slide by currentSlideId, fallback to type match
+  function getCurrentSlideIdx(seq, gameState) {
+    if (gameState?.currentSlideId) {
+      const idx = seq.findIndex(s => s.id === gameState.currentSlideId);
+      if (idx >= 0) return idx;
+    }
+    // Fallback for games started before migration
+    const idx = seq.findIndex(s => s.type === gameState?.currentSlide);
+    return idx >= 0 ? idx : 0;
+  }
+  const currentIdx = slideSequence.length > 0 ? getCurrentSlideIdx(slideSequence, state) : -1;
+  const currentSlideObj = currentIdx >= 0 ? slideSequence[currentIdx] : null;
+
+  const canPrevSlide = currentIdx > 0;
 
   // Блокируем кнопку ▶ на таймере, пока не все засабмитили
   const allTeamsSubmitted = activeTeams.length === 0 || activeTeams.every(t => submittedTeamIds.has(t.id));
-  const isTimerSlide = currentSlide === SLIDE_TYPES.TIMER;
-  const canNextSlide = slideIndex < slideOrder.length - 1 && (!isTimerSlide || allTeamsSubmitted);
+  const isTimerSlide = currentSlideObj?.type === SLIDE_TYPES.TIMER;
+  const canNextSlide = currentIdx >= 0 && currentIdx < slideSequence.length - 1 && (!isTimerSlide || allTeamsSubmitted);
 
+  const isLastSlide = slideSequence.length > 0 && currentIdx === slideSequence.length - 1;
   const hasNextQuestion = currentIndex < totalQuestions;
+
+  // Label for current slide
+  const extraSlides = slideSequence.filter(s => s.type === SLIDE_TYPES.EXTRA);
+  const extraIndex = currentSlideObj?.type === SLIDE_TYPES.EXTRA
+    ? extraSlides.findIndex(s => s.id === currentSlideObj.id) + 1
+    : 0;
+  const currentSlideLabel = currentSlideObj?.type === SLIDE_TYPES.EXTRA
+    ? `Экстра ${extraIndex}/${extraSlides.length}`
+    : (SLIDE_LABELS[currentSlide] || currentSlide);
 
   return (
     <div className="space-y-6">
@@ -804,18 +835,18 @@ export default function Game() {
               <button
                 type="button"
                 disabled={!canPrevSlide}
-                onClick={() => handleSetSlide(slideOrder[slideIndex - 1])}
+                onClick={() => handleSetSlide(slideSequence[currentIdx - 1])}
                 className="px-3 py-1.5 rounded-lg border border-stone-300 disabled:opacity-40 hover:bg-stone-50"
               >
                 ◀
               </button>
               <span className="px-3 py-1.5 bg-amber-100 text-amber-800 rounded-lg font-medium min-w-[6rem] text-center">
-                {SLIDE_LABELS[currentSlide]}
+                {currentSlideLabel}
               </span>
               <button
                 type="button"
                 disabled={!canNextSlide}
-                onClick={() => handleSetSlide(slideOrder[slideIndex + 1])}
+                onClick={() => handleSetSlide(slideSequence[currentIdx + 1])}
                 className="px-3 py-1.5 rounded-lg border border-stone-300 disabled:opacity-40 hover:bg-stone-50"
               >
                 ▶
@@ -823,7 +854,7 @@ export default function Game() {
             </div>
           </div>
 
-          {currentSlide === SLIDE_TYPES.TIMER && currentQuestion && (
+          {isTimerSlide && currentQuestion && (
             <TimerDisplay
               startedAt={state.timerStartedAt}
               limitSec={currentQuestion.timeLimitSec}
@@ -834,7 +865,7 @@ export default function Game() {
             <button
               type="button"
               onClick={handleNextQuestion}
-              disabled={!hasNextQuestion || state?.currentSlide !== "answer"}
+              disabled={!hasNextQuestion || !isLastSlide}
               className="px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 font-medium"
             >
               → Следующий вопрос
@@ -849,7 +880,7 @@ export default function Game() {
             <button
               type="button"
               onClick={handleFinish}
-              disabled={!(currentIndex === totalQuestions && state?.currentSlide === SLIDE_TYPES.ANSWER)}
+              disabled={!(currentIndex === totalQuestions && isLastSlide)}
               className="px-4 py-2 border border-stone-300 rounded-lg hover:bg-stone-50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Завершить квиз

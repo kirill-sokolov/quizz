@@ -17,6 +17,7 @@ import TVVideoIntro from "../components/TV/TVVideoIntro";
 import TVDemo from "../components/TV/TVDemo";
 import TVRules from "../components/TV/TVRules";
 import TVLobby from "../components/TV/TVLobby";
+import TVExtraSlide from "../components/TV/TVExtraSlide";
 import { SLIDE_TYPES } from "../constants/slides";
 
 const W = 1920;
@@ -322,6 +323,12 @@ export default function TV() {
               currentIndex={currentIndex}
               totalQuestions={totalQuestions}
               slides={currentQuestion.slides}
+            />
+          )}
+          {slide === SLIDE_TYPES.EXTRA && (
+            <TVExtraSlide
+              key={`extra-${state?.currentSlideId}`}
+              slide={currentQuestion.slides.find(s => s.id === state?.currentSlideId)}
             />
           )}
         </>

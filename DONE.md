@@ -1,5 +1,58 @@
 # История выполненных задач
 
+## 2026-02-26: Этап 8 — Экстра-слайды внутри вопросов
+
+### ✅ Extra Slides (тип `extra`, `sort_order` навигация)
+
+**Ключевое решение:** Экстра-слайды живут в таблице `slides` с типом `"extra"` и явным порядком через `sort_order`. Навигация order-based вместо type-based.
+
+**Выполнено:**
+
+**БД:**
+- Добавлен `sort_order integer NOT NULL DEFAULT 0` в таблицу `slides`
+- Добавлен `current_slide_id integer REFERENCES slides(id)` в `game_state`
+- Миграция `apps/api/drizzle/0007_extra_slides.sql` (применена напрямую)
+- Существующие слайды получили sort_order: video_warning=0, video_intro=1, question=2, timer=3, answer=4
+
+**Backend:**
+- `schema.ts`: `sortOrder` на slides, `currentSlideId` на gameState, `"extra"` в SLIDE_TYPES
+- `types/slide.ts`: добавлен `"extra"` в SLIDE_TYPES
+- `game-service.ts`: `setSlide()` переключён на dual mode (`{ slideId? } | { slide? }`); `beginGame()`/`nextQuestion()` используют первый слайд по `sort_order`; бродкастится `slideId` в `slide_changed`
+- `routes/game.ts`: body `set-slide` изменён на `{ quizId, slideId?, slide? }`
+- `routes/questions.ts`: GET возвращает слайды отсортированными по `sort_order`; PATCH поддерживает extras (insert/update/delete); POST создаёт слайды с sort_order
+- `import-service.ts`: `saveImportedQuiz` сохраняет extras с sort_order после answer
+- `seed-service.ts`: слайды создаются с явным sort_order
+
+**Frontend:**
+- `constants/slides.js`: добавлены `EXTRA`, `SLIDE_LABELS.extra`, `TV_SLIDE_LABELS.extra`
+- `api/client.js`: `setSlide(quizId, params)` — params это `{ slideId? }` или `{ slide? }`
+- `TV/TVExtraSlide.jsx` (новый компонент): fullscreen image/video
+- `TV.jsx`: рендер `TVExtraSlide` для `slide === EXTRA` по `state.currentSlideId`
+- `Game.jsx`: order-based навигация по `slideSequence` и `currentSlideId`; label "Экстра N/M"; Next Question/Finish по `isLastSlide`; `handleSetSlide` принимает объект слайда или строку
+- `QuestionForm.jsx`: ordered slide list; кнопки "+ Экстра-слайд" между слайдами; удаление extras; upload image/video для extras
+- `ImportPreview.jsx`: extras показываются с нумерацией и кнопкой удаления
+
+**Файлы:**
+- `apps/api/drizzle/0007_extra_slides.sql`
+- `apps/api/src/db/schema.ts`
+- `apps/api/src/types/slide.ts`
+- `apps/api/src/services/game-service.ts`
+- `apps/api/src/services/import-service.ts`
+- `apps/api/src/services/seed-service.ts`
+- `apps/api/src/routes/game.ts`
+- `apps/api/src/routes/questions.ts`
+- `apps/web/src/constants/slides.js`
+- `apps/web/src/api/client.js`
+- `apps/web/src/components/TV/TVExtraSlide.jsx` (новый)
+- `apps/web/src/pages/TV.jsx`
+- `apps/web/src/pages/Game.jsx`
+- `apps/web/src/components/QuestionForm.jsx`
+- `apps/web/src/components/ImportPreview.jsx`
+- `docs/DATABASE.md`, `docs/API.md`, `docs/QUIZ-FLOW.md`
+
+---
+
+
 ## 2026-02-26: Фикс импорта ZIP — сортировка, промпт, удаление legacy
 
 ### ✅ Исправления import pipeline

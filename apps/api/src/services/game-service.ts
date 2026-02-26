@@ -9,7 +9,6 @@ import {
 } from "../db/schema.js";
 import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
-import type { SlideType } from "../types/slide.js";
 import { evaluateTextAnswers } from "./llm/evaluate-text-answer.js";
 import { getBotService } from "../index.js";
 
@@ -48,6 +47,7 @@ export async function startGame(quizId: number) {
         status: "lobby",
         currentQuestionId: null,
         currentSlide: "question",
+        currentSlideId: null,
         timerStartedAt: null,
         registrationOpen: false,
         resultsRevealCount: 0,
@@ -62,6 +62,7 @@ export async function startGame(quizId: number) {
         status: "lobby",
         currentQuestionId: null,
         currentSlide: "question",
+        currentSlideId: null,
         registrationOpen: false,
         resultsRevealCount: 0,
       })
@@ -112,20 +113,20 @@ export async function beginGame(quizId: number) {
 
   const currentQuestionId = firstQuestion[0]?.id ?? null;
 
-  // Check if the first question has video slides to determine the starting slide
-  let startingSlide: "video_warning" | "question" = "question";
+  // Get first slide by sort_order
+  let startingSlide: string = "question";
+  let startingSlideId: number | null = null;
   if (currentQuestionId) {
     const questionSlides = await db
       .select()
       .from(slides)
-      .where(eq(slides.questionId, currentQuestionId));
+      .where(eq(slides.questionId, currentQuestionId))
+      .orderBy(asc(slides.sortOrder));
 
-    // Only use video_warning if it has actual content
-    const hasVideoWarning = questionSlides.some(s =>
-      s.type === "video_warning" && (s.imageUrl || s.videoUrl)
-    );
-    if (hasVideoWarning) {
-      startingSlide = "video_warning";
+    const firstSlide = questionSlides[0];
+    if (firstSlide) {
+      startingSlide = firstSlide.type;
+      startingSlideId = firstSlide.id;
     }
   }
 
@@ -134,7 +135,8 @@ export async function beginGame(quizId: number) {
     .set({
       status: "playing",
       currentQuestionId,
-      currentSlide: startingSlide,
+      currentSlide: startingSlide as any,
+      currentSlideId: startingSlideId,
       timerStartedAt: null,
       resultsRevealCount: 0,
     })
@@ -152,6 +154,7 @@ export async function beginGame(quizId: number) {
     quizId,
     questionId: currentQuestionId,
     slide: startingSlide,
+    slideId: startingSlideId,
   });
 
   return updated;
@@ -215,26 +218,27 @@ export async function nextQuestion(quizId: number) {
     return null;
   }
 
-  // Check if the next question has video slides to determine the starting slide
-  let startingSlide: "video_warning" | "question" = "question";
+  // Get first slide of next question by sort_order
   const questionSlides = await db
     .select()
     .from(slides)
-    .where(eq(slides.questionId, nextQ.id));
+    .where(eq(slides.questionId, nextQ.id))
+    .orderBy(asc(slides.sortOrder));
 
-  // Only use video_warning if it has actual content
-  const hasVideoWarning = questionSlides.some(s =>
-    s.type === "video_warning" && (s.imageUrl || s.videoUrl)
-  );
-  if (hasVideoWarning) {
-    startingSlide = "video_warning";
+  let startingSlide: string = "question";
+  let startingSlideId: number | null = null;
+  const firstSlide = questionSlides[0];
+  if (firstSlide) {
+    startingSlide = firstSlide.type;
+    startingSlideId = firstSlide.id;
   }
 
   const [updated] = await db
     .update(gameState)
     .set({
       currentQuestionId: nextQ.id,
-      currentSlide: startingSlide,
+      currentSlide: startingSlide as any,
+      currentSlideId: startingSlideId,
       timerStartedAt: null,
       resultsRevealCount: 0,
     })
@@ -245,6 +249,7 @@ export async function nextQuestion(quizId: number) {
     quizId,
     questionId: nextQ.id,
     slide: startingSlide,
+    slideId: startingSlideId,
   });
 
   return updated;
@@ -252,14 +257,35 @@ export async function nextQuestion(quizId: number) {
 
 export async function setSlide(
   quizId: number,
-  slide: SlideType
+  params: { slideId?: number; slide?: string }
 ) {
-  const patch: { currentSlide: SlideType; timerStartedAt: Date | null; resultsRevealCount?: number } = {
-    currentSlide: slide,
-    timerStartedAt: slide === "timer" ? new Date() : null,
+  let slideType: string;
+  let slideId: number | null = null;
+
+  if (params.slideId != null) {
+    // Navigate to a specific slide by ID (in-game slides including extras)
+    const [slideRow] = await db
+      .select()
+      .from(slides)
+      .where(eq(slides.id, params.slideId));
+    if (!slideRow) throw new Error("Slide not found");
+    slideType = slideRow.type;
+    slideId = slideRow.id;
+  } else if (params.slide) {
+    // Navigate to a post-game slide by type string (results/thanks/final)
+    slideType = params.slide;
+    slideId = null;
+  } else {
+    throw new Error("Either slideId or slide must be provided");
+  }
+
+  const patch: Record<string, any> = {
+    currentSlide: slideType,
+    currentSlideId: slideId,
+    timerStartedAt: slideType === "timer" ? new Date() : null,
   };
 
-  if (slide !== "results" && slide !== "thanks" && slide !== "final") {
+  if (slideType !== "results" && slideType !== "thanks" && slideType !== "final") {
     patch.resultsRevealCount = 0;
   }
 
@@ -270,7 +296,7 @@ export async function setSlide(
     .returning();
 
   // When switching to answer slide for text questions — trigger LLM evaluation
-  if (slide === "answer" && updated.currentQuestionId) {
+  if (slideType === "answer" && updated.currentQuestionId) {
     const [question] = await db
       .select()
       .from(questions)
@@ -312,11 +338,12 @@ export async function setSlide(
   broadcast("slide_changed", {
     quizId,
     questionId: updated.currentQuestionId,
-    slide,
+    slide: slideType,
+    slideId,
   });
 
   // Тестовые боты отвечают при переключении на слайд "timer"
-  if (slide === "timer" && updated.currentQuestionId) {
+  if (slideType === "timer" && updated.currentQuestionId) {
     const botService = getBotService();
     if (botService) {
       const [question] = await db

@@ -12,33 +12,27 @@ function ensureFourOptions(options) {
 }
 
 function getSlides(question) {
-  const defaultSlides = BASE_SLIDE_TYPES.map(type => ({
-    id: null,
-    type,
-    imageUrl: null,
-    videoUrl: null,
-    videoLayout: null,
-  }));
-
-  if (!question?.slides?.length) return defaultSlides;
-
-  const byType = {};
-  for (const s of question.slides) byType[s.type] = s;
-
-  // Если есть video_intro или video_warning, включаем их
-  const hasVideo = byType[SLIDE_TYPES.VIDEO_INTRO] || byType[SLIDE_TYPES.VIDEO_WARNING];
-  const types = hasVideo ? FULL_SLIDE_TYPES : BASE_SLIDE_TYPES;
-
-  return types.map((type) => {
-    const slide = byType[type];
-    return {
-      id: slide?.id ?? null,
+  if (!question?.slides?.length) {
+    // Default slides for new question
+    return BASE_SLIDE_TYPES.map((type, i) => ({
+      id: null,
       type,
-      imageUrl: slide?.imageUrl ?? slide?.image_url ?? null,
-      videoUrl: slide?.videoUrl ?? slide?.video_url ?? null,
-      videoLayout: slide?.videoLayout ?? slide?.video_layout ?? null,
-    };
-  });
+      imageUrl: null,
+      videoUrl: null,
+      videoLayout: null,
+      sortOrder: i + 2,
+    }));
+  }
+
+  // Return slides sorted by sortOrder (already sorted by API)
+  return question.slides.map(s => ({
+    id: s.id ?? null,
+    type: s.type,
+    imageUrl: s.imageUrl ?? s.image_url ?? null,
+    videoUrl: s.videoUrl ?? s.video_url ?? null,
+    videoLayout: s.videoLayout ?? s.video_layout ?? null,
+    sortOrder: s.sortOrder ?? s.sort_order ?? 0,
+  }));
 }
 
 export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
@@ -75,24 +69,41 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   const toggleVideoIntro = (enabled) => {
     setHasVideoIntro(enabled);
     if (enabled) {
-      // Add video slides if not present
       setSlides(prev => {
         const hasWarning = prev.some(s => s.type === SLIDE_TYPES.VIDEO_WARNING);
         const hasIntro = prev.some(s => s.type === SLIDE_TYPES.VIDEO_INTRO);
         const result = [...prev];
         if (!hasWarning) {
-          result.unshift({ id: null, type: SLIDE_TYPES.VIDEO_WARNING, imageUrl: null, videoUrl: null, videoLayout: null });
+          result.unshift({ id: null, type: SLIDE_TYPES.VIDEO_WARNING, imageUrl: null, videoUrl: null, videoLayout: null, sortOrder: 0 });
         }
         if (!hasIntro) {
           const insertIndex = result.findIndex(s => s.type === SLIDE_TYPES.QUESTION);
-          result.splice(insertIndex, 0, { id: null, type: SLIDE_TYPES.VIDEO_INTRO, imageUrl: null, videoUrl: null, videoLayout: null });
+          result.splice(insertIndex, 0, { id: null, type: SLIDE_TYPES.VIDEO_INTRO, imageUrl: null, videoUrl: null, videoLayout: null, sortOrder: 1 });
         }
-        return result;
+        return result.map((s, i) => ({ ...s, sortOrder: i }));
       });
     } else {
-      // Remove video slides
-      setSlides(prev => prev.filter(s => !VIDEO_SLIDE_TYPES.includes(s.type)));
+      setSlides(prev => prev.filter(s => !VIDEO_SLIDE_TYPES.includes(s.type)).map((s, i) => ({ ...s, sortOrder: i })));
     }
+  };
+
+  const addExtraAfter = (afterIndex) => {
+    setSlides(prev => {
+      const next = [...prev];
+      next.splice(afterIndex + 1, 0, {
+        id: null,
+        type: SLIDE_TYPES.EXTRA,
+        imageUrl: null,
+        videoUrl: null,
+        videoLayout: null,
+        sortOrder: afterIndex + 1,
+      });
+      return next.map((s, i) => ({ ...s, sortOrder: i }));
+    });
+  };
+
+  const removeExtra = (index) => {
+    setSlides(prev => prev.filter((_, i) => i !== index).map((s, i) => ({ ...s, sortOrder: i })));
   };
 
   const handleOptionChange = (index, value) => {
@@ -156,12 +167,13 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
         timeLimitSec,
         timerPosition,
         orderNum: question?.orderNum,
-        slides: slides.map((s) => ({
+        slides: slides.map((s, idx) => ({
           id: s.id,
           type: s.type,
           imageUrl: s.imageUrl || null,
           videoUrl: s.videoUrl || null,
           videoLayout: s.videoLayout || null,
+          sortOrder: idx,
         })),
       });
     } finally {
@@ -170,6 +182,12 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
   };
 
   const isText = questionType === "text";
+
+  // Base slide types (non-removable)
+  const BASE_TYPES = new Set([
+    SLIDE_TYPES.VIDEO_WARNING, SLIDE_TYPES.VIDEO_INTRO,
+    SLIDE_TYPES.QUESTION, SLIDE_TYPES.TIMER, SLIDE_TYPES.ANSWER,
+  ]);
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -369,24 +387,54 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
           </label>
         </div>
         <label className="block text-sm font-medium text-stone-600 mb-2">Слайды (картинки и видео)</label>
-        <div className="space-y-4">
+        <div className="space-y-2">
           {slides.map((slide, idx) => {
-            const canHaveVideo = slide.type === SLIDE_TYPES.VIDEO_INTRO || slide.type === SLIDE_TYPES.ANSWER;
+            const isExtra = slide.type === SLIDE_TYPES.EXTRA;
+            const canHaveVideo = slide.type === SLIDE_TYPES.VIDEO_INTRO || slide.type === SLIDE_TYPES.ANSWER || isExtra;
+            const isBase = BASE_TYPES.has(slide.type);
+
             return (
-              <div key={slide.type} className="p-3 bg-stone-50 rounded-lg border border-stone-200">
-                <div className="font-medium text-stone-700 mb-2">{SLIDE_LABELS[slide.type]}</div>
-                <div className="flex flex-wrap gap-4 items-start">
-                  <div>
-                    <div className="text-xs text-stone-500 mb-1">Картинка</div>
-                    {slide.imageUrl ? (
-                      <div className="flex items-center gap-2">
-                        <img
-                          src={getMediaUrl(slide.imageUrl)}
-                          alt=""
-                          className="max-h-48 max-w-xs w-auto object-contain rounded border border-stone-200 bg-stone-100"
-                        />
-                        <label className="text-sm text-amber-600 cursor-pointer hover:underline">
-                          Заменить
+              <div key={`${slide.type}-${idx}`}>
+                <div className={`p-3 rounded-lg border ${isExtra ? "bg-blue-50 border-blue-200" : "bg-stone-50 border-stone-200"}`}>
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="font-medium text-stone-700">
+                      {isExtra ? `Экстра-слайд` : SLIDE_LABELS[slide.type]}
+                    </div>
+                    {isExtra && (
+                      <button
+                        type="button"
+                        onClick={() => removeExtra(idx)}
+                        className="text-red-500 hover:text-red-700 text-sm"
+                        title="Удалить экстра-слайд"
+                      >
+                        ✕ Удалить
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex flex-wrap gap-4 items-start">
+                    <div>
+                      <div className="text-xs text-stone-500 mb-1">Картинка</div>
+                      {slide.imageUrl ? (
+                        <div className="flex items-center gap-2">
+                          <img
+                            src={getMediaUrl(slide.imageUrl)}
+                            alt=""
+                            className="max-h-48 max-w-xs w-auto object-contain rounded border border-stone-200 bg-stone-100"
+                          />
+                          <label className="text-sm text-amber-600 cursor-pointer hover:underline">
+                            Заменить
+                            <input
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={(e) => handleSlideImage(idx, e.target.files?.[0])}
+                              disabled={uploading !== null}
+                            />
+                          </label>
+                        </div>
+                      ) : (
+                        <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
+                          {uploading === `slide-${idx}` ? "Загрузка…" : "Загрузить"}
                           <input
                             type="file"
                             accept="image/*"
@@ -395,32 +443,32 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
                             disabled={uploading !== null}
                           />
                         </label>
-                      </div>
-                    ) : (
-                      <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
-                        {uploading === `slide-${idx}` ? "Загрузка…" : "Загрузить"}
-                        <input
-                          type="file"
-                          accept="image/*"
-                          className="hidden"
-                          onChange={(e) => handleSlideImage(idx, e.target.files?.[0])}
-                          disabled={uploading !== null}
-                        />
-                      </label>
-                    )}
-                  </div>
-                  {canHaveVideo && (
-                    <div className="flex-1 min-w-[200px]">
-                      <div className="text-xs text-stone-500 mb-1">Видео (mp4)</div>
-                      {slide.videoUrl ? (
-                        <div className="flex items-center gap-2">
-                          <video
-                            src={getMediaUrl(slide.videoUrl)}
-                            controls
-                            className="max-h-48 max-w-xs w-auto rounded border border-stone-200 bg-stone-100"
-                          />
-                          <label className="text-sm text-amber-600 cursor-pointer hover:underline">
-                            Заменить
+                      )}
+                    </div>
+                    {canHaveVideo && (
+                      <div className="flex-1 min-w-[200px]">
+                        <div className="text-xs text-stone-500 mb-1">Видео (mp4)</div>
+                        {slide.videoUrl ? (
+                          <div className="flex items-center gap-2">
+                            <video
+                              src={getMediaUrl(slide.videoUrl)}
+                              controls
+                              className="max-h-48 max-w-xs w-auto rounded border border-stone-200 bg-stone-100"
+                            />
+                            <label className="text-sm text-amber-600 cursor-pointer hover:underline">
+                              Заменить
+                              <input
+                                type="file"
+                                accept="video/mp4,video/*"
+                                className="hidden"
+                                onChange={(e) => handleSlideVideo(idx, e.target.files?.[0])}
+                                disabled={uploading !== null}
+                              />
+                            </label>
+                          </div>
+                        ) : (
+                          <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
+                            {uploading === `video-${idx}` ? "Загрузка…" : "Загрузить видео"}
                             <input
                               type="file"
                               accept="video/mp4,video/*"
@@ -429,33 +477,32 @@ export default function QuestionForm({ question, onSave, onCancel, onUpload }) {
                               disabled={uploading !== null}
                             />
                           </label>
-                        </div>
-                      ) : (
-                        <label className="inline-block px-3 py-2 bg-white border border-stone-300 rounded-lg cursor-pointer hover:bg-stone-50 text-sm">
-                          {uploading === `video-${idx}` ? "Загрузка…" : "Загрузить видео"}
-                          <input
-                            type="file"
-                            accept="video/mp4,video/*"
-                            className="hidden"
-                            onChange={(e) => handleSlideVideo(idx, e.target.files?.[0])}
-                            disabled={uploading !== null}
-                          />
-                        </label>
-                      )}
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  {canHaveVideo && slide.imageUrl && (
+                    <div className="mt-3">
+                      <div className="text-xs text-stone-500 mb-1">Позиция видео на слайде</div>
+                      <VideoLayoutEditor
+                        imageUrl={slide.imageUrl}
+                        videoUrl={slide.videoUrl}
+                        videoLayout={slide.videoLayout}
+                        onChange={(layout) => handleVideoLayoutChange(idx, layout)}
+                      />
                     </div>
                   )}
                 </div>
-                {canHaveVideo && slide.imageUrl && (
-                  <div className="mt-3">
-                    <div className="text-xs text-stone-500 mb-1">Позиция видео на слайде</div>
-                    <VideoLayoutEditor
-                      imageUrl={slide.imageUrl}
-                      videoUrl={slide.videoUrl}
-                      videoLayout={slide.videoLayout}
-                      onChange={(layout) => handleVideoLayoutChange(idx, layout)}
-                    />
-                  </div>
-                )}
+                {/* Button to add extra slide after this slide */}
+                <div className="flex justify-center my-1">
+                  <button
+                    type="button"
+                    onClick={() => addExtraAfter(idx)}
+                    className="px-3 py-1 text-xs text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition"
+                  >
+                    + Экстра-слайд
+                  </button>
+                </div>
               </div>
             );
           })}

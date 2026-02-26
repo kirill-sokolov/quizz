@@ -304,12 +304,13 @@ export async function saveImportedQuiz(
       })
       .returning();
 
-    // Save slides (only those with content)
-    for (const type of SLIDE_TYPES) {
+    // Save slides with sort_order
+    let sortOrder = 0;
+    const baseTypes = ["video_warning", "video_intro", "question", "timer", "answer"] as const;
+    for (const type of baseTypes) {
       const imageUrl = item.slides[type as keyof typeof item.slides] ?? null;
 
       // Skip video_warning and video_intro if they have no image
-      // (always create question/timer/answer even if null, they're required)
       if ((type === "video_warning" || type === "video_intro") && !imageUrl) {
         continue;
       }
@@ -318,6 +319,17 @@ export async function saveImportedQuiz(
         questionId: question.id,
         type,
         imageUrl,
+        sortOrder: sortOrder++,
+      });
+    }
+
+    // Save extra slides (placed after answer)
+    for (const extraUrl of item.extraSlides ?? []) {
+      await db.insert(slides).values({
+        questionId: question.id,
+        type: "extra",
+        imageUrl: extraUrl,
+        sortOrder: sortOrder++,
       });
     }
   }

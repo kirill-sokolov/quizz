@@ -267,18 +267,34 @@ export default function ImportPreview({ quizId, data: initial, onDone, onCancel 
                   })}
                 </div>
 
-                {/* Extra slides (humor, timers, etc.) */}
+                {/* Extra slides (humor, etc.) */}
                 {item.extraSlides && item.extraSlides.length > 0 && (
                   <div className="mt-3 pt-3 border-t border-stone-200">
-                    <p className="text-xs text-stone-500 mb-2">Дополнительные слайды (юмор, таймеры):</p>
+                    <p className="text-xs text-stone-500 mb-2">Экстра-слайды ({item.extraSlides.length}):</p>
                     <div className="flex gap-3 flex-wrap">
                       {item.extraSlides.map((url, ei) => (
-                        <div key={ei} className="text-center">
+                        <div key={ei} className="text-center relative">
+                          <p className="text-xs text-blue-500 mb-1">Экстра {ei + 1}</p>
                           <img
                             src={getMediaUrl(url)}
                             alt={`Extra ${ei + 1}`}
-                            className="w-28 h-20 object-cover rounded border border-stone-200"
+                            className="w-28 h-20 object-cover rounded border border-blue-200"
                           />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setItems(prev => prev.map((item2, i2) => {
+                                if (i2 !== qi) return item2;
+                                const extras = [...(item2.extraSlides || [])];
+                                extras.splice(ei, 1);
+                                return { ...item2, extraSlides: extras };
+                              }));
+                            }}
+                            className="absolute top-4 right-0 text-red-500 hover:text-red-700 text-xs bg-white rounded-full px-1"
+                            title="Удалить экстра-слайд"
+                          >
+                            ✕
+                          </button>
                         </div>
                       ))}
                     </div>

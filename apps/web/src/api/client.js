@@ -99,12 +99,12 @@ export const gameApi = {
       method: "POST",
       body: JSON.stringify({ quizId: Number(quizId) }),
     }),
-  setSlide: (quizId, slide) =>
+  setSlide: (quizId, params) =>
     request("/game/set-slide", {
       method: "POST",
       body: JSON.stringify({
         quizId: Number(quizId),
-        slide,
+        ...params,
       }),
     }),
   remind: (quizId, teamId) =>

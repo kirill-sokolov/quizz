@@ -3,7 +3,9 @@ import { db } from "../db/index.js";
 import { questions, slides } from "../db/schema.js";
 import { eq, asc } from "drizzle-orm";
 import { authenticateToken } from "../middleware/auth.js";
-import { BASE_SLIDE_TYPES, type SlideType } from "../types/slide.js";
+import type { SlideType } from "../types/slide.js";
+
+const BASE_QUESTION_TYPES = ["question", "timer", "answer"] as const;
 
 export async function questionsRoutes(app: FastifyInstance) {
   app.get<{ Params: { id: string } }>(
@@ -21,7 +23,8 @@ export async function questionsRoutes(app: FastifyInstance) {
         const qSlides = await db
           .select()
           .from(slides)
-          .where(eq(slides.questionId, q.id));
+          .where(eq(slides.questionId, q.id))
+          .orderBy(asc(slides.sortOrder));
         result.push({ ...q, slides: qSlides });
       }
       return result;
@@ -68,10 +71,11 @@ export async function questionsRoutes(app: FastifyInstance) {
       .returning();
 
     const createdSlides = [];
-    for (const type of BASE_SLIDE_TYPES) {
+    for (let i = 0; i < BASE_QUESTION_TYPES.length; i++) {
+      const type = BASE_QUESTION_TYPES[i];
       const [slide] = await db
         .insert(slides)
-        .values({ questionId: question.id, type })
+        .values({ questionId: question.id, type, sortOrder: i + 2 }) // question=2, timer=3, answer=4
         .returning();
       createdSlides.push(slide);
     }
@@ -91,11 +95,12 @@ export async function questionsRoutes(app: FastifyInstance) {
       weight?: number;
       orderNum?: number;
       slides?: Array<{
-        id: number | null;
+        id?: number | null;
         type: SlideType;
         imageUrl?: string | null;
         videoUrl?: string | null;
         videoLayout?: { top: number; left: number; width: number; height: number } | null;
+        sortOrder?: number;
       }>;
     };
   }>(
@@ -125,61 +130,69 @@ export async function questionsRoutes(app: FastifyInstance) {
     }
 
     if (slideUpdates && Array.isArray(slideUpdates)) {
-      console.log('slideUpdates received:', JSON.stringify(slideUpdates, null, 2));
       // Get existing slides
       const existingSlides = await db
         .select()
         .from(slides)
         .where(eq(slides.questionId, questionId));
 
-      const existingByType = new Map(existingSlides.map(s => [s.type, s]));
+      const existingById = new Map(existingSlides.map(s => [s.id, s]));
+      const processedIds = new Set<number>();
 
-      for (const s of slideUpdates) {
-        // Skip slides without a valid type
-        if (!s.type) {
-          console.warn('Skipping slide without type:', s);
-          continue;
-        }
+      // Process each slide in order
+      for (let idx = 0; idx < slideUpdates.length; idx++) {
+        const s = slideUpdates[idx];
+        if (!s.type) continue;
 
+        const sortOrder = s.sortOrder ?? idx;
         const slideId = typeof s.id === "number" && s.id > 0 ? s.id : null;
-        const existing = existingByType.get(s.type);
 
-        if (slideId && existing) {
+        if (slideId && existingById.has(slideId)) {
           // Update existing slide
-          const setPayload: { imageUrl?: string | null; videoUrl?: string | null; videoLayout?: { top: number; left: number; width: number; height: number } | null } = {};
+          const setPayload: Record<string, any> = { sortOrder };
           if (s.imageUrl !== undefined) setPayload.imageUrl = s.imageUrl;
           if (s.videoUrl !== undefined) setPayload.videoUrl = s.videoUrl;
           if (s.videoLayout !== undefined) setPayload.videoLayout = s.videoLayout;
-          if (Object.keys(setPayload).length > 0) {
-            await db.update(slides).set(setPayload).where(eq(slides.id, slideId));
-          }
-        } else if (!existing) {
-          // Create new slide if it doesn't exist
-          await db.insert(slides).values({
+          await db.update(slides).set(setPayload).where(eq(slides.id, slideId));
+          processedIds.add(slideId);
+        } else if (!slideId) {
+          // Insert new slide (extras or new base slides)
+          const [inserted] = await db.insert(slides).values({
             questionId,
             type: s.type,
             imageUrl: s.imageUrl || null,
             videoUrl: s.videoUrl || null,
             videoLayout: s.videoLayout || null,
-          });
+            sortOrder,
+          }).returning();
+          processedIds.add(inserted.id);
         }
       }
 
-      // Delete slides that are not in the update (e.g., video slides when unchecked)
-      const updatedTypes = new Set(slideUpdates.map(s => s.type));
-      const typesToDelete = existingSlides
-        .filter(s => !updatedTypes.has(s.type))
-        .filter(s => s.type === "video_warning" || s.type === "video_intro"); // Only delete video slides
+      // Delete extra slides that are no longer in the array
+      // (only delete 'extra' type slides — never delete base question/timer/answer/video slides)
+      for (const existing of existingSlides) {
+        if (!processedIds.has(existing.id) && existing.type === "extra") {
+          await db.delete(slides).where(eq(slides.id, existing.id));
+        }
+      }
 
-      for (const toDelete of typesToDelete) {
-        await db.delete(slides).where(eq(slides.id, toDelete.id));
+      // Handle video slides: delete if not in the update list
+      const updatedTypes = new Set(slideUpdates.map(s => s.type));
+      for (const existing of existingSlides) {
+        if (!processedIds.has(existing.id) &&
+            (existing.type === "video_warning" || existing.type === "video_intro") &&
+            !updatedTypes.has(existing.type as any)) {
+          await db.delete(slides).where(eq(slides.id, existing.id));
+        }
       }
     }
 
     const qSlides = await db
       .select()
       .from(slides)
-      .where(eq(slides.questionId, questionId));
+      .where(eq(slides.questionId, questionId))
+      .orderBy(asc(slides.sortOrder));
 
     return { ...question, slides: qSlides };
   });

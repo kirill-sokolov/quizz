@@ -143,7 +143,8 @@ Set-Cookie: `auth_token=...`
         "type": "question",
         "imageUrl": "/api/media/question-1.png",
         "videoUrl": null,
-        "videoLayout": null
+        "videoLayout": null,
+        "sortOrder": 2
       },
       {
         "id": 2,
@@ -151,7 +152,17 @@ Set-Cookie: `auth_token=...`
         "type": "timer",
         "imageUrl": "/api/media/question-1.png",
         "videoUrl": null,
-        "videoLayout": null
+        "videoLayout": null,
+        "sortOrder": 3
+      },
+      {
+        "id": 5,
+        "questionId": 1,
+        "type": "extra",
+        "imageUrl": "/api/media/joke-1.png",
+        "videoUrl": null,
+        "videoLayout": null,
+        "sortOrder": 4
       },
       {
         "id": 3,
@@ -159,7 +170,8 @@ Set-Cookie: `auth_token=...`
         "type": "answer",
         "imageUrl": "/api/media/answer-1.png",
         "videoUrl": null,
-        "videoLayout": null
+        "videoLayout": null,
+        "sortOrder": 5
       }
     ]
   }
@@ -208,9 +220,11 @@ Set-Cookie: `auth_token=...`
   "registrationOpen": false,
   "currentQuestionId": 5,
   "currentSlide": "timer",
+  "currentSlideId": 42,
   "timerStartedAt": "2026-02-25T14:30:00Z"
 }
 ```
+`currentSlideId` — ID конкретного слайда в таблице `slides`. Используется фронтендом для точной навигации. Для post-game slides (`results`, `thanks`, `final`) — `null`.
 
 ### POST `/game/start`
 Запустить квиз (создать game_state, генерировать joinCode).
@@ -234,13 +248,22 @@ Set-Cookie: `auth_token=...`
 ### POST `/game/set-slide`
 Переключить слайд текущего вопроса.
 
-**Request:**
+**Request (in-game slide by ID):**
 ```json
 {
   "quizId": 1,
-  "slide": "timer"
+  "slideId": 42
 }
 ```
+
+**Request (post-game slide by type):**
+```json
+{
+  "quizId": 1,
+  "slide": "results"
+}
+```
+Один из параметров обязателен: `slideId` (для вопросных слайдов, включая extra) или `slide` (для `results`, `thanks`, `final`).
 
 ### POST `/game/remind`
 Отправить напоминание в Telegram (всем или одной команде).
