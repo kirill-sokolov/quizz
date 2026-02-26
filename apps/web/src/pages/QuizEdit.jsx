@@ -300,6 +300,31 @@ export default function QuizEdit() {
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-stone-700 mb-2">
+                Демо-слайд (показывается до начала квиза)
+              </label>
+              <div className="flex items-center gap-3">
+                {quiz.demoImageUrl && (
+                  <img
+                    src={getMediaUrl(quiz.demoImageUrl)}
+                    alt="Demo"
+                    className="w-24 h-16 object-cover rounded border"
+                  />
+                )}
+                <label className="cursor-pointer px-4 py-2 bg-stone-100 hover:bg-stone-200 rounded-lg text-sm font-medium transition">
+                  {uploadingDemo ? "Загрузка..." : quiz.demoImageUrl ? "Заменить" : "Загрузить"}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleUploadDemo}
+                    disabled={uploadingDemo}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-stone-700 mb-2">
                 Правила (показываются после "Начать")
               </label>
               <div className="flex items-center gap-3">
@@ -385,6 +410,14 @@ export default function QuizEdit() {
           </div>
         ) : (
           <div className="space-y-2 text-sm text-stone-600">
+            <div className="flex items-center gap-2">
+              <span className="font-medium">Демо:</span>
+              {quiz.demoImageUrl ? (
+                <span className="text-green-600">✓ Загружен</span>
+              ) : (
+                <span className="text-stone-400">Не загружен</span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               <span className="font-medium">Правила:</span>
               {quiz.rulesImageUrl ? (
@@ -516,6 +549,7 @@ export default function QuizEdit() {
             data={importPreview}
             onDone={() => {
               setImportPreview(null);
+              loadQuiz();
               loadQuestions();
             }}
             onCancel={() => setImportPreview(null)}
