@@ -957,4 +957,408 @@ describe("Game.jsx — WebSocket events (additional)", () => {
       expect(screen.getByText(QUESTION.text)).toBeInTheDocument()
     );
   });
+
+  it("'game_lobby' event triggers full reload", async () => {
+    renderGame();
+    await screen.findByText(QUESTION.text);
+
+    const callsBefore = vi.mocked(quizzesApi.get).mock.calls.length;
+    sendWsMessage({ event: "game_lobby", data: { quizId: 1 } });
+
+    await waitFor(() =>
+      expect(vi.mocked(quizzesApi.get).mock.calls.length).toBeGreaterThan(callsBefore)
+    );
+  });
+
+  it("unknown WS event is silently ignored", async () => {
+    renderGame();
+    await screen.findByText(QUESTION.text);
+
+    sendWsMessage({ event: "completely_unknown_event", data: { quizId: 1 } });
+
+    await waitFor(() =>
+      expect(screen.getByText(QUESTION.text)).toBeInTheDocument()
+    );
+  });
+});
+
+// ─── auto-start: load() after start resolves ──────────────────────────────────
+describe("Game.jsx — auto-start: load() runs after start resolves", () => {
+  it("load() is called after gameApi.start resolves (line 238)", async () => {
+    setupDefault();
+    vi.mocked(gameApi.getState)
+      .mockResolvedValueOnce(null)
+      .mockResolvedValue(makeState({ status: "lobby", registrationOpen: false }));
+    vi.mocked(gameApi.start).mockResolvedValue({});
+
+    renderGame();
+    // First load → state=null → auto-start fires → start resolves → load() again
+    await waitFor(() =>
+      expect(vi.mocked(quizzesApi.get).mock.calls.length).toBeGreaterThan(1)
+    );
+  });
+});
+
+// ─── nextQuestion: done=true ───────────────────────────────────────────────────
+describe("Game.jsx — playing: nextQuestion done=true", () => {
+  it("when done=true, triggers full reload instead of setState", async () => {
+    const Q2 = makeQuestion({ id: 2, text: "Q2", slides: [
+      { id: 20, type: "question", sortOrder: 2, imageUrl: null, videoUrl: null },
+      { id: 21, type: "timer",    sortOrder: 3, imageUrl: null, videoUrl: null },
+      { id: 22, type: "answer",   sortOrder: 4, imageUrl: null, videoUrl: null },
+    ]});
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: QUESTION.id, currentSlide: "answer", currentSlideId: SLIDE_ANSWER_ID })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([QUESTION, Q2]);
+    vi.mocked(teamsApi.list).mockResolvedValue([]);
+    vi.mocked(answersApi.list).mockResolvedValue([]);
+    vi.mocked(gameApi.nextQuestion).mockResolvedValue({ done: true });
+
+    const user = userEvent.setup();
+    renderGame();
+    await screen.findByText(QUESTION.text);
+
+    const callsBefore = vi.mocked(quizzesApi.get).mock.calls.length;
+    await user.click(screen.getByText("→ Следующий вопрос"));
+
+    await waitFor(() =>
+      expect(vi.mocked(quizzesApi.get).mock.calls.length).toBeGreaterThan(callsBefore)
+    );
+  });
+});
+
+// ─── lobby: edge cases ─────────────────────────────────────────────────────────
+describe("Game.jsx — lobby: edge cases", () => {
+  beforeEach(() => {
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "lobby", registrationOpen: true })
+    );
+  });
+
+  it("shows 'Пока никто не зарегистрировался' when teams list is empty", async () => {
+    vi.mocked(teamsApi.list).mockResolvedValue([]);
+    renderGame();
+    await screen.findByText(/Пока никто не зарегистрировался/);
+  });
+
+  it("shows 'исключён' badge for kicked teams", async () => {
+    const kicked = makeTeam({ id: 3, name: "KickedTeam", isKicked: true });
+    vi.mocked(teamsApi.list).mockResolvedValue([kicked]);
+    renderGame();
+    await screen.findByText("KickedTeam");
+    expect(screen.getByText("исключён")).toBeInTheDocument();
+  });
+});
+
+// ─── playing: extra slide label ────────────────────────────────────────────────
+describe("Game.jsx — playing: extra slide label", () => {
+  it("shows 'Экстра N/M' label when current slide is extra type", async () => {
+    const questionWithExtra = makeQuestion({
+      id: 1,
+      slides: [
+        { id: 10, type: "question", sortOrder: 1, imageUrl: null, videoUrl: null },
+        { id: 11, type: "timer",    sortOrder: 2, imageUrl: null, videoUrl: null },
+        { id: 12, type: "answer",   sortOrder: 3, imageUrl: null, videoUrl: null },
+        { id: 13, type: "extra",    sortOrder: 4, imageUrl: null, videoUrl: null },
+      ],
+    });
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: 1, currentSlide: "extra", currentSlideId: 13 })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([questionWithExtra]);
+    vi.mocked(teamsApi.list).mockResolvedValue([]);
+    vi.mocked(answersApi.list).mockResolvedValue([]);
+
+    renderGame();
+    await screen.findByText(/Экстра 1\/1/);
+  });
+});
+
+// ─── playing: getCurrentSlideIdx fallback ──────────────────────────────────────
+describe("Game.jsx — playing: slide idx fallback when currentSlideId is null", () => {
+  it("falls back to type-based match when currentSlideId is null", async () => {
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: QUESTION.id, currentSlide: "timer", currentSlideId: null })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([QUESTION]);
+    vi.mocked(teamsApi.list).mockResolvedValue([TEAM_A]);
+    vi.mocked(answersApi.list).mockResolvedValue([
+      { id: 1, teamId: TEAM_A.id, answerText: "A", awardedScore: 0 },
+    ]);
+
+    renderGame();
+    await screen.findByText(QUESTION.text);
+    // Slide nav buttons present — component loaded without error
+    expect(screen.getByText("◀")).toBeInTheDocument();
+  });
+});
+
+// ─── playing: question with explanation ───────────────────────────────────────
+describe("Game.jsx — playing: question explanation", () => {
+  it("shows explanation block when question has explanation text", async () => {
+    const questionWithExplanation = makeQuestion({
+      explanation: "Потому что столица Франции — Париж.",
+    });
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: questionWithExplanation.id, currentSlide: "question", currentSlideId: SLIDE_QUESTION_ID })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([questionWithExplanation]);
+    vi.mocked(teamsApi.list).mockResolvedValue([]);
+    vi.mocked(answersApi.list).mockResolvedValue([]);
+
+    renderGame();
+    await screen.findByText(questionWithExplanation.text);
+    expect(screen.getByText(/Потому что столица Франции/)).toBeInTheDocument();
+  });
+});
+
+// ─── playing: kicked team in bottom panel ─────────────────────────────────────
+describe("Game.jsx — playing: kicked team in bottom panel", () => {
+  it("shows kicked team with 'исключён' in bottom panel", async () => {
+    const kicked = makeTeam({ id: 5, name: "OutTeam", isKicked: true });
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: QUESTION.id, currentSlide: "question", currentSlideId: SLIDE_QUESTION_ID })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([QUESTION]);
+    vi.mocked(teamsApi.list).mockResolvedValue([TEAM_A, kicked]);
+    vi.mocked(answersApi.list).mockResolvedValue([]);
+
+    renderGame();
+    await screen.findByText(QUESTION.text);
+    expect(screen.getByText("OutTeam")).toBeInTheDocument();
+    // "исключён" appears in the bottom panel for the kicked team
+    const kickedSpans = screen.getAllByText("исключён");
+    expect(kickedSpans.length).toBeGreaterThan(0);
+  });
+});
+
+// ─── playing: text question score with empty correctAnswer ────────────────────
+describe("Game.jsx — playing: text question with empty correctAnswer", () => {
+  it("renders score dropdown with step=0.25 when correctAnswer is empty", async () => {
+    const textQ = makeQuestion({
+      questionType: "text",
+      correctAnswer: "",
+      weight: 1,
+      slides: [
+        { id: 10, type: "question", sortOrder: 1, imageUrl: null, videoUrl: null },
+        { id: 11, type: "timer",    sortOrder: 2, imageUrl: null, videoUrl: null },
+        { id: 12, type: "answer",   sortOrder: 3, imageUrl: null, videoUrl: null },
+      ],
+    });
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: textQ.id, currentSlide: "timer", currentSlideId: 11 })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([textQ]);
+    vi.mocked(teamsApi.list).mockResolvedValue([TEAM_A]);
+    vi.mocked(answersApi.list).mockResolvedValue([
+      { id: 1, teamId: TEAM_A.id, answerText: "some answer", awardedScore: 0 },
+    ]);
+
+    renderGame();
+    await screen.findByText(textQ.text);
+    // Score dropdown present (step=0.25, stepsCount=5 → values 0,0.25,0.5,0.75,1)
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
+  });
+});
+
+// ─── finished: team details — text question & wrong answer ────────────────────
+describe("Game.jsx — finished: team details modal branches", () => {
+  const makeDetail = (overrides = {}) => ({
+    questionId: 1,
+    questionText: "Q-detail",
+    questionType: "choice",
+    teamAnswer: "A",
+    teamAnswerText: "option A",
+    correctAnswer: "B",
+    correctAnswerText: "option B",
+    isCorrect: false,
+    awardedScore: 0,
+    weight: 1,
+    ...overrides,
+  });
+
+  beforeEach(() => {
+    setupDefault();
+    vi.mocked(quizzesApi.get).mockResolvedValue(makeQuiz({ status: "finished" }));
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "finished", currentSlide: "results", resultsRevealCount: 0 })
+    );
+    vi.mocked(gameApi.getResults).mockResolvedValue([
+      { teamId: 1, name: "Team Alpha", correct: 1, total: 2 },
+    ]);
+  });
+
+  it("shows '❌' and correct answer for wrong choice answer", async () => {
+    vi.mocked(gameApi.getTeamDetails).mockResolvedValue({
+      teamId: 1, teamName: "Team Alpha", totalCorrect: 1, totalQuestions: 2,
+      details: [makeDetail({ isCorrect: false, correctAnswer: "B", correctAnswerText: "option B" })],
+    });
+
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole("button", { name: "Подробнее" }));
+
+    await screen.findByText("Q-detail");
+    expect(screen.getByText("❌")).toBeInTheDocument();
+    expect(screen.getByText(/option B/)).toBeInTheDocument();
+  });
+
+  it("shows score badge and correct answer for text question", async () => {
+    vi.mocked(gameApi.getTeamDetails).mockResolvedValue({
+      teamId: 1, teamName: "Team Alpha", totalCorrect: 1, totalQuestions: 2,
+      details: [makeDetail({ questionType: "text", teamAnswer: "Париж", correctAnswer: "Париж", isCorrect: true, awardedScore: 1 })],
+    });
+
+    const user = userEvent.setup();
+    renderGame();
+    await user.click(await screen.findByRole("button", { name: "Подробнее" }));
+
+    await screen.findByText("Q-detail");
+    // Text question badge
+    expect(screen.getByText("текст")).toBeInTheDocument();
+    // Score line: "Оценка:"
+    expect(screen.getByText(/Оценка:/)).toBeInTheDocument();
+  });
+});
+
+// ─── playing: team details modal with detail items ────────────────────────────
+describe("Game.jsx — playing: team details via results modal (with items + hasHidden)", () => {
+  const EXTRA_DETAIL = {
+    questionId: 2,
+    questionText: "Future Q",
+    questionType: "choice",
+    teamAnswer: "A",
+    teamAnswerText: "option A",
+    correctAnswer: "A",
+    correctAnswerText: "option A",
+    isCorrect: true,
+    awardedScore: 1,
+    weight: 1,
+  };
+
+  beforeEach(() => {
+    setupDefault();
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "playing", currentQuestionId: QUESTION.id, currentSlide: "question", currentSlideId: SLIDE_QUESTION_ID })
+    );
+    vi.mocked(questionsApi.list).mockResolvedValue([QUESTION]);
+    vi.mocked(teamsApi.list).mockResolvedValue([TEAM_A]);
+    vi.mocked(answersApi.list).mockResolvedValue([]);
+    // Team has answered 2 questions but current is Q1 → hasHidden=true
+    vi.mocked(gameApi.getTeamDetails).mockResolvedValue({
+      teamId: 1, teamName: "Team Alpha", totalCorrect: 2, totalQuestions: 2,
+      details: [
+        { questionId: 1, questionText: "Q-one", questionType: "choice",
+          teamAnswer: "A", teamAnswerText: "opt A", correctAnswer: "A",
+          correctAnswerText: "opt A", isCorrect: true, awardedScore: 1, weight: 1 },
+        EXTRA_DETAIL,
+      ],
+    });
+    vi.mocked(gameApi.getResults).mockResolvedValue([
+      { teamId: 1, name: "Team Alpha", correct: 2, total: 2 },
+    ]);
+  });
+
+  it("renders detail items in playing-state team details modal", async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await screen.findByText(QUESTION.text);
+
+    // Open results modal → Подробнее
+    await user.click(screen.getByText(/Результаты/));
+    await screen.findByText("Текущие результаты");
+    await user.click(screen.getByRole("button", { name: "Подробнее" }));
+
+    await screen.findByText(/баллов из/);
+    expect(screen.getByText("Q-one")).toBeInTheDocument();
+  });
+
+  it("shows 'Показать ещё не отвеченные' button when hasHidden=true", async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await screen.findByText(QUESTION.text);
+
+    await user.click(screen.getByText(/Результаты/));
+    await screen.findByText("Текущие результаты");
+    await user.click(screen.getByRole("button", { name: "Подробнее" }));
+
+    // hasHidden = details.length(2) > filteredDetails.length(1) → button shown
+    await screen.findByText(/Показать ещё не отвеченные/);
+  });
+
+  it("clicking 'Показать ещё не отвеченные' reveals hidden detail", async () => {
+    const user = userEvent.setup();
+    renderGame();
+    await screen.findByText(QUESTION.text);
+
+    await user.click(screen.getByText(/Результаты/));
+    await screen.findByText("Текущие результаты");
+    await user.click(screen.getByRole("button", { name: "Подробнее" }));
+
+    const showBtn = await screen.findByText(/Показать ещё не отвеченные/);
+    expect(screen.queryByText("Future Q")).not.toBeInTheDocument();
+
+    await user.click(showBtn);
+
+    await screen.findByText("Future Q");
+  });
+});
+
+// ─── finished: nextAction for post-game slides ────────────────────────────────
+describe("Game.jsx — finished: nextAction on thanks/final slides", () => {
+  const RESULTS = [{ teamId: 1, name: "Team Alpha", correct: 1, total: 1 }];
+
+  it("on 'final' slide with allRevealed → shows 'Архивировать' (nextAction=archive)", async () => {
+    setupDefault();
+    vi.mocked(quizzesApi.get).mockResolvedValue(makeQuiz({ status: "finished", finalImageUrl: "/final.png" }));
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "finished", currentSlide: "final", resultsRevealCount: 1 })
+    );
+    vi.mocked(gameApi.getResults).mockResolvedValue(RESULTS);
+
+    renderGame();
+    await waitFor(() =>
+      expect(screen.getByText(/Архивировать квиз/)).toBeInTheDocument()
+    );
+  });
+
+  it("on 'thanks' slide + finalImageUrl → shows 'Показать финальный слайд' (nextAction=final)", async () => {
+    setupDefault();
+    vi.mocked(quizzesApi.get).mockResolvedValue(
+      makeQuiz({ status: "finished", thanksImageUrl: "/thanks.png", finalImageUrl: "/final.png" })
+    );
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "finished", currentSlide: "thanks", resultsRevealCount: 1 })
+    );
+    vi.mocked(gameApi.getResults).mockResolvedValue(RESULTS);
+
+    renderGame();
+    await waitFor(() =>
+      expect(screen.getByText(/финальный слайд/i)).toBeInTheDocument()
+    );
+  });
+
+  it("on 'thanks' slide + no finalImageUrl → shows 'Архивировать' (nextAction=archive)", async () => {
+    setupDefault();
+    vi.mocked(quizzesApi.get).mockResolvedValue(
+      makeQuiz({ status: "finished", thanksImageUrl: "/thanks.png" })
+    );
+    vi.mocked(gameApi.getState).mockResolvedValue(
+      makeState({ status: "finished", currentSlide: "thanks", resultsRevealCount: 1 })
+    );
+    vi.mocked(gameApi.getResults).mockResolvedValue(RESULTS);
+
+    renderGame();
+    await waitFor(() =>
+      expect(screen.getByText(/Архивировать квиз/)).toBeInTheDocument()
+    );
+  });
 });
