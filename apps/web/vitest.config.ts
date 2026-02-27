@@ -12,6 +12,7 @@ export default defineConfig({
       VITE_TELEGRAM_BOT_USERNAME: "testbot",
       VITE_API_URL: "http://localhost",
     },
+    exclude: ["node_modules", "e2e/**"],
     coverage: {
       provider: "v8",
       include: ["src/components/TV/**", "src/pages/TV.jsx", "src/pages/Game.jsx"],
