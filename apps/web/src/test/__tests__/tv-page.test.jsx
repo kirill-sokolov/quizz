@@ -189,6 +189,64 @@ describe("TV: playing", () => {
     expect(screen.queryByText("Столица Франции?")).not.toBeInTheDocument();
   });
 
+  it("slide=video_warning → renders TVVideoWarning, no timer countdown", async () => {
+    const questionWithVideoWarning = makeQuestion({
+      id: 1,
+      slides: [
+        { id: 1, type: "video_warning", sortOrder: 1, imageUrl: "warn.jpg", videoUrl: null },
+        { id: 10, type: "question",     sortOrder: 2, imageUrl: null, videoUrl: null },
+        { id: 11, type: "timer",        sortOrder: 3, imageUrl: null, videoUrl: null },
+        { id: 12, type: "answer",       sortOrder: 4, imageUrl: null, videoUrl: null },
+      ],
+    });
+    useHandler(
+      http.get(`${BASE}/game/state/:quizId`, () =>
+        HttpResponse.json(
+          makeState({ status: "playing", currentQuestionId: 1, currentSlide: "video_warning" })
+        )
+      ),
+      http.get(`${BASE}/quizzes/:quizId/questions`, () =>
+        HttpResponse.json([questionWithVideoWarning])
+      )
+    );
+    renderTV();
+    await waitForLoad();
+    expect(screen.queryByText("30")).not.toBeInTheDocument();
+    expect(screen.queryByText("Регистрация команд")).not.toBeInTheDocument();
+    // TVVideoWarning → TVSlideBg renders img for imageUrl
+    const img = document.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img.src).toContain("warn.jpg");
+  });
+
+  it("slide=video_intro → renders TVVideoIntro with video element", async () => {
+    const questionWithVideoIntro = makeQuestion({
+      id: 1,
+      slides: [
+        { id: 2, type: "video_intro", sortOrder: 1, imageUrl: null, videoUrl: "intro.mp4" },
+        { id: 10, type: "question",   sortOrder: 2, imageUrl: null, videoUrl: null },
+        { id: 11, type: "timer",      sortOrder: 3, imageUrl: null, videoUrl: null },
+        { id: 12, type: "answer",     sortOrder: 4, imageUrl: null, videoUrl: null },
+      ],
+    });
+    useHandler(
+      http.get(`${BASE}/game/state/:quizId`, () =>
+        HttpResponse.json(
+          makeState({ status: "playing", currentQuestionId: 1, currentSlide: "video_intro" })
+        )
+      ),
+      http.get(`${BASE}/quizzes/:quizId/questions`, () =>
+        HttpResponse.json([questionWithVideoIntro])
+      )
+    );
+    renderTV();
+    await waitForLoad();
+    expect(screen.queryByText("30")).not.toBeInTheDocument();
+    const video = document.querySelector("video");
+    expect(video).toBeTruthy();
+    expect(video.src).toContain("intro.mp4");
+  });
+
   it("slide=extra → renders TVExtraSlide, no question text", async () => {
     useHandler(
       http.get(`${BASE}/game/state/:quizId`, () =>
@@ -252,6 +310,21 @@ describe("TV: finished", () => {
     await waitForLoad();
     const img = document.querySelector('img[src*="thanks"]');
     expect(img).toBeInTheDocument();
+  });
+});
+
+// ─── Fallback state ───────────────────────────────────────────────────────────
+
+describe("TV: fallback", () => {
+  it("shows TVDemo when quiz loads but game state is unavailable", async () => {
+    useHandler(
+      http.get(`${BASE}/game/state/:quizId`, () =>
+        HttpResponse.json({ error: "not found" }, { status: 404 })
+      )
+    );
+    renderTV();
+    // TVDemo shows "Загрузка..." (3 dots) — distinct from loading spinner "Загрузка…" (ellipsis)
+    await screen.findByText("Загрузка...");
   });
 });
 

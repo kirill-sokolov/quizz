@@ -17,6 +17,9 @@ vi.mock("../../api/client", () => ({
 import TVAnswer from "../../components/TV/TVAnswer";
 import TVDemo from "../../components/TV/TVDemo";
 import TVExtraSlide from "../../components/TV/TVExtraSlide";
+import TVRules from "../../components/TV/TVRules";
+import TVVideoWarning from "../../components/TV/TVVideoWarning";
+import TVVideoIntro from "../../components/TV/TVVideoIntro";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 
@@ -136,5 +139,76 @@ describe("TVExtraSlide", () => {
   it("does not crash when slide is undefined", () => {
     const { container } = render(<TVExtraSlide />);
     expect(container).toBeEmptyDOMElement();
+  });
+});
+
+// ─── TVRules ──────────────────────────────────────────────────────────────────
+
+describe("TVRules", () => {
+  it("shows fallback text when imageUrl is not provided", () => {
+    render(<TVRules />);
+    expect(screen.getByText("Правила квиза")).toBeInTheDocument();
+  });
+
+  it("renders img when imageUrl is provided", () => {
+    render(<TVRules imageUrl="rules-bg.jpg" />);
+    const img = screen.getByAltText("Правила");
+    expect(img).toBeInTheDocument();
+    expect(img.src).toContain("rules-bg.jpg");
+  });
+});
+
+// ─── TVVideoWarning ───────────────────────────────────────────────────────────
+
+describe("TVVideoWarning", () => {
+  it("renders without crash when slides is empty", () => {
+    render(<TVVideoWarning slides={[]} currentIndex={1} totalQuestions={3} />);
+  });
+
+  it("renders without crash when no video_warning slide present", () => {
+    const slides = [{ id: 1, type: "question", imageUrl: null, videoUrl: null }];
+    render(<TVVideoWarning slides={slides} currentIndex={1} totalQuestions={3} />);
+  });
+
+  it("renders img when video_warning slide has imageUrl", () => {
+    const slides = [
+      { id: 1, type: "video_warning", sortOrder: 1, imageUrl: "warn-bg.jpg", videoUrl: null },
+    ];
+    const { container } = render(
+      <TVVideoWarning slides={slides} currentIndex={1} totalQuestions={3} />
+    );
+    const img = container.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img.src).toContain("warn-bg.jpg");
+  });
+});
+
+// ─── TVVideoIntro ─────────────────────────────────────────────────────────────
+
+describe("TVVideoIntro", () => {
+  it("renders without crash when slides is empty", () => {
+    render(<TVVideoIntro slides={[]} currentIndex={1} totalQuestions={3} />);
+  });
+
+  it("renders img when video_intro slide has imageUrl", () => {
+    const slides = [
+      { id: 2, type: "video_intro", sortOrder: 1, imageUrl: "intro-bg.jpg", videoUrl: null },
+    ];
+    const { container } = render(
+      <TVVideoIntro slides={slides} currentIndex={1} totalQuestions={3} />
+    );
+    const img = container.querySelector("img");
+    expect(img).toBeInTheDocument();
+    expect(img.src).toContain("intro-bg.jpg");
+  });
+
+  it("renders video when video_intro slide has videoUrl", () => {
+    const slides = [
+      { id: 3, type: "video_intro", sortOrder: 1, imageUrl: null, videoUrl: "intro.mp4" },
+    ];
+    render(<TVVideoIntro slides={slides} currentIndex={1} totalQuestions={3} />);
+    const video = document.querySelector("video");
+    expect(video).toBeTruthy();
+    expect(video.src).toContain("intro.mp4");
   });
 });
