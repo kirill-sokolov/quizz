@@ -328,6 +328,64 @@ export const importApi = { ... };
 
 ---
 
+---
+
+## Тестирование
+
+### Стек
+
+- **Vitest** + **jsdom** — unit/integration тесты (запуск без браузера)
+- **@testing-library/react** — рендеринг компонентов
+- **MSW** (`msw/node`) — мок HTTP API и WebSocket
+- **@playwright/test** + **Chromium** — E2E тесты против реального Docker стека
+
+### Запуск
+
+```bash
+# Unit + Integration (без Docker)
+cd apps/web && npm run test
+
+# E2E (требует запущенного Docker стека)
+cd apps/web && npm run e2e
+```
+
+### Структура тестов
+
+```
+apps/web/
+├── src/test/
+│   ├── setup.ts              # jest-dom, моки браузерных API (AudioContext, matchMedia, ...)
+│   ├── utils.jsx              # renderWithRouter, makeQuiz, makeState, makeQuestion, makeTeam
+│   └── msw/
+│       ├── handlers.ts        # MSW handlers для всех API endpoints
+│       ├── server.ts          # setupServer (msw/node)
+│       └── ws-mock.ts         # MockWebSocket + sendWsMessage + installWsMock
+├── src/test/__tests__/
+│   ├── TVResults.test.jsx     # 25 тестов — компонент TVResults
+│   ├── TVTimer.test.jsx       # 19 тестов — TVTimer (fake timers)
+│   ├── TVQuestion.test.jsx    # 13 тестов — TVQuestion
+│   ├── TVLobby.test.jsx       # 7 тестов — TVLobby
+│   ├── tv-misc-components.test.jsx  # 15 тестов — TVAnswer, TVDemo, TVExtraSlide
+│   ├── TV.test.jsx            # TV.jsx render paths (все slide types)
+│   ├── tv-page.test.jsx       # 13 integration тестов — TV.jsx + MSW + WS
+│   └── game-page.test.jsx     # 15 integration тестов — Game.jsx + MSW + WS
+└── e2e/
+    ├── fixtures.ts            # login(), createTestQuiz(), startGame(), deleteQuiz()
+    ├── tv-slides.spec.ts      # 6 E2E smoke тестов — TV для каждого slide type
+    └── game-flow.spec.ts      # 1 E2E тест — полный флоу Admin + TV параллельно
+```
+
+### E2E fixtures (`e2e/fixtures.ts`)
+
+Хелперы для работы с реальным API (`http://localhost:3000`):
+
+- `login(request)` — авторизует как `admin/admin`
+- `createTestQuiz(request, title?)` — создаёт квиз + один вопрос, возвращает `{ id, joinCode, title }`
+- `startGame(request, quizId)` — вызывает `/api/game/start`
+- `deleteQuiz(request, quizId)` — cleanup после теста
+
+---
+
 ## См. также
 - [ARCHITECTURE.md](./ARCHITECTURE.md) — общая архитектура
 - [API.md](./API.md) — endpoints

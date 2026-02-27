@@ -6,62 +6,25 @@
 
 ## Тесты фронтенда
 
-Цель: зафиксировать текущее поведение (characterization tests) перед большим рефакторингом.
+✅ Все этапы завершены — см. DONE.md
 
-**Готово:** Setup 1, Setup 2 (MSW), Stage 1 (1A–1F), Setup 3 (Playwright), Stage 2A (TV.jsx), Stage 2B (Game.jsx) — см. DONE.md
-
----
-
-### Stage 2: Integration Tests (MSW + RTL)
-
-Тестируем **страницы целиком** с реалистичными HTTP-ответами и симуляцией WebSocket событий.
-Setup 2 уже выполнен (MSW handlers, server, ws-mock готовы).
-
-#### ✅ 2A: TV.jsx integration — DONE (см. DONE.md)
-
-#### ✅ 2B: Game.jsx integration — DONE (см. DONE.md)
-
----
-
-### Stage 3: E2E Tests (Playwright)
-
-Реальный браузер против работающего Docker стека.
-
-#### ✅ Setup 3 — DONE (см. DONE.md)
-
-#### 3A: TV slide smoke tests (1 агент, parallel после Setup 3)
-
-Файл: `e2e/tv-slides.spec.ts`
-
-Для каждого slide type — TV рендерит контент, нет JS-ошибок в консоли:
-- `lobby/regClosed` → rules элемент виден
-- `lobby/regOpen` → QR код виден
-- `playing/question` → текст вопроса виден
-- `playing/timer` → countdown виден
-- `playing/answer` → нет крэша
-- `finished/results` → таблица результатов
-
-#### 3B: Full game flow E2E (1 агент, parallel после Setup 3)
-
-Файл: `e2e/game-flow.spec.ts`
-
-Два tab'а: Admin + TV открыты параллельно:
-1. Admin: "Запустить" → TV: rules
-2. Admin: "Открыть регистрацию" → TV: QR/lobby
-3. Admin: "Начать квиз" → TV: первый вопрос
-4. Admin: "▶" (таймер) → TV: таймер
-5. Admin: "▶" (ответ) → TV: ответ
-6. Admin: "Завершить" → TV: results
-7. Admin: "Показать место" × N → TV: места появляются
-
----
+| Этап | Описание | Статус |
+|---|---|---|
+| Setup 1 | Vitest + jsdom + утилиты | ✅ |
+| Setup 2 | MSW handlers + WS mock | ✅ |
+| Stage 1 (1A–1F) | Компонентные тесты TV (79+ тестов) | ✅ |
+| Stage 2A | TV.jsx integration (13 тестов) | ✅ |
+| Stage 2B | Game.jsx integration (15 тестов) | ✅ |
+| Setup 3 | Playwright + fixtures | ✅ |
+| Stage 3A | TV slide smoke E2E (6 тестов) | ✅ |
+| Stage 3B | Full game flow E2E (1 тест) | ✅ |
 
 ### Критерии готовности фронтенда
 
 - [x] `npm run test` в `apps/web` запускается без ошибок
 - [x] Stage 1: все компонентные тесты зелёные (1A–1F)
 - [x] Stage 2: TV.jsx и Game.jsx integration тесты зелёные
-- [ ] Stage 3: Playwright smoke + game flow зелёные
+- [x] Stage 3: Playwright smoke + game flow зелёные (3A ✅, 3B ✅)
 - [ ] Удалённая/сломанная компонента ловится тестом
 
 ---

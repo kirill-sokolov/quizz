@@ -23,6 +23,11 @@ out
 # test coverage
 coverage
 
+# playwright
+test-results
+playwright-report
+.playwright
+
 # logs
 logs
 *.log
