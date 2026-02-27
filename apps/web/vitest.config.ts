@@ -10,7 +10,7 @@ export default defineConfig({
     // Treat import.meta.env.VITE_* as test env vars
     env: {
       VITE_TELEGRAM_BOT_USERNAME: "testbot",
-      VITE_API_URL: "",
+      VITE_API_URL: "http://localhost",
     },
     coverage: {
       provider: "v8",
