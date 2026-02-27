@@ -19,7 +19,11 @@ vi.mock("../bot-service-registry.js", () => ({
   setBotService: vi.fn(),
 }));
 
-// LLM text-answer evaluation → returns [] by default (no real HTTP calls)
-vi.mock("../services/llm/evaluate-text-answer.js", () => ({
-  evaluateTextAnswers: vi.fn().mockResolvedValue([]),
-}));
+// LLM text-answer evaluation → mock evaluateTextAnswers only; preserve other exports (parseEvalResponse)
+vi.mock("../services/llm/evaluate-text-answer.js", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../services/llm/evaluate-text-answer.js")>();
+  return {
+    ...actual,
+    evaluateTextAnswers: vi.fn().mockResolvedValue([]),
+  };
+});

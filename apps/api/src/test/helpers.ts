@@ -139,6 +139,23 @@ export async function createDemoQuiz() {
   return { quiz, questions: [q1, q2, q3, q4] };
 }
 
+// ─── Admin HTTP helpers ───────────────────────────────────────────────────────
+
+/** Authenticated POST — shortcut for admin API calls. */
+export async function adminPost(
+  app: FastifyInstance,
+  cookie: string,
+  url: string,
+  body: Record<string, unknown> = {}
+) {
+  return app.inject({
+    method: "POST",
+    url,
+    cookies: { auth_token: cookie },
+    payload: body,
+  });
+}
+
 // ─── Bot-simulated actions ────────────────────────────────────────────────────
 // These mirror what apps/bot/ does: POST to API endpoints directly.
 

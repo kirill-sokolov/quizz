@@ -1,5 +1,107 @@
 # История выполненных задач
 
+## 2026-02-27: Тесты — Шаги 4 и 5: WebSocket и unit-тесты
+
+### ✅ 13 broadcast-тестов (Шаг 4) + 11 unit-тестов (Шаг 5) = 73 теста всего
+
+**Шаг 4 — `ws.test.ts` (13 тестов):**
+
+*Game lifecycle events:*
+- `startGame` → `game_lobby` с quizId и joinCode
+- `openRegistration` → `registration_opened`
+- `beginGame` → `slide_changed` с первым слайдом вопроса
+- `setSlide(timer)` → `slide_changed` с `slide=timer` и slideId
+- `setSlide(answer)` → `slide_changed` с `slide=answer`
+- `nextQuestion` → `slide_changed` со следующим вопросом
+- `finishGame` → `quiz_finished` с массивом results и resultsRevealCount=0
+- `revealNextResult` → `results_revealed` с incremented count
+- `archiveQuiz` → `quiz_archived`
+
+*Team and answer events:*
+- `registerTeamViaBot` → `team_registered` с name и quizId
+- `submitAnswerViaBot (choice)` → `answer_submitted` с answerId
+- `text answer + LLM` → `answer_scored` с awardedScore после async evaluation
+- `choice answer` → нет `answer_scored` события
+
+**Шаг 5 — `unit.test.ts` (11 тестов):**
+
+*`generateJoinCode`:*
+- Длина ровно 6 символов
+- Только символы из безопасного алфавита (нет I, O, 0, 1)
+- Никогда не содержит путаные символы
+- Разные коды при каждом вызове (вероятностная проверка)
+- Только uppercase
+
+*`parseEvalResponse`:*
+- Парсит чистый JSON
+- Удаляет markdown code fences (` ```json `)
+- Удаляет фенсы без метки `json`
+- Несколько команд в results
+- Падает на невалидном JSON
+- Игнорирует leading/trailing whitespace
+
+**Изменения в коде:**
+- `evaluate-text-answer.ts` — экспортирована `parseEvalResponse` (чистая функция, теперь публично тестируема)
+- `mock-modules.ts` — обновлён LLM мок: используется `importOriginal` для сохранения `parseEvalResponse` при мокировании `evaluateTextAnswers`
+
+**Файлы:**
+- `apps/api/src/test/__tests__/ws.test.ts` (новый, 13 тестов)
+- `apps/api/src/test/__tests__/unit.test.ts` (новый, 11 тестов)
+- `apps/api/src/services/llm/evaluate-text-answer.ts` — export parseEvalResponse
+- `apps/api/src/test/mock-modules.ts` — importOriginal для LLM мока
+
+---
+
+## 2026-02-27: Тесты — Шаг 3: Интеграционные тесты API
+
+### ✅ 31 тест на полный lifecycle квиза
+
+**Покрыто:**
+
+**Quiz CRUD** (3 теста):
+- Создание и получение квиза по ID, список квизов, удаление с cascade
+
+**Game lifecycle** (9 тестов):
+- `start` → status=lobby; `open-registration` → registrationOpen=true
+- `begin` → status=playing, currentSlide из первого слайда по sort_order
+- `begin` без lobby → 500
+- `set-slide by slideId` → timer: timerStartedAt set; answer: timerStartedAt=null
+- `next-question` → переход к Q2
+- `next-question` после последнего → `{ done: true }`
+- `finish` → quiz.status=finished
+- `archive` → quiz.status=archived
+
+**Team registration** (4 теста):
+- Команда появляется в списке после регистрации
+- Две команды с одинаковым именем разрешены (нет unique constraint)
+- Кикнутая команда исключена из дефолтного списка
+- Кикнутая команда видна с `?all=true`
+
+**Answer submission** (6 тестов):
+- choice принимается и сохраняется; нормализуется в uppercase
+- Неверная буква → 400; пустой ответ → 400
+- Повторный ответ → 409 Conflict (зафиксировано текущее поведение)
+- text хранится как trimmed-строка
+- text с лишними вариантами обрезается до N правильных ответов
+
+**Scoring & results** (9 тестов):
+- Правильный choice → weight очков; неправильный → 0
+- Результаты отсортированы по убыванию
+- Ничья → оба участника на одинаковом счёте
+- Кикнутый игрок исключён из результатов
+- text answer: score от LLM mock применяется к результатам
+- Команда без ответов → score=0
+
+**Хелперы добавлены:**
+- `adminPost(app, cookie, url, body)` — authenticated POST
+- `getSlides(quizId, questionId)` / `slideOfType(quizId, questionId, type)` — получить слайды через API
+
+**Файлы:**
+- `apps/api/src/test/helpers.ts` — adminPost
+- `apps/api/src/test/__tests__/game.test.ts` (новый, 31 тест)
+
+---
+
 ## 2026-02-27: Тесты — Шаг 2: Моки внешних сервисов
 
 ### ✅ Моки OpenRouter LLM + WebSocket broadcast

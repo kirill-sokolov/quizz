@@ -46,7 +46,7 @@ ${JSON.stringify(teamsJson, null, 2)}
 `.trim();
 }
 
-function parseEvalResponse(raw: string): { results: Array<{ teamId: number; matched: number }> } {
+export function parseEvalResponse(raw: string): { results: Array<{ teamId: number; matched: number }> } {
   const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
   return JSON.parse(cleaned);
 }
