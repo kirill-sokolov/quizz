@@ -1,8 +1,8 @@
 /**
  * Vitest Setup File — runs in each test worker before the test file.
- * Exports resetDb() helper; also sets up global beforeEach if needed.
+ * Exports resetDb() helper; clears mock state between tests.
  */
-import { afterAll, beforeEach } from "vitest";
+import { afterAll, beforeEach, vi } from "vitest";
 import postgres from "postgres";
 
 const TEST_DB_URL =
@@ -26,6 +26,11 @@ export async function resetDb() {
     `TRUNCATE TABLE answers, slides, teams, game_state, questions, quizzes, admins RESTART IDENTITY CASCADE`
   );
 }
+
+beforeEach(() => {
+  // Reset mock call history between tests; keep mock implementations.
+  vi.clearAllMocks();
+});
 
 afterAll(async () => {
   if (sql) {

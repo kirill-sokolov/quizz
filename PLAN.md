@@ -18,11 +18,12 @@
 - 11 smoke-тестов зелёные
 - Запуск: `docker exec wedding_api npm run test`
 
-### Шаг 2: Моки внешних сервисов
+### ✅ Шаг 2: Моки внешних сервисов — DONE (см. DONE.md)
 
-- Замокать Telegram API (bot.telegram.sendMessage и т.д.) — логировать вызовы вместо реальной отправки
-- Замокать OpenRouter API — возвращать фиксированный JSON для тестов импорта / оценки ответов
-- Создать хелпер для генерации fake Telegram Update объектов (message, callback_query)
+- `mock-modules.ts` setupFile: broadcast (vi.fn), evaluateTextAnswers (vi.fn → [])
+- Telegram бот не имеет webhook в API — симуляция через registerTeamViaBot/submitAnswerViaBot
+- `fileParallelism: false` — последовательные форки, нет DB/mock конфликтов
+- Паттерн: статический import + vi.mocked() (не динамический import!)
 
 ### Шаг 3: Интеграционные тесты API (приоритет — максимальное покрытие)
 

@@ -1,5 +1,30 @@
 # История выполненных задач
 
+## 2026-02-27: Тесты — Шаг 2: Моки внешних сервисов
+
+### ✅ Моки OpenRouter LLM + WebSocket broadcast
+
+**Выполнено:**
+- **`src/test/mock-modules.ts`** (setupFile) — регистрирует все vi.mock ДО загрузки роутов:
+  - `ws/index.js` → `broadcast: vi.fn()`, `wsPlugin: async () => {}` (no-op)
+  - `bot-service-registry.js` → `getBotService: () => null`
+  - `services/llm/evaluate-text-answer.js` → `evaluateTextAnswers: vi.fn().mockResolvedValue([])`
+- **`vitest.config.ts`**: `fileParallelism: false` — файлы запускаются последовательно, каждый в своём форке (нет конфликтов в БД, нет cross-file mock contamination)
+- **`setup.ts`**: `vi.clearAllMocks()` в beforeEach — история вызовов сбрасывается перед каждым тестом
+- **`helpers.ts`**: `registerTeamViaBot(app, quizId, name)` и `submitAnswerViaBot(app, questionId, teamId, answerText)` — симулируют то, что делает бот (POST /api/quizzes/:id/teams и POST /api/answers)
+- **`mocks.test.ts`**: 7 тестов — broadcast is a spy, team_registered, answer_submitted, evaluate NOT called for choice, IS called for text, controlled return value (score сохраняется в DB)
+- **Паттерн для тестов**: статический импорт + `vi.mocked()` (динамический import может вернуть другой экземпляр мока)
+
+**Файлы:**
+- `apps/api/src/test/mock-modules.ts` (новый)
+- `apps/api/src/test/app-factory.ts` — убраны vi.mock, добавлен комментарий с паттерном
+- `apps/api/src/test/setup.ts` — vi.clearAllMocks() в beforeEach
+- `apps/api/src/test/helpers.ts` — registerTeamViaBot, submitAnswerViaBot
+- `apps/api/vitest.config.ts` — mock-modules.ts в setupFiles, fileParallelism: false
+- `apps/api/src/test/__tests__/mocks.test.ts` (новый)
+
+---
+
 ## 2026-02-27: Тесты — Шаг 1: Инфраструктура тестов
 
 ### ✅ Vitest + интеграционные тесты API

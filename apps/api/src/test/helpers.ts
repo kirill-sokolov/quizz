@@ -139,6 +139,60 @@ export async function createDemoQuiz() {
   return { quiz, questions: [q1, q2, q3, q4] };
 }
 
+// ─── Bot-simulated actions ────────────────────────────────────────────────────
+// These mirror what apps/bot/ does: POST to API endpoints directly.
+
+let _nextChatId = 200_000;
+
+/**
+ * Simulates a team registration via the Telegram bot:
+ * POST /api/quizzes/:id/teams
+ */
+export async function registerTeamViaBot(
+  app: FastifyInstance,
+  quizId: number,
+  name: string,
+  telegramChatId?: number
+) {
+  const chatId = telegramChatId ?? _nextChatId++;
+  const res = await app.inject({
+    method: "POST",
+    url: `/api/quizzes/${quizId}/teams`,
+    payload: { name, telegramChatId: chatId },
+  });
+  if (res.statusCode !== 201) {
+    throw new Error(`registerTeamViaBot failed: ${res.statusCode} ${res.body}`);
+  }
+  return res.json() as { id: number; quizId: number; name: string; telegramChatId: number };
+}
+
+/**
+ * Simulates an answer submission via the Telegram bot:
+ * POST /api/answers
+ */
+export async function submitAnswerViaBot(
+  app: FastifyInstance,
+  questionId: number,
+  teamId: number,
+  answerText: string
+) {
+  const res = await app.inject({
+    method: "POST",
+    url: "/api/answers",
+    payload: { questionId, teamId, answerText },
+  });
+  if (res.statusCode !== 201) {
+    throw new Error(`submitAnswerViaBot failed: ${res.statusCode} ${res.body}`);
+  }
+  return res.json() as {
+    id: number;
+    questionId: number;
+    teamId: number;
+    answerText: string;
+    awardedScore: number | null;
+  };
+}
+
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
 export async function createAdmin(username = "admin", password = "password") {

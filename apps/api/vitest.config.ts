@@ -9,9 +9,14 @@ export default defineConfig({
     globals: true,
     environment: "node",
     globalSetup: ["./src/test/global-setup.ts"],
-    setupFiles: ["./src/test/setup.ts"],
+    // mock-modules.ts MUST be first so vi.mock() is hoisted before any imports
+    setupFiles: ["./src/test/mock-modules.ts", "./src/test/setup.ts"],
     testTimeout: 30_000,
     hookTimeout: 30_000,
+    // Run test files sequentially — they share the same quiz_test database.
+    // Each file still gets its own fork (own module cache / mock instances),
+    // but files don't run concurrently → no cross-file DB contamination.
+    fileParallelism: false,
     env: {
       DATABASE_URL: TEST_DB_URL,
       NODE_ENV: "test",

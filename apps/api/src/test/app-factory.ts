@@ -1,27 +1,31 @@
 /**
  * Creates a Fastify application for integration tests.
  * Registers all routes/plugins but does NOT call listen().
- * WS plugin is replaced with a no-op; broadcast is mocked at module level.
+ *
+ * Module mocks (broadcast, bot-service-registry, LLM) are applied via
+ * src/test/mock-modules.ts setupFile — do NOT add vi.mock() here.
+ *
+ * Helpers for accessing mocks in tests:
+ *   getMockBroadcast()  → vi.fn() spy for broadcast
+ *   getMockEvaluate()   → vi.fn() spy for evaluateTextAnswers
+ */
+/**
+ * Pattern for mock access in tests — always use STATIC imports:
+ *
+ *   import { broadcast } from "../../ws/index.js";
+ *   import { evaluateTextAnswers } from "../../services/llm/evaluate-text-answer.js";
+ *   const mockBroadcast = vi.mocked(broadcast);
+ *   const mockEvaluate  = vi.mocked(evaluateTextAnswers);
+ *
+ * Dynamic `await import(...)` can return a different instance → avoid it.
  */
 import Fastify, { FastifyInstance } from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import multipart from "@fastify/multipart";
-import { vi } from "vitest";
 
-// Mock broadcast before any route imports it
-vi.mock("../ws/index.js", () => ({
-  broadcast: vi.fn(),
-  wsPlugin: async () => {}, // no-op WebSocket plugin
-}));
+// ─── App factory ─────────────────────────────────────────────────────────────
 
-// Prevent the BotAgentService from being started
-vi.mock("../bot-service-registry.js", () => ({
-  getBotService: () => null,
-  setBotService: vi.fn(),
-}));
-
-// Lazy imports (after mocks are in place)
 const loadRoutes = async () => {
   const [
     { authRoutes },
