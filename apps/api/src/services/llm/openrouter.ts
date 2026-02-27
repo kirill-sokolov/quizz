@@ -1,6 +1,5 @@
 import { config } from "../../config.js";
 import { type ShrunkImage } from "./types.js";
-import { logCost } from "./cost-logger.js";
 
 const ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
 
@@ -60,20 +59,8 @@ export function analyzeWithOpenRouter(modelId: string, displayName: string) {
       );
     }
 
-    const creditsUsed = res.headers.get("x-openrouter-credits-used");
-    if (creditsUsed) {
-      logCost({
-        timestamp: new Date().toISOString(),
-        provider: "OpenRouter",
-        model: modelId,
-        creditsUsed: parseFloat(creditsUsed),
-        details: `${displayName} - ${images.length} images`,
-      });
-    }
-
     const json = (await res.json()) as { choices: { message: { content: string } }[] };
     const raw = json.choices[0]?.message?.content ?? "";
-    console.log(`[${displayName}] model: ${modelId}, credits: ${creditsUsed || "unknown"}`);
     console.log(`[${displayName} raw response]`, raw.slice(0, 500));
     const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     try {
@@ -129,20 +116,8 @@ export async function analyzeVisionBatch(
     );
   }
 
-  const creditsUsed = res.headers.get("x-openrouter-credits-used");
-  if (creditsUsed) {
-    logCost({
-      timestamp: new Date().toISOString(),
-      provider: "OpenRouter",
-      model: modelId,
-      creditsUsed: parseFloat(creditsUsed),
-      details: `${displayName} batch - ${images.length} images`,
-    });
-  }
-
   const json = (await res.json()) as { choices: { message: { content: string } }[] };
   const raw = json.choices[0]?.message?.content ?? "";
-  console.log(`[${displayName}] Batch analysis, credits: ${creditsUsed || "unknown"}`);
 
   // Parse JSON response - expect array
   const cleaned = raw.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
