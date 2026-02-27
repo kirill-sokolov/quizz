@@ -8,7 +8,7 @@
 
 Цель: зафиксировать текущее поведение (characterization tests) перед большим рефакторингом.
 
-**Готово:** Setup 1, Setup 2 (MSW), Stage 1 (1A–1F) — см. DONE.md
+**Готово:** Setup 1, Setup 2 (MSW), Stage 1 (1A–1F), Setup 3 (Playwright), Stage 2A (TV.jsx), Stage 2B (Game.jsx) — см. DONE.md
 
 ---
 
@@ -17,53 +17,9 @@
 Тестируем **страницы целиком** с реалистичными HTTP-ответами и симуляцией WebSocket событий.
 Setup 2 уже выполнен (MSW handlers, server, ws-mock готовы).
 
-#### 2A: TV.jsx integration (1 агент)
+#### ✅ 2A: TV.jsx integration — DONE (см. DONE.md)
 
-Файл: `src/test/__tests__/tv-page.test.jsx`
-
-Загрузка и lobby:
-- `joinCode` → API → `state(lobby, regOpen=false)` → TVRules
-- `state(lobby, regOpen=true, teams=[A,B])` → TVLobby, имена A и B видны
-
-Playing per slide:
-- `slide=question` → текст вопроса в DOM
-- `slide=timer` → TVTimer виден
-- `slide=answer` → TVAnswer виден
-- `slide=extra` → TVExtraSlide виден
-
-Finished:
-- `slide=results, revealCount=2` → TVResults с 2 командами
-- `slide=thanks` → TVDemo (thanks)
-
-WebSocket события:
-- `"team_registered"` → новая команда в TVLobby без reload
-- `"slide_changed"` → компонент переключается (question → timer)
-- `"quiz_finished"` → TVResults появляется
-- `"results_revealed"` → revealCount увеличивается
-
-#### 2B: Game.jsx integration (1 агент)
-
-Файл: `src/test/__tests__/game-page.test.jsx`
-
-States:
-- `state=null` → кнопка "Запустить квиз"; клик → `gameApi.start` вызван
-- `state=lobby, regClosed` → "Открыть регистрацию"; клик → `gameApi.openRegistration`
-- `state=lobby, regOpen, teams=[A,B]` → имена команд + "Начать квиз"
-- `state=playing` → текст вопроса + slide nav видны
-
-Playing interactions:
-- клик "▶" (следующий слайд) → `gameApi.setSlide` с правильным `slideId`
-- кнопка "Завершить" задизейблена до последнего слайда последнего вопроса
-- клик "Завершить" → `gameApi.finish`
-
-Finished:
-- таблица результатов видна
-- "Показать место" → `gameApi.revealNextResult`
-- kick → `teamsApi.kick`
-- score дропдаун (text) → `answersApi.updateScore`
-
-WebSocket:
-- `"answer_submitted"` → список ответов обновляется
+#### ✅ 2B: Game.jsx integration — DONE (см. DONE.md)
 
 ---
 
@@ -71,12 +27,7 @@ WebSocket:
 
 Реальный браузер против работающего Docker стека.
 
-#### Setup 3 (1 агент, sequential)
-
-- Установить `@playwright/test` в `apps/web`
-- `playwright.config.ts` — baseURL: `http://localhost:5173`, browser: chromium
-- `e2e/fixtures.ts` — хелперы создания данных через API (`createTestQuiz`, `startGame`)
-- Запуск: `npx playwright test`
+#### ✅ Setup 3 — DONE (см. DONE.md)
 
 #### 3A: TV slide smoke tests (1 агент, parallel после Setup 3)
 
@@ -109,7 +60,7 @@ WebSocket:
 
 - [x] `npm run test` в `apps/web` запускается без ошибок
 - [x] Stage 1: все компонентные тесты зелёные (1A–1F)
-- [ ] Stage 2: TV.jsx и Game.jsx integration тесты зелёные
+- [x] Stage 2: TV.jsx и Game.jsx integration тесты зелёные
 - [ ] Stage 3: Playwright smoke + game flow зелёные
 - [ ] Удалённая/сломанная компонента ловится тестом
 

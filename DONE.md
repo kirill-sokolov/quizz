@@ -1,5 +1,97 @@
 # История выполненных задач
 
+## 2026-02-27: Фронтенд тесты — Setup 3: Playwright E2E
+
+### ✅ Setup 3: `@playwright/test` установлен, конфиг + fixtures готовы
+
+**Что сделано:**
+- `@playwright/test@1.58.2` добавлен в `devDependencies`
+- Chromium browser установлен
+- `apps/web/playwright.config.ts` — `baseURL: http://localhost:5173`, browser: chromium, `testDir: ./e2e`
+- `apps/web/e2e/fixtures.ts` — хелперы: `login()`, `createTestQuiz()`, `startGame()`, `deleteQuiz()`
+- Скрипт `"e2e": "playwright test"` добавлен в `package.json`
+
+**Запуск:** `cd apps/web && npm run e2e`
+
+---
+
+## 2026-02-27: Фронтенд тесты — Stage 2B: Game.jsx integration
+
+### ✅ 2B: `game-page.test.jsx` — 15 тестов, все зелёные
+
+**Покрытие:**
+
+*States:*
+- `state=null` → "Запустить квиз" виден; клик → `gameApi.start` вызван
+- `state=lobby, regClosed` → "Открыть регистрацию"; клик → `gameApi.openRegistration`
+- `state=lobby, regOpen, teams=[A,B]` → имена команд + "Начать квиз"
+- `state=playing` → текст вопроса + кнопки слайд-навигации видны
+
+*Playing interactions:*
+- клик "▶" → `gameApi.setSlide` с `{ slideId: nextSlide.id }`
+- "Завершить квиз" задизейблена, пока не на последнем слайде последнего вопроса
+- "Завершить квиз" доступна на последнем слайде → клик → `gameApi.finish`
+- kick (✕) → `teamsApi.kick(teamId)`
+- score select (text-вопрос) → `answersApi.updateScore(answerId, score)`
+
+*Finished:*
+- таблица результатов с именами команд видна
+- "Показать следующее место" → `gameApi.revealNextResult`
+
+*WebSocket:*
+- `"answer_submitted"` → `answersApi.list` вызван ещё раз (refresh)
+
+**Технические детали:**
+- `gameApi.start` мокается через `new Promise(() => {})` (never resolves) для теста gameNotStarted — предотвращает авто-старт
+- `TestBotsPanel` заменён заглушкой (иначе делает реальные fetch-запросы)
+- Assertion для WS: проверяем `calls.length > callsBefore` (не exact count — компонент вызывает list несколько раз)
+
+**Файл:** `apps/web/src/test/__tests__/game-page.test.jsx` (новый)
+
+---
+
+## 2026-02-27: Фронтенд тесты — Stage 2A: TV.jsx integration (MSW + RTL)
+
+### ✅ 2A: `tv-page.test.jsx` — 13 тестов, все зелёные
+
+**Ключевые фиксы при реализации:**
+- MSW не матчил хэндлеры на относительные URL (`/api/...`) — исправлено через `VITE_API_URL=http://localhost` в vitest.config.ts
+- TVQuestion — background-only слайд, текст вопроса НЕ показывает (characterization)
+- TVResults ожидает flat формат: `{ teamId, name, correct, total }`, не `{ team: { name } }`
+
+**Покрытие:**
+
+*Loading / error:*
+- loading → "Загрузка…" виден сразу
+- `getByCode` 404 → fallback image без крэша
+
+*Lobby:*
+- `regOpen=false` → "Правила квиза" (TVRules)
+- `regOpen=true` → "Регистрация команд" (TVLobby)
+- `regOpen=true + teams=[A,B]` → имена видны
+
+*Playing per slide:*
+- `slide=question` → TVQuestion рендерится (фон, нет текста, нет таймера)
+- `slide=timer` → countdown "30" виден
+- `slide=answer` → нет крэша, нет текста вопроса
+- `slide=extra` → нет текста вопроса, нет таймера
+
+*Finished:*
+- `slide=results, revealCount=2` → 2-е и 3-е место видны, 1-е — placeholder
+- `slide=thanks + thanksImageUrl` → img с "thanks" в src
+
+*WebSocket:*
+- `"team_registered"` → команда появляется без reload
+- `"slide_changed"` → состояние перезагружается, переключается question→timer
+- `"quiz_finished"` → TVResults появляется (🥇 placeholder виден)
+- `"results_revealed"` → 2-е место становится видно, 1-е ещё скрыто
+
+**Файлы:**
+- `apps/web/src/test/__tests__/tv-page.test.jsx` (новый)
+- `apps/web/vitest.config.ts` — `VITE_API_URL=http://localhost` (fix для MSW absolute URLs)
+
+---
+
 ## 2026-02-27: Фронтенд тесты — Setup 1 + Setup 2 (Stage 1 + MSW)
 
 ### ✅ Setup 1: Test infrastructure (apps/web)
