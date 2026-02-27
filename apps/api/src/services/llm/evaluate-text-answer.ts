@@ -1,5 +1,4 @@
 import { config } from "../../config.js";
-import { logCost } from "./cost-logger.js";
 
 const EVAL_MODEL = "google/gemini-3-flash-preview";
 const OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions";
@@ -79,21 +78,8 @@ async function evaluateWithOpenRouter(
     throw new Error(`OpenRouter ${res.status}: ${errText.slice(0, 200)}`);
   }
 
-  const creditsUsed = res.headers.get("x-openrouter-credits-used");
-  if (creditsUsed) {
-    logCost({
-      timestamp: new Date().toISOString(),
-      provider: "OpenRouter",
-      model: EVAL_MODEL,
-      creditsUsed: parseFloat(creditsUsed),
-      details: `evaluate-text-answers - ${teamAnswers.length} teams`,
-    });
-  }
-
   const data = (await res.json()) as { choices: Array<{ message: { content: string } }> };
   const raw = data.choices[0]?.message?.content || "{}";
-  console.log(`[evaluateTextAnswers] model: ${EVAL_MODEL}, credits: ${creditsUsed || "unknown"}`);
-  console.log("[evaluateTextAnswers] raw:", raw.slice(0, 300));
 
   const parsed = parseEvalResponse(raw);
   const total = correctAnswers.length;
