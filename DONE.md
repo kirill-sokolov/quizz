@@ -1,5 +1,35 @@
 # История выполненных задач
 
+## 2026-02-27: Тесты — Шаг 1: Инфраструктура тестов
+
+### ✅ Vitest + интеграционные тесты API
+
+**Выполнено:**
+- **Рефакторинг `getBotService`**: вынесен из `index.ts` в `bot-service-registry.ts` — устранена циклическая зависимость, которая мешала импортировать routes в тестах
+- **Vitest**: `vitest@^2.1.0` + `@vitest/coverage-v8` добавлены в devDependencies
+- **Скрипты**: `test`, `test:watch`, `test:coverage` в `package.json`
+- **`vitest.config.ts`**: тестовая БД `quiz_test`, `NODE_ENV=test`, все env-переменные, `globalSetup`, `setupFiles`, покрытие services/routes
+- **`src/test/global-setup.ts`**: при первом запуске создаёт БД `quiz_test` и применяет все миграции 0000–0007 (идемпотентно)
+- **`src/test/setup.ts`**: хелпер `resetDb()` — TRUNCATE всех таблиц + RESTART IDENTITY
+- **`src/test/helpers.ts`**: фабрики `createQuiz`, `createQuestion`, `createQuestionWithSlides`, `createTeam`, `createDemoQuiz` (4 вопроса), `createAdmin`, `createGameState`, `loginAs`
+- **`src/test/app-factory.ts`**: создаёт Fastify app для тестов — без `listen()`, `broadcast` и `wsPlugin` замокированы, `getBotService` → null
+- **`src/test/__tests__/smoke.test.ts`**: 11 smoke-тестов (health, auth, CRUD quizzes) — все зелёные
+- **Запуск**: `docker exec wedding_api npm run test` → `11 passed` за ~726ms
+
+**Файлы:**
+- `apps/api/src/bot-service-registry.ts` (новый)
+- `apps/api/src/index.ts` — используется `setBotService` из registry
+- `apps/api/src/services/game-service.ts` — импортируется из `bot-service-registry.js`
+- `apps/api/package.json` — скрипты test/test:watch/test:coverage, vitest в devDependencies
+- `apps/api/vitest.config.ts` (новый)
+- `apps/api/src/test/global-setup.ts` (новый)
+- `apps/api/src/test/setup.ts` (новый)
+- `apps/api/src/test/helpers.ts` (новый)
+- `apps/api/src/test/app-factory.ts` (новый)
+- `apps/api/src/test/__tests__/smoke.test.ts` (новый)
+
+---
+
 ## 2026-02-27: Фикс ImportPreview — экстра-слайды через пул
 
 ### ✅ SlideStrip: два пространства вместо одного плоского массива

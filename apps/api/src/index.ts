@@ -19,14 +19,11 @@ import { adminRoutes } from "./routes/admin.js";
 import { testAgentsRoutes } from "./routes/test-agents.js";
 import { BotAgentService } from "./test-agents/index.js";
 import { broadcast } from "./ws/index.js";
+import { setBotService } from "./bot-service-registry.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = Fastify({ logger: true });
-
-// Экспорт для доступа из других модулей (тестовые боты)
-let botServiceInstance: BotAgentService | null = null;
-export const getBotService = () => botServiceInstance;
 
 async function main() {
   if (!config.DATABASE_URL) {
@@ -47,7 +44,7 @@ async function main() {
   // Создаём сервис тестовых ботов (изолированный модуль)
   const wsServer = { broadcast };
   const botService = new BotAgentService(wsServer);
-  botServiceInstance = botService;
+  setBotService(botService);
 
   await app.register(authRoutes);
   await app.register(quizzesRoutes);

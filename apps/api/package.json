@@ -9,7 +9,10 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "seed": "tsc && node dist/seed.js"
+    "seed": "tsc && node dist/seed.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@fastify/cookie": "^11.0.2",
@@ -35,8 +38,10 @@
     "@types/node": "^22.13.4",
     "@types/sharp": "^0.32.0",
     "@types/ws": "^8.18.1",
+    "@vitest/coverage-v8": "^2.1.0",
     "drizzle-kit": "^0.30.5",
     "nodemon": "^3.1.9",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^2.1.0"
   }
 }

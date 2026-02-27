@@ -10,7 +10,7 @@ import {
 import { eq, and, asc } from "drizzle-orm";
 import { broadcast } from "../ws/index.js";
 import { evaluateTextAnswers } from "./llm/evaluate-text-answer.js";
-import { getBotService } from "../index.js";
+import { getBotService } from "../bot-service-registry.js";
 
 export function generateJoinCode(): string {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";

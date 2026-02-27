@@ -1,0 +1,32 @@
+import { defineConfig } from "vitest/config";
+
+const TEST_DB_URL =
+  process.env.TEST_DATABASE_URL ||
+  "postgresql://wedding:wedding@wedding_db:5432/quiz_test";
+
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: "node",
+    globalSetup: ["./src/test/global-setup.ts"],
+    setupFiles: ["./src/test/setup.ts"],
+    testTimeout: 30_000,
+    hookTimeout: 30_000,
+    env: {
+      DATABASE_URL: TEST_DB_URL,
+      NODE_ENV: "test",
+      PORT: "3001",
+      HOST: "127.0.0.1",
+      MEDIA_DIR: "/tmp/wedding-quiz-test-uploads",
+      JWT_SECRET: "test-secret",
+      OPENROUTER_API_KEY: "test-key",
+      GEMINI_API_KEY: "test-key",
+      GROQ_API_KEY: "test-key",
+    },
+    coverage: {
+      provider: "v8",
+      include: ["src/services/**", "src/routes/**"],
+      exclude: ["src/test/**", "src/test-agents/**"],
+    },
+  },
+});
