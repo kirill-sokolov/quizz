@@ -1,5 +1,42 @@
 # История выполненных задач
 
+## 2026-02-27: Тесты бота (apps/bot)
+
+### ✅ 62 теста, 3 этапа
+
+**Stage 1 — Unit (22 теста):**
+- `state.test.ts` (13 тестов): `getState/setState/deleteState/clearAllState/getAllRegistered/getRegisteredByTeamId`
+- `api-client.test.ts` (9 тестов): все API методы, статус ошибки с `.status`, правильные URL и тела запросов
+
+**Stage 2 — Handlers (21 тест):**
+- `/start`: 0/1/N квизов, API error, `/reset` очищает state
+- `pick_quiz` callback → awaiting_name
+- Text handler: регистрация команды (валидация имени), отправка text/choice ответа, 409, registered→recover, idle
+- `answer:X` callback: awaiting_answer→submit, registered→recover, API fail, 409, idle
+
+**Stage 3 — ws-listener (19 тестов):**
+- `slide_changed/question` → бот молчит
+- `slide_changed/timer` → sendMessage всем пользователям квиза, state→awaiting_answer, text вопрос без кнопок, multiple answers hint, API error
+- `slide_changed/answer` → ✅/❌ результат, text score, нет ответа = нет сообщения
+- `team_kicked` → удаление state + уведомление
+- `quiz_finished` → общие результаты + детали команды, очистка state
+- `remind` → уведомление с кнопками, state→awaiting_answer, skip null chatId
+- unknown event → ничего
+
+**Изменения в продакшн коде:**
+- `ws-listener.ts` — `handleEvent` стала `export` (для тестируемости)
+
+**Новые файлы:**
+- `apps/bot/vitest.config.ts`
+- `apps/bot/src/test/__tests__/state.test.ts`
+- `apps/bot/src/test/__tests__/api-client.test.ts`
+- `apps/bot/src/test/__tests__/handlers.test.ts`
+- `apps/bot/src/test/__tests__/ws-listener.test.ts`
+
+**Запуск:** `docker exec wedding_bot npm run test`
+
+---
+
 ## 2026-02-27: Фронтенд тесты — Stage 3A: TV slide E2E smoke tests
 
 ### ✅ 3A: `e2e/tv-slides.spec.ts` — 6 тестов, все зелёные

@@ -5,6 +5,10 @@ echo "=== API tests ==="
 docker exec wedding_api npm run test
 
 echo ""
+echo "=== Bot tests ==="
+docker exec wedding_bot npm run test
+
+echo ""
 echo "=== Web unit/integration tests ==="
 docker exec wedding_web npm run test
 

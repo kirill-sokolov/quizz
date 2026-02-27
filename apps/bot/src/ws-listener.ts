@@ -56,7 +56,7 @@ export function startWsListener(bot: Bot) {
   connect();
 }
 
-async function handleEvent(bot: Bot, event: string, data: any) {
+export async function handleEvent(bot: Bot, event: string, data: any) {
   switch (event) {
     case "slide_changed":
       await onSlideChanged(bot, data);
