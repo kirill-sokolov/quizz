@@ -2,6 +2,7 @@
 
 ## Обзор
 
+
 ```
 Push to main → GitHub Actions → SSH на VPS → git pull → docker compose up --build
 ```
