@@ -105,12 +105,15 @@ server {
 ```dockerfile
 FROM node:20-slim
 
-# Системные зависимости для DOCX конвертации
+# Системные зависимости для DOCX конвертации (LibreOffice → PDF → PNG)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libreoffice \
     imagemagick \
     ghostscript \
     && rm -rf /var/lib/apt/lists/*
+
+# Разрешить ImageMagick обрабатывать PDF (по умолчанию отключено)
+RUN sed -i '/disable ghostscript format types/,+6d' /etc/ImageMagick-6/policy.xml || true
 
 WORKDIR /app
 COPY package*.json ./
@@ -127,8 +130,6 @@ CMD ["npm", "start"]
 ### 1.6 Создать `docker-compose.prod.yml`
 
 ```yaml
-version: "3.9"
-
 services:
   wedding_db:
     image: postgres:15
@@ -453,7 +454,7 @@ ssh deploy@YOUR_VPS_IP
 # Клонировать
 sudo mkdir -p /opt/wedding-quiz
 sudo chown deploy:deploy /opt/wedding-quiz
-git clone https://github.com/YOUR_USERNAME/quizz.git /opt/wedding-quiz
+git clone https://github.com/YOUR_USERNAME/wedding-quiz.git /opt/wedding-quiz
 cd /opt/wedding-quiz
 ```
 
@@ -488,8 +489,8 @@ docker compose -f docker-compose.prod.yml logs -f
 # Запустить миграции БД
 docker exec wedding_api npm run db:migrate
 
-# (Опционально) Засеять демо-данные
-docker exec wedding_api npm run seed
+# (Опционально) Засеять демо-данные через UI: кнопка "➕ Добавить демо-квиз" в админке
+# NB: npm run seed напрямую не работает в production (EADDRINUSE) — использовать только UI
 ```
 
 ### 4.4 Установить production nginx конфиг
