@@ -3,18 +3,33 @@
  *
  * Runs before every test file:
  *   - Imports jest-dom matchers (toBeInTheDocument, etc.)
+ *   - Starts MSW server (intercepts fetch in Node/jsdom)
+ *   - Installs MockWebSocket (replaces global WebSocket)
  *   - Stubs browser APIs that jsdom doesn't implement:
  *       AudioContext, window.matchMedia, IntersectionObserver,
  *       ResizeObserver, HTMLMediaElement.play
  */
 import "@testing-library/jest-dom";
-import { afterEach } from "vitest";
+import { beforeAll, afterEach, afterAll } from "vitest";
 import { cleanup } from "@testing-library/react";
+import { server } from "./msw/server";
+import { installWsMock, clearWsInstances } from "./msw/ws-mock";
 
-// Unmount React trees after each test
+// ─── MSW server ───────────────────────────────────────────────────────────────
+// Intercepts all fetch() calls made by components under test.
+beforeAll(() => server.listen({ onUnhandledRequest: "warn" }));
+afterAll(() => server.close());
+
+// ─── Cleanup after each test ──────────────────────────────────────────────────
 afterEach(() => {
-  cleanup();
+  cleanup();               // Unmount React trees
+  server.resetHandlers();  // Remove per-test handler overrides
+  clearWsInstances();      // Reset MockWebSocket instances
 });
+
+// ─── WebSocket mock ───────────────────────────────────────────────────────────
+// TV.jsx and Game.jsx open WebSocket connections; mock prevents real network calls.
+installWsMock();
 
 // ─── AudioContext ─────────────────────────────────────────────────────────────
 // TVTimer creates AudioContext oscillators for tick/alarm sounds.
