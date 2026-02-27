@@ -4,204 +4,20 @@
 
 ---
 
-## Тесты
-
-Цель: покрыть текущее поведение (characterization tests), чтобы безопасно рефакторить и добавлять фичи.
-
-### ✅ Шаг 1: Инфраструктура тестов — DONE (см. DONE.md)
-
-- Vitest 2.x, ESM, тестовая БД `quiz_test`, миграции в globalSetup
-- Redis — не подключён, пропущен
-- Скрипты: `test`, `test:watch`, `test:coverage`
-- Хелперы: `createQuiz`, `createDemoQuiz`, `loginAs`, `resetDb`
-- App factory без `listen()`, broadcast замокан
-- 11 smoke-тестов зелёные
-- Запуск: `docker exec wedding_api npm run test`
-
-### ✅ Шаг 2: Моки внешних сервисов — DONE (см. DONE.md)
-
-- `mock-modules.ts` setupFile: broadcast (vi.fn), evaluateTextAnswers (vi.fn → [])
-- Telegram бот не имеет webhook в API — симуляция через registerTeamViaBot/submitAnswerViaBot
-- `fileParallelism: false` — последовательные форки, нет DB/mock конфликтов
-- Паттерн: статический import + vi.mocked() (не динамический import!)
-
-### ✅ Шаг 3: Интеграционные тесты API — DONE (см. DONE.md)
-
-Тестировать через Fastify `inject()` — без реального HTTP, быстро и надёжно.
-
-**Квиз lifecycle:**
-- Создание квиза (POST)
-- Получение квиза по ID
-- Список квизов
-- Удаление квиза
-
-**Регистрация команд:**
-- Команда регистрируется через fake webhook update (`/register Команда_1`)
-- Повторная регистрация — ошибка или обновление имени (зафиксировать текущее поведение)
-- Кик команды из админки — команда больше не участвует
-
-**Игровой процесс:**
-- Старт вопроса из админки → проверить что состояние квиза обновилось
-- Переключение слайдов (вопрос → таймер → ответ → статистика)
-- Отправка ответа командой — текстовый ответ через fake webhook
-- Отправка ответа после истечения таймера — должен отклоняться
-- Повторная отправка ответа — зафиксировать текущее поведение (перезаписывается? игнорируется?)
-
-**Подсчёт результатов:**
-- Правильный ответ → очки начисляются
-- Неправильный → 0 очков
-- Итоговая таблица — порядок мест корректный
-- Ничья — зафиксировать текущую логику
-
-### ✅ Шаг 4: WebSocket тесты — DONE (см. DONE.md)
-
-- broadcast-спай проверяется через vi.mocked(broadcast)
-- Все game lifecycle события: game_lobby, registration_opened, slide_changed, quiz_finished, results_revealed, quiz_archived
-- Team/answer события: team_registered, answer_submitted, answer_scored (async LLM)
-- 13 тестов в `ws.test.ts`
-
-### ✅ Шаг 5: Юнит-тесты на бизнес-логику — DONE (см. DONE.md)
-
-Чистые функции протестированы:
-- `generateJoinCode` — длина, символы, уникальность
-- `parseEvalResponse` — JSON парсинг, markdown fence stripping
-- 11 тестов в `unit.test.ts`
-
-### Шаг 6: Тесты фронтенда (минимум, опционально)
-
-- Smoke-тесты: основные компоненты рендерятся без ошибок (React Testing Library)
-- Web TV: правильный слайд отображается для каждого состояния квиза
-- Web Admin: кнопки управления вызывают правильные API-методы
-
-### ✅ Шаг 7: Нагрузочный тест — DONE (см. DONE.md)
-
-- 20 команд регистрируются и отвечают одновременно (Promise.allSettled)
-- 0 ошибок, 0 потерянных ответов, результаты корректные
-- Проверка через `answers` таблицу в БД: ровно 1 ответ на команду на вопрос
-- 4 теста в `load.test.ts`
-
-### Критерии готовности бэкенда
-
-- [x] Тесты запускаются одной командой (`docker exec wedding_api npm run test`)
-- [x] Все тесты шагов 1–7 зелёные (121 тест)
-- [x] Coverage бизнес-логики > 85% (game.ts=100%, game-service.ts=87%, questions.ts=89%, quizzes.ts=90%, auth.ts=100%)
-- [x] Нагрузочный тест: 20 команд проходят полный цикл без ошибок
-- [x] Тесты проходят < 30 секунд (6s)
-
----
-
-┌─────────────────────────────┬─────────────────────┐
-│            Stage            │       Порядок       │
-├─────────────────────────────┼─────────────────────┤
-│ Setup 1                     │ 1 окно, дождаться   │
-├─────────────────────────────┼─────────────────────┤
-│ 1A + 1B + 1C + 1D + 1E + 1F │ 6 окон одновременно │
-├─────────────────────────────┼─────────────────────┤
-│ Setup 2                     │ 1 окно, дождаться   │
-├─────────────────────────────┼─────────────────────┤
-│ 2A + 2B                     │ 2 окна одновременно │
-├─────────────────────────────┼─────────────────────┤
-│ Setup 3                     │ 1 окно, дождаться   │
-├─────────────────────────────┼─────────────────────┤
-│ 3A + 3B                     │ 2 окна одновременно │
-└─────────────────────────────┴─────────────────────┘
-
-
 ## Тесты фронтенда
 
 Цель: зафиксировать текущее поведение (characterization tests) перед большим рефакторингом.
 
-> ⚠️ Каждый Stage начинается с Setup (один агент, sequential). После Setup — параллельный запуск агентов.
-
----
-
-### Stage 1: Component Tests (React Testing Library)
-
-Тестируем **presentational sub-компоненты** TV. Принимают props → рендерят. Без API, без WebSocket.
-
-#### Setup 1 (1 агент, sequential)
-
-- Установить: `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`
-- `apps/web/vitest.config.ts` — environment: jsdom
-- `src/test/setup.ts` — jest-dom matchers + моки AudioContext, window.matchMedia, IntersectionObserver
-- `src/test/utils.jsx` — `renderWithRouter(ui, { path, route })` хелпер
-- Скрипты: `test`, `test:watch`, `test:coverage`
-
-#### 1A: TVResults (1 агент, parallel после Setup 1)
-
-Файл: `src/test/__tests__/TVResults.test.jsx`
-- рендерится без крэша
-- `revealCount=0` → ни одной команды не видно
-- `revealCount=2` из 5 → 2 видны, 3 скрыты
-- первое место всегда зарезервировано (placeholder)
-- ≤8 команд → compact layout; ≥9 → podium (3 колонки)
-- очки: choice `correct/total`, text — `awardedScore`
-
-#### 1B: TVTimer (1 агент, parallel после Setup 1)
-
-Файл: `src/test/__tests__/TVTimer.test.jsx`
-- рендерится без крэша
-- показывает начальное время (`timeLimitSec`)
-- с `vi.useFakeTimers`: значение убывает
-- показывает `0` когда время вышло
-- цвет меняется на красный при < 5 секунд
-- `timerPosition` вариантов → нужный CSS-класс
-
-#### 1C: TVQuestion (1 агент, parallel после Setup 1)
-
-Файл: `src/test/__tests__/TVQuestion.test.jsx`
-- рендерится без крэша
-- отображает `question.text`
-- choice: все 4 варианта в DOM
-- text: варианты не отображаются
-- slide с `imageUrl` → `img` в DOM
-
-#### 1D: TVLobby (1 агент, parallel после Setup 1)
-
-Файл: `src/test/__tests__/TVLobby.test.jsx`
-- рендерится без крэша
-- показывает QR-код (`img` элемент)
-- отображает имена всех команд
-- `teams=[]` → не крэшится
-
-#### 1E: TVAnswer + TVDemo + TVExtraSlide (1 агент, parallel после Setup 1)
-
-Файл: `src/test/__tests__/tv-misc-components.test.jsx`
-- `TVAnswer`: с `imageUrl` → img; без — не крэш
-- `TVDemo`: с `imageUrl` → img; без — не пустой экран
-- `TVExtraSlide`: с `imageUrl` → img; с `videoUrl` → video элемент
-
-#### 1F: TV.jsx render paths (1 агент, parallel после Setup 1)
-
-Файл: `src/test/__tests__/TV.test.jsx`
-
-Мокаем `api/client.js` через `vi.mock`. Тестируем что правильный sub-компонент попадает в DOM для каждого состояния:
-- loading → текст "Загрузка"
-- ошибка (API 404) → fallback, нет крэша
-- `status=lobby, regOpen=false` → TVRules в DOM
-- `status=lobby, regOpen=true` → TVLobby в DOM
-- `status=playing, slide=question` → TVQuestion в DOM
-- `status=playing, slide=timer` → TVTimer в DOM
-- `status=playing, slide=answer` → TVAnswer в DOM
-- `status=playing, slide=extra` → TVExtraSlide в DOM
-- `status=finished, slide=results` → TVResults в DOM
-- `status=finished, slide=thanks` → TVDemo в DOM
+**Готово:** Setup 1, Setup 2 (MSW), Stage 1 (1A–1F) — см. DONE.md
 
 ---
 
 ### Stage 2: Integration Tests (MSW + RTL)
 
 Тестируем **страницы целиком** с реалистичными HTTP-ответами и симуляцией WebSocket событий.
+Setup 2 уже выполнен (MSW handlers, server, ws-mock готовы).
 
-#### Setup 2 (1 агент, sequential после Stage 1)
-
-- Установить `msw@2`
-- `src/test/msw/handlers.ts` — mock handlers для всех API endpoints
-- `src/test/msw/server.ts` — `setupServer(...handlers)`
-- `src/test/ws-mock.ts` — утилита эмуляции WS событий (заменяет `new WebSocket`)
-- Обновить `setup.ts`: `beforeAll/afterEach/afterAll` для MSW server
-
-#### 2A: TV.jsx integration (1 агент, parallel после Setup 2)
+#### 2A: TV.jsx integration (1 агент)
 
 Файл: `src/test/__tests__/tv-page.test.jsx`
 
@@ -225,7 +41,7 @@ WebSocket события:
 - `"quiz_finished"` → TVResults появляется
 - `"results_revealed"` → revealCount увеличивается
 
-#### 2B: Game.jsx integration (1 агент, parallel после Setup 2)
+#### 2B: Game.jsx integration (1 агент)
 
 Файл: `src/test/__tests__/game-page.test.jsx`
 
@@ -255,7 +71,7 @@ WebSocket:
 
 Реальный браузер против работающего Docker стека.
 
-#### Setup 3 (1 агент, sequential после Stage 2)
+#### Setup 3 (1 агент, sequential)
 
 - Установить `@playwright/test` в `apps/web`
 - `playwright.config.ts` — baseURL: `http://localhost:5173`, browser: chromium
@@ -291,8 +107,8 @@ WebSocket:
 
 ### Критерии готовности фронтенда
 
-- [ ] `npm run test` в `apps/web` запускается без ошибок
-- [ ] Stage 1: все компонентные тесты зелёные
+- [x] `npm run test` в `apps/web` запускается без ошибок
+- [x] Stage 1: все компонентные тесты зелёные (1A–1F)
 - [ ] Stage 2: TV.jsx и Game.jsx integration тесты зелёные
 - [ ] Stage 3: Playwright smoke + game flow зелёные
 - [ ] Удалённая/сломанная компонента ловится тестом
@@ -307,17 +123,13 @@ WebSocket:
 ### Шаг 1: Удалить backend файлы
 
 ```bash
-# 1. Удалить папку с модулем тестовых агентов
 rm -rf apps/api/src/test-agents/
-
-# 2. Удалить файл роутов
 rm apps/api/src/routes/test-agents.ts
 ```
 
 ### Шаг 2: Удалить frontend файлы
 
 ```bash
-# Удалить компонент панели тестовых ботов
 rm apps/web/src/components/Admin/TestBotsPanel.jsx
 ```
 
@@ -331,16 +143,13 @@ import { testAgentsRoutes } from "./routes/test-agents.js";
 import { BotAgentService } from "./test-agents/index.js";
 import { broadcast } from "./ws/index.js";
 
-// И удалить:
 let botServiceInstance: BotAgentService | null = null;
 export const getBotService = () => botServiceInstance;
 
-// И удалить:
 const wsServer = { broadcast };
 const botService = new BotAgentService(wsServer);
 botServiceInstance = botService;
 
-// И удалить:
 await app.register(async (app) => testAgentsRoutes(app, botService));
 ```
 
@@ -353,7 +162,6 @@ import { getBotService } from "../index.js";
 
 Удалить блок кода (после `broadcast("slide_changed", ...)`):
 ```typescript
-// Тестовые боты отвечают при переключении на слайд "timer"
 if (slide === "timer" && updated.currentQuestionId) {
   const botService = getBotService();
   if (botService) {
@@ -361,7 +169,6 @@ if (slide === "timer" && updated.currentQuestionId) {
       .select()
       .from(questions)
       .where(eq(questions.id, updated.currentQuestionId));
-
     if (question) {
       await botService.handleQuestion(quizId, question);
     }
@@ -371,7 +178,6 @@ if (slide === "timer" && updated.currentQuestionId) {
 
 Удалить блок в функции `finishGame()`:
 ```typescript
-// Автоудаление тестовых ботов при завершении квиза
 const botService = getBotService();
 if (botService) {
   await botService.onQuizFinished(quizId);
@@ -380,69 +186,17 @@ if (botService) {
 
 #### `apps/api/src/routes/teams.ts`
 
-Убрать импорт `gameState`:
-```typescript
-import { teams, gameState } from "../db/schema.js";
-// Оставить только:
-import { teams } from "../db/schema.js";
-```
-
-Удалить код фильтрации ботов в `GET /api/quizzes/:id/teams`:
-```typescript
-// Удалить:
-const [state] = await db
-  .select()
-  .from(gameState)
-  .where(eq(gameState.quizId, quizId));
-
-const showBotsOnTv = state?.showBotsOnTv ?? true;
-
-// И изменить:
-const filtered = showBotsOnTv
-  ? rows
-  : rows.filter((t) => !t.isBot);
-
-return filtered.map(serializeTeam);
-
-// На:
-return rows.map(serializeTeam);
-```
+Убрать фильтрацию ботов в `GET /api/quizzes/:id/teams` и вернуть `rows.map(serializeTeam)` напрямую.
 
 #### `apps/web/src/pages/Game.jsx`
 
-Удалить импорт:
-```typescript
-import TestBotsPanel from "../components/Admin/TestBotsPanel";
-```
-
-Удалить использование компонента:
-```jsx
-{/* Тестовые боты */}
-<TestBotsPanel
-  quizId={quiz.id}
-  teams={teams}
-  gameState={state}
-  onUpdate={loadQuizData}
-/>
-```
+Удалить импорт и использование `<TestBotsPanel>`.
 
 ### Шаг 4: Удалить из базы данных (опционально)
 
-Если хотите полностью убрать поля из БД:
-
 ```sql
--- Удалить поля, связанные с ботами
 ALTER TABLE teams DROP COLUMN IF EXISTS is_bot;
 ALTER TABLE game_state DROP COLUMN IF EXISTS show_bots_on_tv;
-```
-
-**Примечание:** Можно оставить поля в БД — они не будут использоваться и не причинят вреда.
-
-### Шаг 5: Перезапустить сервисы
-
-```bash
-docker-compose restart api
-docker-compose restart web
 ```
 
 ---
@@ -452,8 +206,8 @@ docker-compose restart web
 - Web Admin: вести на телефоне должно быть удобно (проверить и поправить дизайн)
 - Web Admin: единый стиль админки с брендбука (lovable)
 - Web Admin: затраты красивые графики, остаток счета API, красным если меньше 5$
-- Web TV: статитстика самые быстрые (может еще какие номинации)
-- Web Admin: разные шаблоны вывода результатов (где-то fade-in, где-то карточки мест переворачиваются)
+- Web TV: статистика самые быстрые (может ещё какие номинации)
+- Web Admin: разные шаблоны вывода результатов (fade-in, карточки мест переворачиваются)
 
 ## Деплой
 
@@ -461,23 +215,8 @@ docker-compose restart web
 - Настроить деплой на VPS
 - Написать инструкцию для ведущего (1 страница A4)
 
-### ✅ Проверка
+### Проверка
 
 - 20 одновременных команд работают без ошибок
 - Деплой проходит одной командой
 - Инструкция написана и понятна нетехническому пользователю
-
----
-
-### Порядок работы для Claude Code
-
-Работай строго поэтапно.
-После завершения каждого этапа:
-
-- [ ] Обновить docs/ (затронутые файлы)
-- [ ] Перенести выполненное из PLAN.md в DONE.md
-- [ ] Обновить README.md (секция "Текущий статус")
-- [ ] Выведи список того, что было сделано
-- [ ] Опиши как проверить (команды для запуска тестов или curl)
-- [ ] Жди команды "продолжай" перед переходом к следующему этапу
-

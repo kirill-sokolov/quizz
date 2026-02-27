@@ -1,5 +1,76 @@
 # История выполненных задач
 
+## 2026-02-27: Фронтенд тесты — Setup 1 + Setup 2 (Stage 1 + MSW)
+
+### ✅ Setup 1: Test infrastructure (apps/web)
+
+- `apps/web/vitest.config.ts` — jsdom environment, globals, VITE_* env vars, coverage config
+- `apps/web/src/test/setup.ts` — jest-dom, AudioContext mock, matchMedia, IntersectionObserver, ResizeObserver, HTMLMediaElement
+- `apps/web/src/test/utils.jsx` — `renderWithRouter`, `makeQuiz`, `makeState`, `makeQuestion`, `makeTeam`
+- Скрипты: `test`, `test:watch`, `test:coverage`
+
+### ✅ Setup 2: MSW + WebSocket mock
+
+- `msw@^2.8.0` добавлен в devDependencies
+- `src/test/msw/handlers.ts` — handlers для всех API endpoints (quizzes, questions, teams, game, answers, auth, admin)
+- `src/test/msw/server.ts` — `setupServer(...handlers)` из `msw/node`
+- `src/test/msw/ws-mock.ts` — `MockWebSocket` + `sendWsMessage()` + `installWsMock()`
+- `setup.ts` обновлён: `beforeAll(server.listen)`, `afterEach(resetHandlers)`, `afterAll(server.close)`, `installWsMock()`
+
+### ✅ Stage 1: Component Tests (79+ тестов)
+
+Тестируем **presentational sub-компоненты** TV. Принимают props → рендерят. Без API, без WebSocket.
+
+#### 1A: TVResults — `TVResults.test.jsx` (25 тестов)
+- рендерится без крэша
+- `revealCount=0` → ни одной команды не видно
+- `revealCount=2` из 5 → 2 видны, 3 скрыты
+- первое место всегда зарезервировано (placeholder)
+- ≤8 команд → compact layout; ≥9 → podium (3 колонки)
+- очки: choice `correct/total`, text — `awardedScore`
+
+#### 1B: TVTimer — `TVTimer.test.jsx` (19 тестов)
+- рендерится без крэша
+- показывает начальное время (`timeLimitSec`)
+- с `vi.useFakeTimers`: значение убывает
+- показывает `0` когда время вышло
+- цвет меняется на красный при < 5 секунд
+- `timerPosition` вариантов → нужный CSS-класс
+
+#### 1C: TVQuestion — `TVQuestion.test.jsx` (13 тестов)
+- рендерится без крэша
+- отображает `question.text`
+- choice: все 4 варианта в DOM
+- text: варианты не отображаются
+- slide с `imageUrl` → `img` в DOM
+
+#### 1D: TVLobby — `TVLobby.test.jsx` (7 тестов)
+- рендерится без крэша
+- показывает QR-код (`img` элемент)
+- отображает имена всех команд
+- `teams=[]` → не крэшится
+
+#### 1E: TVAnswer + TVDemo + TVExtraSlide — `tv-misc-components.test.jsx` (15 тестов)
+- `TVAnswer`: с `imageUrl` → img; без — не крэш
+- `TVDemo`: с `imageUrl` → img; без — не пустой экран
+- `TVExtraSlide`: с `imageUrl` → img; с `videoUrl` → video элемент
+
+#### 1F: TV.jsx render paths — `TV.test.jsx`
+- loading → текст "Загрузка"
+- ошибка (API 404) → fallback, нет крэша
+- `status=lobby, regOpen=false` → TVRules в DOM
+- `status=lobby, regOpen=true` → TVLobby в DOM
+- `status=playing, slide=question` → TVQuestion в DOM
+- `status=playing, slide=timer` → TVTimer в DOM
+- `status=playing, slide=answer` → TVAnswer в DOM
+- `status=playing, slide=extra` → TVExtraSlide в DOM
+- `status=finished, slide=results` → TVResults в DOM
+- `status=finished, slide=thanks` → TVDemo в DOM
+
+Запуск: `docker exec wedding_web npm run test`
+
+---
+
 ## 2026-02-27: Тесты — routes.test.ts: покрытие до 85%
 
 ### ✅ 121 тест, coverage 85.38% по ключевым файлам
