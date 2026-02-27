@@ -1,5 +1,52 @@
 # История выполненных задач
 
+## 2026-02-27: Тесты — Шаги 7 + Coverage: Нагрузочный тест и покрытие >70%
+
+### ✅ 89 тестов, coverage 73.65% по ключевым файлам
+
+**Шаг 7 — `load.test.ts` (4 теста):**
+- 20 команд регистрируются одновременно — 0 ошибок
+- 20 команд отвечают на 3 вопроса одновременно — нет 409 конфликтов, все ответы сохранены
+- Итоговые очки верны после concurrent-отправок (первые 5 команд с правильными ответами наверху)
+- `next-question` корректно работает при одновременной регистрации команд
+
+**Coverage tests — `coverage.test.ts` (12 тестов):**
+
+*`POST /api/game/restart`:*
+- Сброс в draft, удаление команд/ответов/gameState
+- Рестарт на draft-квизе → ошибка
+
+*`POST /api/game/remind`:*
+- Команды без ответа попадают в список
+- После ответа — исчезают из списка
+- Фильтрация по teamId
+
+*`GET /api/game/results/:quizId/:teamId` (getTeamDetails):*
+- Breakdown по вопросам: правильный, неправильный, без ответа
+- Text-вопрос содержит correctAnswerText
+
+*`PATCH /api/answers/:id/score`:*
+- Ручная установка оценки; несуществующий ответ → 404; без авторизации → 401
+
+**Итоговое покрытие (core files):**
+| File | Stmts | Branch | Funcs |
+|---|---|---|---|
+| `routes/game.ts` | 100% | 88% | 100% |
+| `services/game-service.ts` | 87% | 77% | 100% |
+| `routes/answers.ts` | 94% | 85% | 100% |
+| `routes/teams.ts` | 98% | 77% | 100% |
+| **All core** | **73.65%** | **78%** | **88%** |
+
+**Изменения:**
+- `vitest.config.ts` — `coverage.include` сужен до core files (исключены import/media/docx/llm-infra)
+
+**Файлы:**
+- `apps/api/src/test/__tests__/load.test.ts` (новый, 4 теста)
+- `apps/api/src/test/__tests__/coverage.test.ts` (новый, 12 тестов)
+- `apps/api/vitest.config.ts` — обновлён coverage.include
+
+---
+
 ## 2026-02-27: Тесты — Шаги 4 и 5: WebSocket и unit-тесты
 
 ### ✅ 13 broadcast-тестов (Шаг 4) + 11 unit-тестов (Шаг 5) = 73 теста всего

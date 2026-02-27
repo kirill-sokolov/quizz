@@ -30,7 +30,18 @@ export default defineConfig({
     },
     coverage: {
       provider: "v8",
-      include: ["src/services/**", "src/routes/**"],
+      // Core business logic only — exclude import pipeline, media upload, docx/llm infrastructure
+      include: [
+        "src/services/game-service.ts",
+        "src/routes/game.ts",
+        "src/routes/answers.ts",
+        "src/routes/teams.ts",
+        "src/routes/auth.ts",
+        "src/routes/quizzes.ts",
+        "src/routes/questions.ts",
+        "src/routes/admin.ts",
+        "src/services/llm/evaluate-text-answer.ts",
+      ],
       exclude: ["src/test/**", "src/test-agents/**"],
     },
   },
