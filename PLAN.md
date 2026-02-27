@@ -80,13 +80,222 @@
 - Проверка через `answers` таблицу в БД: ровно 1 ответ на команду на вопрос
 - 4 теста в `load.test.ts`
 
-### Критерии готовности
+### Критерии готовности бэкенда
 
 - [x] Тесты запускаются одной командой (`docker exec wedding_api npm run test`)
-- [x] Все тесты шагов 3–7 зелёные (89 тестов)
-- [x] Coverage бизнес-логики бэкенда > 70% (73.65%, game.ts=100%, game-service.ts=87%)
+- [x] Все тесты шагов 1–7 зелёные (121 тест)
+- [x] Coverage бизнес-логики > 85% (game.ts=100%, game-service.ts=87%, questions.ts=89%, quizzes.ts=90%, auth.ts=100%)
 - [x] Нагрузочный тест: 20 команд проходят полный цикл без ошибок
-- [x] Тесты проходят < 30 секунд (5.06s)
+- [x] Тесты проходят < 30 секунд (6s)
+
+---
+
+┌─────────────────────────────┬─────────────────────┐
+│            Stage            │       Порядок       │
+├─────────────────────────────┼─────────────────────┤
+│ Setup 1                     │ 1 окно, дождаться   │
+├─────────────────────────────┼─────────────────────┤
+│ 1A + 1B + 1C + 1D + 1E + 1F │ 6 окон одновременно │
+├─────────────────────────────┼─────────────────────┤
+│ Setup 2                     │ 1 окно, дождаться   │
+├─────────────────────────────┼─────────────────────┤
+│ 2A + 2B                     │ 2 окна одновременно │
+├─────────────────────────────┼─────────────────────┤
+│ Setup 3                     │ 1 окно, дождаться   │
+├─────────────────────────────┼─────────────────────┤
+│ 3A + 3B                     │ 2 окна одновременно │
+└─────────────────────────────┴─────────────────────┘
+
+
+## Тесты фронтенда
+
+Цель: зафиксировать текущее поведение (characterization tests) перед большим рефакторингом.
+
+> ⚠️ Каждый Stage начинается с Setup (один агент, sequential). После Setup — параллельный запуск агентов.
+
+---
+
+### Stage 1: Component Tests (React Testing Library)
+
+Тестируем **presentational sub-компоненты** TV. Принимают props → рендерят. Без API, без WebSocket.
+
+#### Setup 1 (1 агент, sequential)
+
+- Установить: `vitest`, `jsdom`, `@testing-library/react`, `@testing-library/jest-dom`, `@testing-library/user-event`
+- `apps/web/vitest.config.ts` — environment: jsdom
+- `src/test/setup.ts` — jest-dom matchers + моки AudioContext, window.matchMedia, IntersectionObserver
+- `src/test/utils.jsx` — `renderWithRouter(ui, { path, route })` хелпер
+- Скрипты: `test`, `test:watch`, `test:coverage`
+
+#### 1A: TVResults (1 агент, parallel после Setup 1)
+
+Файл: `src/test/__tests__/TVResults.test.jsx`
+- рендерится без крэша
+- `revealCount=0` → ни одной команды не видно
+- `revealCount=2` из 5 → 2 видны, 3 скрыты
+- первое место всегда зарезервировано (placeholder)
+- ≤8 команд → compact layout; ≥9 → podium (3 колонки)
+- очки: choice `correct/total`, text — `awardedScore`
+
+#### 1B: TVTimer (1 агент, parallel после Setup 1)
+
+Файл: `src/test/__tests__/TVTimer.test.jsx`
+- рендерится без крэша
+- показывает начальное время (`timeLimitSec`)
+- с `vi.useFakeTimers`: значение убывает
+- показывает `0` когда время вышло
+- цвет меняется на красный при < 5 секунд
+- `timerPosition` вариантов → нужный CSS-класс
+
+#### 1C: TVQuestion (1 агент, parallel после Setup 1)
+
+Файл: `src/test/__tests__/TVQuestion.test.jsx`
+- рендерится без крэша
+- отображает `question.text`
+- choice: все 4 варианта в DOM
+- text: варианты не отображаются
+- slide с `imageUrl` → `img` в DOM
+
+#### 1D: TVLobby (1 агент, parallel после Setup 1)
+
+Файл: `src/test/__tests__/TVLobby.test.jsx`
+- рендерится без крэша
+- показывает QR-код (`img` элемент)
+- отображает имена всех команд
+- `teams=[]` → не крэшится
+
+#### 1E: TVAnswer + TVDemo + TVExtraSlide (1 агент, parallel после Setup 1)
+
+Файл: `src/test/__tests__/tv-misc-components.test.jsx`
+- `TVAnswer`: с `imageUrl` → img; без — не крэш
+- `TVDemo`: с `imageUrl` → img; без — не пустой экран
+- `TVExtraSlide`: с `imageUrl` → img; с `videoUrl` → video элемент
+
+#### 1F: TV.jsx render paths (1 агент, parallel после Setup 1)
+
+Файл: `src/test/__tests__/TV.test.jsx`
+
+Мокаем `api/client.js` через `vi.mock`. Тестируем что правильный sub-компонент попадает в DOM для каждого состояния:
+- loading → текст "Загрузка"
+- ошибка (API 404) → fallback, нет крэша
+- `status=lobby, regOpen=false` → TVRules в DOM
+- `status=lobby, regOpen=true` → TVLobby в DOM
+- `status=playing, slide=question` → TVQuestion в DOM
+- `status=playing, slide=timer` → TVTimer в DOM
+- `status=playing, slide=answer` → TVAnswer в DOM
+- `status=playing, slide=extra` → TVExtraSlide в DOM
+- `status=finished, slide=results` → TVResults в DOM
+- `status=finished, slide=thanks` → TVDemo в DOM
+
+---
+
+### Stage 2: Integration Tests (MSW + RTL)
+
+Тестируем **страницы целиком** с реалистичными HTTP-ответами и симуляцией WebSocket событий.
+
+#### Setup 2 (1 агент, sequential после Stage 1)
+
+- Установить `msw@2`
+- `src/test/msw/handlers.ts` — mock handlers для всех API endpoints
+- `src/test/msw/server.ts` — `setupServer(...handlers)`
+- `src/test/ws-mock.ts` — утилита эмуляции WS событий (заменяет `new WebSocket`)
+- Обновить `setup.ts`: `beforeAll/afterEach/afterAll` для MSW server
+
+#### 2A: TV.jsx integration (1 агент, parallel после Setup 2)
+
+Файл: `src/test/__tests__/tv-page.test.jsx`
+
+Загрузка и lobby:
+- `joinCode` → API → `state(lobby, regOpen=false)` → TVRules
+- `state(lobby, regOpen=true, teams=[A,B])` → TVLobby, имена A и B видны
+
+Playing per slide:
+- `slide=question` → текст вопроса в DOM
+- `slide=timer` → TVTimer виден
+- `slide=answer` → TVAnswer виден
+- `slide=extra` → TVExtraSlide виден
+
+Finished:
+- `slide=results, revealCount=2` → TVResults с 2 командами
+- `slide=thanks` → TVDemo (thanks)
+
+WebSocket события:
+- `"team_registered"` → новая команда в TVLobby без reload
+- `"slide_changed"` → компонент переключается (question → timer)
+- `"quiz_finished"` → TVResults появляется
+- `"results_revealed"` → revealCount увеличивается
+
+#### 2B: Game.jsx integration (1 агент, parallel после Setup 2)
+
+Файл: `src/test/__tests__/game-page.test.jsx`
+
+States:
+- `state=null` → кнопка "Запустить квиз"; клик → `gameApi.start` вызван
+- `state=lobby, regClosed` → "Открыть регистрацию"; клик → `gameApi.openRegistration`
+- `state=lobby, regOpen, teams=[A,B]` → имена команд + "Начать квиз"
+- `state=playing` → текст вопроса + slide nav видны
+
+Playing interactions:
+- клик "▶" (следующий слайд) → `gameApi.setSlide` с правильным `slideId`
+- кнопка "Завершить" задизейблена до последнего слайда последнего вопроса
+- клик "Завершить" → `gameApi.finish`
+
+Finished:
+- таблица результатов видна
+- "Показать место" → `gameApi.revealNextResult`
+- kick → `teamsApi.kick`
+- score дропдаун (text) → `answersApi.updateScore`
+
+WebSocket:
+- `"answer_submitted"` → список ответов обновляется
+
+---
+
+### Stage 3: E2E Tests (Playwright)
+
+Реальный браузер против работающего Docker стека.
+
+#### Setup 3 (1 агент, sequential после Stage 2)
+
+- Установить `@playwright/test` в `apps/web`
+- `playwright.config.ts` — baseURL: `http://localhost:5173`, browser: chromium
+- `e2e/fixtures.ts` — хелперы создания данных через API (`createTestQuiz`, `startGame`)
+- Запуск: `npx playwright test`
+
+#### 3A: TV slide smoke tests (1 агент, parallel после Setup 3)
+
+Файл: `e2e/tv-slides.spec.ts`
+
+Для каждого slide type — TV рендерит контент, нет JS-ошибок в консоли:
+- `lobby/regClosed` → rules элемент виден
+- `lobby/regOpen` → QR код виден
+- `playing/question` → текст вопроса виден
+- `playing/timer` → countdown виден
+- `playing/answer` → нет крэша
+- `finished/results` → таблица результатов
+
+#### 3B: Full game flow E2E (1 агент, parallel после Setup 3)
+
+Файл: `e2e/game-flow.spec.ts`
+
+Два tab'а: Admin + TV открыты параллельно:
+1. Admin: "Запустить" → TV: rules
+2. Admin: "Открыть регистрацию" → TV: QR/lobby
+3. Admin: "Начать квиз" → TV: первый вопрос
+4. Admin: "▶" (таймер) → TV: таймер
+5. Admin: "▶" (ответ) → TV: ответ
+6. Admin: "Завершить" → TV: results
+7. Admin: "Показать место" × N → TV: места появляются
+
+---
+
+### Критерии готовности фронтенда
+
+- [ ] `npm run test` в `apps/web` запускается без ошибок
+- [ ] Stage 1: все компонентные тесты зелёные
+- [ ] Stage 2: TV.jsx и Game.jsx integration тесты зелёные
+- [ ] Stage 3: Playwright smoke + game flow зелёные
+- [ ] Удалённая/сломанная компонента ловится тестом
 
 ---
 

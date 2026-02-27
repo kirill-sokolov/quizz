@@ -1,5 +1,60 @@
 # История выполненных задач
 
+## 2026-02-27: Тесты — routes.test.ts: покрытие до 85%
+
+### ✅ 121 тест, coverage 85.38% по ключевым файлам
+
+**Новые тесты в `routes.test.ts` (32 теста):**
+
+*`POST /api/quizzes/:id/questions`:*
+- создаёт вопрос с 3 базовыми слайдами (question/timer/answer)
+- auto-orderNum = max + 1
+- defaults: questionType=choice, weight=1, timeLimitSec=30
+- 401 без авторизации
+
+*`PATCH /api/questions/:id`:*
+- обновляет text, correctAnswer, weight, questionType
+- 404 для несуществующего
+- slides array: добавляет новые слайды
+- 401 без авторизации
+
+*`DELETE /api/questions/:id`:*
+- удаляет; 404 для несуществующего; 401 без авторизации
+
+*`GET /api/quizzes/active`:*
+- возвращает только status=active квизы
+
+*`GET /api/quizzes/by-code/:code`:*
+- находит по joinCode (case-insensitive); 404 если не найден
+
+*`POST /api/quizzes` validation:*
+- пустой title → 400; отсутствующий title → 400
+
+*`PATCH /api/quizzes/:id`:*
+- обновляет title; 404; 401
+
+*`POST /api/quizzes/:id/display-on-tv`:*
+- устанавливает `displayedOnTv=true`; сбрасывает флаг у всех остальных; 404; 401
+
+*Auth edge cases:*
+- login: missing username/password → 400; неверный пользователь → 401; неверный пароль → 401
+- verify: нет токена → 401; невалидный токен → 401; валидный → 200
+- logout: 200 + set-cookie header
+
+**Итоговое покрытие:**
+| File | До | После |
+|---|---|---|
+| `routes/questions.ts` | 26% | **89%** |
+| `routes/quizzes.ts` | 53% | **90%** |
+| `routes/auth.ts` | 80% | **100%** |
+| **Всего core** | 73% | **85%** |
+
+**Файлы:**
+- `apps/api/src/test/__tests__/routes.test.ts` (новый, 32 теста)
+- `apps/api/src/test/__tests__/coverage.test.ts` → переименован в `game-extras.test.ts`
+
+---
+
 ## 2026-02-27: Тесты — Шаги 7 + Coverage: Нагрузочный тест и покрытие >70%
 
 ### ✅ 89 тестов, coverage 73.65% по ключевым файлам
